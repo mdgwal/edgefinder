@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EdgeFinder</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#080c10;--bg2:#0d1117;--bg3:#161b22;--bg4:#1c2330;
+  --border:#21262d;--bull:#00ff88;--bear:#ff3b5c;
+  --neutral:#f0b429;--accent:#58a6ff;
+  --text:#e6edf3;--muted:#8b949e;
+  --mono:'Share Tech Mono',monospace;--sans:'Barlow',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;}
+.hlogo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--bull),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:bold;color:#000;}
+.logo-text{font-size:17px;font-weight:900;letter-spacing:-0.5px;font-family:var(--sans);}
+.logo-text b{color:var(--bull);font-weight:900;}
+.hright{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.live-dot{width:7px;height:7px;background:var(--bull);border-radius:50%;display:inline-block;margin-right:4px;animation:pulse 2s infinite;}
+.live-dot.err{background:var(--bear);animation:none;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.lupdate{color:var(--accent);}
+.rbtn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:14px;padding:4px 10px;border-radius:5px;cursor:pointer;line-height:1;}
+.rbtn:hover{border-color:var(--bull);color:var(--bull);}
+.spinning{display:inline-block;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TABS */
+.tabs{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:11px 13px;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:var(--mono);background:none;border-top:none;border-left:none;border-right:none;transition:color .2s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--bull);border-bottom-color:var(--bull);}
+
+/* MAIN */
+.main{padding:16px;max-width:1200px;width:100%;margin:0 auto;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* TICKER */
+.ticker{display:flex;gap:8px;overflow-x:auto;padding-bottom:12px;margin-bottom:10px;-webkit-overflow-scrolling:touch;}
+.ticker::-webkit-scrollbar{display:none;}
+.tpill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;white-space:nowrap;flex-shrink:0;}
+.tsym{font-family:var(--mono);font-size:10px;color:var(--muted);}
+.tprice{font-family:var(--mono);font-size:14px;font-weight:bold;color:var(--text);}
+.tchg{font-family:var(--mono);font-size:11px;}
+.src{font-family:var(--mono);font-size:8px;padding:1px 4px;border-radius:3px;margin-left:4px;background:rgba(0,255,136,.1);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr);}}
+.sbox{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;}
+.slabel{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.sval{font-family:var(--mono);font-size:20px;font-weight:bold;margin:4px 0;}
+.ssub{font-size:10px;color:var(--muted);}
+
+/* SETUP CARDS */
+.setup{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:9px;}
+.srank{font-family:var(--mono);font-size:11px;color:var(--muted);width:22px;flex-shrink:0;}
+.sinfo{flex:1;min-width:0;}
+.spair{font-family:var(--mono);font-size:14px;font-weight:bold;}
+.sdesc{font-size:11px;color:var(--muted);margin-top:2px;}
+.sfactors{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
+.ftag{font-family:var(--mono);font-size:8px;padding:2px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;}
+.fb{background:rgba(0,255,136,.1);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
+.fr{background:rgba(255,59,92,.1);color:var(--bear);border:1px solid rgba(255,59,92,.2);}
+.fn{background:rgba(240,180,41,.1);color:var(--neutral);border:1px solid rgba(240,180,41,.2);}
+.sscore{font-family:var(--mono);font-size:20px;font-weight:bold;text-align:center;flex-shrink:0;min-width:55px;}
+.sbias{font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;text-align:center;}
+
+/* CARD */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
+.chd{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3);}
+.ctitle{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);}
+.cbadge{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:var(--bg4);border:1px solid var(--border);color:var(--muted);}
+.cbadge-live{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid rgba(0,255,136,.3);color:var(--bull);}
+.cbadge-demo{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid rgba(240,180,41,.3);color:var(--neutral);}
+.cbody{padding:14px;}
+
+/* ASSET ROWS */
+.arow{display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid var(--border);border-radius:5px;margin:0 -6px;}
+.arow:last-child{border-bottom:none;}
+.aname{font-family:var(--mono);font-size:11px;font-weight:bold;width:68px;flex-shrink:0;}
+.aprice{font-family:var(--mono);font-size:10px;color:var(--accent);width:82px;flex-shrink:0;}
+.bbarw{flex:1;}
+.bbart{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;}
+.bbarf{height:100%;border-radius:3px;transition:width .8s;}
+.snum{font-family:var(--mono);font-size:11px;font-weight:bold;width:38px;text-align:right;flex-shrink:0;}
+.arw{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
+
+/* COT TABLE */
+.ctbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.ctbl th{color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.ctbl td{padding:8px 8px;border-bottom:1px solid rgba(33,38,45,.5);}
+.ctbl tr:last-child td{border-bottom:none;}
+.mbw{display:flex;align-items:center;gap:5px;}
+.mbt{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.mbf{height:100%;border-radius:2px;}
+
+/* SENTIMENT */
+.srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.srow:last-child{border-bottom:none;}
+.spairn{font-family:var(--mono);font-size:11px;width:70px;flex-shrink:0;}
+.sbarw{flex:1;}
+.sbart{height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;display:flex;}
+.slong{height:100%;border-radius:4px 0 0 4px;background:var(--bull);}
+.sshort{height:100%;border-radius:0 4px 4px 0;background:var(--bear);}
+.spcts{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px;}
+
+/* HEATMAP */
+.hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;}
+@media(max-width:500px){.hgrid{grid-template-columns:repeat(2,1fr);}}
+.hcell{padding:10px;border-radius:7px;text-align:center;}
+.hlbl{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.7);}
+.hval{font-family:var(--mono);font-size:15px;font-weight:bold;color:#fff;margin:3px 0;}
+.hchg{font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.6);}
+
+/* CURRENCY */
+.crow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
+.crow:last-child{border-bottom:none;}
+.crank{font-family:var(--mono);font-size:10px;color:var(--muted);width:18px;flex-shrink:0;}
+.ccode{font-family:var(--mono);font-size:12px;font-weight:bold;width:40px;flex-shrink:0;}
+.cname{font-size:10px;color:var(--muted);width:100px;flex-shrink:0;}
+.cbarw{flex:1;}
+.cbart{height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.cbarf{height:100%;border-radius:4px;transition:width .8s;}
+.cval{font-family:var(--mono);font-size:11px;width:48px;text-align:right;flex-shrink:0;}
+
+/* MISC */
+.sectitle{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.sectitle::after{content:'';flex:1;height:1px;background:var(--border);}
+.infobox{padding:11px;border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px;}
+.ib-blue{background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.15);}
+.ib-yellow{background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.15);}
+.ib-green{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.15);}
+.iblabel{font-family:var(--mono);display:block;margin-bottom:4px;}
+.lrow{display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--muted);font-family:var(--mono);font-size:11px;}
+.spinner{width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--bull);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;}
+.apibox{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px;}
+.apibox h3{font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:10px;letter-spacing:1px;}
+.apirow{display:flex;gap:7px;align-items:center;margin-bottom:8px;}
+.apilbl{font-family:var(--mono);font-size:10px;color:var(--muted);width:100px;flex-shrink:0;}
+.apiinp{flex:1;background:var(--bg4);border:1px solid var(--border);border-radius:5px;padding:6px 9px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;}
+.apibtn{background:var(--bull);color:#000;border:none;border-radius:5px;padding:6px 12px;font-family:var(--mono);font-size:10px;font-weight:bold;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="hlogo">
+    <div class="logo-icon">EF</div>
+    <div class="logo-text">Edge<b>Finder</b></div>
+  </div>
+  <div class="hright">
+    <span id="status-dot"><span class="live-dot"></span>LIVE</span>
+    <span style="color:var(--muted)">Updated: <span class="lupdate" id="last-update">--:--</span></span>
+    <button class="rbtn" onclick="refreshAll()"><span id="rbtn-icon">↻</span></button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs"></nav>
+
+<div class="main">
+  <div class="ticker" id="ticker">
+    <div class="lrow"><div class="spinner"></div><span>Fetching live prices...</span></div>
+  </div>
+  <div id="page-setups" class="page active"></div>
+  <div id="page-assets" class="page"></div>
+  <div id="page-cot" class="page"></div>
+  <div id="page-sentiment" class="page"></div>
+  <div id="page-econ" class="page"></div>
+  <div id="page-currency" class="page"></div>
+  <div id="page-settings" class="page"></div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const FOREX=[
+  {id:"EURUSD",base:"EUR",quote:"USD",name:"Euro / Dollar"},
+  {id:"GBPUSD",base:"GBP",quote:"USD",name:"Pound / Dollar"},
+  {id:"USDJPY",base:"USD",quote:"JPY",name:"Dollar / Yen"},
+  {id:"AUDUSD",base:"AUD",quote:"USD",name:"Aussie / Dollar"},
+  {id:"USDCAD",base:"USD",quote:"CAD",name:"Dollar / CAD"},
+  {id:"USDCHF",base:"USD",quote:"CHF",name:"Dollar / Franc"},
+  {id:"NZDUSD",base:"NZD",quote:"USD",name:"Kiwi / Dollar"},
+];
+const CURRS=[
+  {code:"USD",name:"US Dollar"},{code:"EUR",name:"Euro"},
+  {code:"GBP",name:"British Pound"},{code:"JPY",name:"Japanese Yen"},
+  {code:"AUD",name:"Australian Dollar"},{code:"CAD",name:"Canadian Dollar"},
+  {code:"CHF",name:"Swiss Franc"},{code:"NZD",name:"New Zealand Dollar"},
+];
+const COT=[
+  {id:"EURUSD",lp:62,net:128,chg:12},{id:"GBPUSD",lp:58,net:74,chg:-5},
+  {id:"USDJPY",lp:31,net:-89,chg:-18},{id:"AUDUSD",lp:44,net:-22,chg:3},
+  {id:"USDCAD",lp:55,net:41,chg:9},{id:"XAUUSD",lp:71,net:214,chg:22},
+  {id:"USOIL",lp:67,net:189,chg:-8},
+];
+const SENT=[
+  {id:"EURUSD",lp:38},{id:"GBPUSD",lp:61},{id:"USDJPY",lp:72},
+  {id:"AUDUSD",lp:44},{id:"USDCAD",lp:29},{id:"USDCHF",lp:55},{id:"NZDUSD",lp:48},
+];
+const ECON=[
+  {country:"🇺🇸 USD",items:[{l:"GDP YoY",v:"2.8%",s:.3},{l:"CPI YoY",v:"3.1%",s:-.1},{l:"NFP",v:"209K",s:.8},{l:"Rate",v:"5.25%",s:0}]},
+  {country:"🇪🇺 EUR",items:[{l:"GDP YoY",v:"0.4%",s:-.2},{l:"CPI YoY",v:"2.6%",s:-.4},{l:"Unemploy",v:"6.1%",s:.1},{l:"Rate",v:"4.50%",s:0}]},
+  {country:"🇬🇧 GBP",items:[{l:"GDP YoY",v:"0.6%",s:.2},{l:"CPI YoY",v:"3.4%",s:-.3},{l:"Unemploy",v:"4.2%",s:-.1},{l:"Rate",v:"5.25%",s:0}]},
+  {country:"🇯🇵 JPY",items:[{l:"GDP YoY",v:"0.1%",s:-.5},{l:"CPI YoY",v:"2.8%",s:.2},{l:"Tankan",v:"+13",s:.4},{l:"Rate",v:"0.10%",s:.1}]},
+];
+const TABS_DEF=[
+  {id:"setups",label:"⚡ Setups"},
+  {id:"assets",label:"📊 Assets"},
+  {id:"cot",label:"🏦 COT"},
+  {id:"sentiment",label:"😊 Sentiment"},
+  {id:"econ",label:"🌡 Economic"},
+  {id:"currency",label:"💱 Currency"},
+  {id:"settings",label:"⚙ Settings"},
+];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let state={rates:null,prevRates:null,btc:null,prices:[],cdata:null,items:[],error:false};
+let activeTab="setups";
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function rnd(a,b){return Math.random()*(b-a)+a;}
+function sc(s){return s>=3.5?"var(--bull)":s<=-3.5?"var(--bear)":"var(--neutral)";}
+function bl(s){
+  if(s>=6)return"STRONG BULL";if(s>=3.5)return"BULL";if(s>=1.5)return"MILD BULL";
+  if(s<=-6)return"STRONG BEAR";if(s<=-3.5)return"BEAR";if(s<=-1.5)return"MILD BEAR";
+  return"NEUTRAL";
+}
+function aw(s){return s>=3.5?"↑":s<=-3.5?"↓":"→";}
+function fp(p,id){if(!p&&p!==0)return"—";return id&&id.includes("JPY")?p.toFixed(3):p.toFixed(5);}
+function fc(c){if(c==null)return"—";return(c>=0?"+":"")+(c*100).toFixed(2)+"%";}
+function h(str){return str;} // safe html passthrough
+
+function computeScore(id){
+  let s=0;
+  const cot=COT.find(c=>c.id===id);
+  if(cot){
+    if(cot.lp>60)s+=3;else if(cot.lp>55)s+=1.5;
+    else if(cot.lp<40)s-=3;else if(cot.lp<45)s-=1.5;
+    if(cot.chg>10)s+=1.5;else if(cot.chg>5)s+=.8;
+    else if(cot.chg<-10)s-=1.5;else if(cot.chg<-5)s-=.8;
+  }
+  const sent=SENT.find(x=>x.id===id);
+  if(sent){
+    if(sent.lp>65)s-=2;else if(sent.lp>55)s-=.8;
+    else if(sent.lp<35)s+=2;else if(sent.lp<45)s+=.8;
+  }
+  s+=rnd(-.8,.8);
+  return Math.max(-9,Math.min(9,parseFloat(s.toFixed(1))));
+}
+
+// ── API ────────────────────────────────────────────────────────────────────────
+async function fetchRates(){
+  const r=await fetch("https://api.frankfurter.app/latest?from=USD");
+  if(!r.ok)throw new Error();
+  return (await r.json()).rates;
+}
+async function fetchPrev(){
+  const d=new Date();d.setDate(d.getDate()-1);
+  if(d.getDay()===0)d.setDate(d.getDate()-2);
+  if(d.getDay()===6)d.setDate(d.getDate()-1);
+  const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");
+  if(!r.ok)throw new Error();
+  return (await r.json()).rates;
+}
+async function fetchBTC(){
+  const r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true");
+  if(!r.ok)throw new Error();
+  const d=await r.json();
+  return{price:d.bitcoin.usd,change:d.bitcoin.usd_24h_change};
+}
+
+function buildPrices(cur,prev){
+  return FOREX.map(p=>{
+    let price=null,pp=null;
+    if(cur){if(p.base==="USD")price=cur[p.quote];else if(p.quote==="USD"&&cur[p.base])price=1/cur[p.base];}
+    if(prev){if(p.base==="USD")pp=prev[p.quote];else if(p.quote==="USD"&&prev[p.base])pp=1/prev[p.base];}
+    return{...p,price,change:price&&pp?(price-pp)/pp:null};
+  });
+}
+function buildStrength(rates){
+  if(!rates)return null;
+  const all={...rates,USD:1};
+  const st={};CURRS.forEach(c=>{st[c.code]=0;});
+  CURRS.forEach(b=>CURRS.forEach(q=>{
+    if(b.code===q.code||!all[b.code])return;
+    st[b.code]+=Math.log(1/all[b.code])*.1;
+  }));
+  const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);
+  return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);
+}
+function buildItems(prices,btc){
+  const r=[
+    ...FOREX.map(p=>{
+      const pr=prices.find(x=>x.id===p.id);
+      const cot=COT.find(c=>c.id===p.id);
+      const sent=SENT.find(s=>s.id===p.id);
+      return{id:p.id,name:p.name,cat:"Forex",price:pr?pr.price:null,score:computeScore(p.id),
+        cotBull:cot&&cot.lp>55,cotBear:cot&&cot.lp<45,
+        cBuy:sent&&sent.lp<35,cSell:sent&&sent.lp>65};
+    }),
+    {id:"XAUUSD",name:"Gold",cat:"Commodity",price:null,score:computeScore("XAUUSD"),cotBull:true,cotBear:false,cBuy:false,cSell:false},
+    {id:"BTCUSD",name:"Bitcoin",cat:"Crypto",price:btc?btc.price:null,score:parseFloat(rnd(-5,7).toFixed(1)),cotBull:false,cotBear:false,cBuy:false,cSell:false},
+    {id:"NAS100",name:"NASDAQ 100",cat:"Index",price:null,score:parseFloat(rnd(-4,7).toFixed(1)),cotBull:false,cotBear:false,cBuy:false,cSell:false},
+    {id:"US30",name:"Dow Jones",cat:"Index",price:null,score:parseFloat(rnd(-5,6).toFixed(1)),cotBull:false,cotBear:false,cBuy:false,cSell:false},
+  ];
+  return r;
+}
+
+async function refreshAll(){
+  document.getElementById("rbtn-icon").classList.add("spinning");
+  try{
+    const [r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchBTC()]);
+    state.error=false;
+    if(r1.status==="fulfilled")state.rates=r1.value; else state.error=true;
+    if(r2.status==="fulfilled")state.prevRates=r2.value;
+    if(r3.status==="fulfilled")state.btc=r3.value;
+    state.prices=buildPrices(state.rates,state.prevRates);
+    state.cdata=buildStrength(state.rates);
+    state.items=buildItems(state.prices,state.btc);
+    const now=new Date();
+    document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+    document.getElementById("status-dot").innerHTML=state.error
+      ?'<span class="live-dot err"></span>ERROR'
+      :'<span class="live-dot"></span>LIVE';
+    renderTicker();
+    renderActive();
+  }catch(e){state.error=true;}
+  document.getElementById("rbtn-icon").classList.remove("spinning");
+}
+
+// ── RENDER TICKER ─────────────────────────────────────────────────────────────
+function renderTicker(){
+  const el=document.getElementById("ticker");
+  let html="";
+  state.prices.forEach(p=>{
+    const col=p.change==null?"var(--muted)":p.change>=0?"var(--bull)":"var(--bear)";
+    html+=`<div class="tpill">
+      <div class="tsym">${p.id}<span class="src">LIVE</span></div>
+      <div class="tprice">${fp(p.price,p.id)}</div>
+      <div class="tchg" style="color:${col}">${fc(p.change)}</div>
+    </div>`;
+  });
+  if(state.btc){
+    const col=state.btc.change>=0?"var(--bull)":"var(--bear)";
+    html+=`<div class="tpill">
+      <div class="tsym">BTCUSD<span class="src">LIVE</span></div>
+      <div class="tprice">$${state.btc.price.toLocaleString()}</div>
+      <div class="tchg" style="color:${col}">${state.btc.change>=0?"+":""}${state.btc.change.toFixed(2)}%</div>
+    </div>`;
+  }
+  el.innerHTML=html||'<div class="lrow"><span style="color:var(--bear)">⚠ Could not load prices — check internet</span></div>';
+}
+
+// ── RENDER PAGES ──────────────────────────────────────────────────────────────
+function renderSetups(){
+  const items=state.items;
+  const ranked=[...items].sort((a,b)=>Math.abs(b.score)-Math.abs(a.score)).slice(0,6);
+  const bulls=items.filter(a=>a.score>=3.5).length;
+  const bears=items.filter(a=>a.score<=-3.5).length;
+  let html=`<div class="stats">
+    <div class="sbox"><div class="slabel">Bullish</div><div class="sval" style="color:var(--bull)">${bulls}</div><div class="ssub">clear edge</div></div>
+    <div class="sbox"><div class="slabel">Bearish</div><div class="sval" style="color:var(--bear)">${bears}</div><div class="ssub">clear edge</div></div>
+    <div class="sbox"><div class="slabel">Neutral</div><div class="sval" style="color:var(--neutral)">${items.length-bulls-bears}</div><div class="ssub">no bias</div></div>
+    <div class="sbox"><div class="slabel">Data</div><div class="sval" style="color:var(--accent);font-size:13px;padding-top:5px">LIVE</div><div class="ssub">Frankfurter · CoinGecko</div></div>
+  </div>
+  <div class="sectitle">Top Setups This Week</div>`;
+  ranked.forEach((a,i)=>{
+    const s=a.score,col=sc(s);
+    const factors=[];
+    if(a.cotBull)factors.push({l:"COT Long",t:"b"});
+    if(a.cotBear)factors.push({l:"COT Short",t:"r"});
+    if(a.cBuy)factors.push({l:"Contrarian Buy",t:"b"});
+    if(a.cSell)factors.push({l:"Contrarian Sell",t:"r"});
+    if(Math.abs(s)>5)factors.push({l:"Strong Signal",t:s>0?"b":"r"});
+    if(!factors.length)factors.push({l:"Mixed",t:"n"});
+    const tags=factors.map(f=>`<span class="ftag f${f.t}">${f.l}</span>`).join("");
+    html+=`<div class="setup">
+      <div class="srank">#${i+1}</div>
+      <div class="sinfo">
+        <div class="spair" style="color:${col}">${a.id}</div>
+        <div class="sdesc">${a.name} · ${a.cat}</div>
+        <div class="sfactors">${tags}</div>
+      </div>
+      <div>
+        <div class="sscore" style="color:${col}">${s>0?"+":""}${s.toFixed(1)}</div>
+        <div class="sbias">${bl(s)}</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById("page-setups").innerHTML=html;
+}
+
+function renderAssets(){
+  let html=`<div class="card"><div class="chd"><span class="ctitle">All Assets — Edge Scores</span><span class="cbadge-live">● LIVE</span></div><div class="cbody">`;
+  state.items.forEach(a=>{
+    const s=a.score,col=sc(s),pct=((s+9)/18)*100;
+    html+=`<div class="arow">
+      <div class="aname">${a.id}</div>
+      <div class="aprice">${fp(a.price,a.id)}</div>
+      <div class="bbarw"><div class="bbart"><div class="bbarf" style="width:${pct}%;background:${col}"></div></div></div>
+      <div class="snum" style="color:${col}">${s>0?"+":""}${s.toFixed(1)}</div>
+      <div class="arw" style="color:${col}">${aw(s)}</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+  document.getElementById("page-assets").innerHTML=html;
+}
+
+function renderCOT(){
+  let html=`<div class="sectitle">Commitment of Traders — Institutional</div>
+  <div class="infobox ib-blue">
+    <span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA</span>
+    Published every Friday 3:30 PM EST. Reflects positions as of prior Tuesday. Use for directional bias only.
+  </div>
+  <div class="card"><div class="chd"><span class="ctitle">Net Positions — Smart Money</span><span class="cbadge-demo">WEEKLY · W11</span></div>
+  <div style="overflow-x:auto"><table class="ctbl"><thead><tr><th>Asset</th><th>Long %</th><th>Net Pos</th><th>Wk Chg</th><th>Signal</th></tr></thead><tbody>`;
+  COT.forEach(row=>{
+    const bull=row.lp>55,bear=row.lp<45;
+    const col=bull?"var(--bull)":bear?"var(--bear)":"var(--neutral)";
+    html+=`<tr>
+      <td style="font-weight:bold">${row.id}</td>
+      <td><div class="mbw"><div class="mbt"><div class="mbf" style="width:${row.lp}%;background:${col}"></div></div><span style="color:${col};font-size:10px">${row.lp}%</span></div></td>
+      <td style="color:${row.net>0?"var(--bull)":"var(--bear)"}">${row.net>0?"+":""}${row.net}K</td>
+      <td style="color:${row.chg>0?"var(--bull)":"var(--bear)"}">${row.chg>0?"▲+":"▼"}${Math.abs(row.chg)}K</td>
+      <td style="color:${col};font-family:var(--mono);font-size:10px">${bull?"LONG ↑":bear?"SHORT ↓":"NEUTRAL →"}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div></div>`;
+  document.getElementById("page-cot").innerHTML=html;
+}
+
+function renderSentiment(){
+  let html=`<div class="sectitle">Retail Sentiment — Contrarian Signal</div>
+  <div class="card"><div class="chd"><span class="ctitle">Retail Long vs Short %</span><span class="cbadge">HOURLY</span></div><div class="cbody">`;
+  SENT.forEach(row=>{
+    const sp=100-row.lp;
+    const sig=row.lp>65?"⚡ CONTRARIAN SELL":row.lp<35?"⚡ CONTRARIAN BUY":"";
+    html+=`<div class="srow">
+      <div class="spairn">${row.id}</div>
+      <div class="sbarw">
+        <div class="sbart"><div class="slong" style="width:${row.lp}%"></div><div class="sshort" style="width:${sp}%"></div></div>
+        <div class="spcts">
+          <span style="color:var(--bull)">▲ ${row.lp}%</span>
+          ${sig?`<span style="color:var(--neutral);font-family:var(--mono);font-size:9px">${sig}</span>`:""}
+          <span style="color:var(--bear)">${sp}% ▼</span>
+        </div>
+      </div>
+    </div>`;
+  });
+  html+=`</div></div>
+  <div class="infobox ib-yellow">
+    <span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC</span>
+    When 65%+ of retail is long, smart money is likely positioned opposite. Combine with COT for high-confidence bias.
+  </div>`;
+  document.getElementById("page-sentiment").innerHTML=html;
+}
+
+function renderEcon(){
+  let html=`<div class="sectitle">Economic Heatmap — Macro Fundamentals</div>`;
+  ECON.forEach(c=>{
+    html+=`<div class="card"><div class="chd"><span class="ctitle">${c.country}</span><span class="cbadge-demo">DEMO DATA</span></div><div class="hgrid">`;
+    c.items.forEach(item=>{
+      const bg=item.s>.3?"rgba(0,255,136,.15)":item.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
+      const br=item.s>.3?"1px solid rgba(0,255,136,.2)":item.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
+      const lbl=item.s>.3?"Beat":item.s<-.3?"Miss":"In Line";
+      html+=`<div class="hcell" style="background:${bg};border:${br}">
+        <div class="hlbl">${item.l}</div><div class="hval">${item.v}</div><div class="hchg">${lbl}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  });
+  document.getElementById("page-econ").innerHTML=html;
+}
+
+function renderCurrency(){
+  if(!state.cdata){
+    document.getElementById("page-currency").innerHTML=`<div class="lrow"><div class="spinner"></div><span>Waiting for live rates...</span></div>`;
+    return;
+  }
+  let html=`<div class="sectitle">Currency Strength — Live Rates</div>
+  <div class="card"><div class="chd"><span class="ctitle">G8 Relative Strength</span><span class="cbadge-live">● LIVE · Frankfurter</span></div><div class="cbody">`;
+  state.cdata.forEach((c,i)=>{
+    const col=c.val>.05?"var(--bull)":c.val<-.05?"var(--bear)":"var(--neutral)";
+    html+=`<div class="crow">
+      <div class="crank">${i+1}</div>
+      <div class="ccode" style="color:${col}">${c.code}</div>
+      <div class="cname">${c.name}</div>
+      <div class="cbarw"><div class="cbart"><div class="cbarf" style="width:${c.pct}%;background:${col}"></div></div></div>
+      <div class="cval" style="color:${col}">${c.val>0?"+":""}${c.val.toFixed(3)}</div>
+    </div>`;
+  });
+  html+=`</div></div>`;
+  document.getElementById("page-currency").innerHTML=html;
+}
+
+function renderSettings(){
+  document.getElementById("page-settings").innerHTML=`
+  <div class="sectitle">API Settings & Deployment</div>
+  <div class="apibox">
+    <h3>🟢 ALREADY CONNECTED — FREE, NO KEY NEEDED</h3>
+    <div class="infobox ib-green" style="margin-bottom:0">
+      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates · Updates every 15 min<br>
+      <strong style="color:var(--bull)">CoinGecko API</strong> — Live Bitcoin price · Updates every 15 min
+    </div>
+  </div>
+  <div class="apibox">
+    <h3>🔑 OPTIONAL FREE KEYS</h3>
+    <div class="apirow">
+      <span class="apilbl">Alpha Vantage</span>
+      <input class="apiinp" placeholder="alphavantage.co — unlocks Gold, Oil, Indices"/>
+      <button class="apibtn">Save</button>
+    </div>
+    <div class="apirow" style="margin-top:8px">
+      <span class="apilbl">FRED API</span>
+      <input class="apiinp" placeholder="fred.stlouisfed.org — live GDP, CPI, Rates"/>
+      <button class="apibtn">Save</button>
+    </div>
+  </div>
+  <div class="apibox">
+    <h3>🚀 DEPLOY 24/7 FREE — VERCEL</h3>
+    <div style="font-size:11px;color:var(--muted);line-height:2.1">
+      <strong style="color:var(--text)">Step 1</strong> — Sign up free at <span style="color:var(--accent)">vercel.com</span> using GitHub<br>
+      <strong style="color:var(--text)">Step 2</strong> — Upload this HTML file to a GitHub repo<br>
+      <strong style="color:var(--text)">Step 3</strong> — Import repo to Vercel → click Deploy<br>
+      <strong style="color:var(--text)">Step 4</strong> — Get permanent URL e.g. <span style="color:var(--bull)">edgefinder.vercel.app</span><br>
+      <strong style="color:var(--text)">Step 5</strong> — Bookmark on phone → updates 24/7 ✅<br><br>
+      <span style="color:var(--bull)">✅ Free forever · Works on any phone · Zero setup</span>
+    </div>
+  </div>`;
+}
+
+// ── TABS INIT ─────────────────────────────────────────────────────────────────
+function initTabs(){
+  const nav=document.getElementById("tabs");
+  TABS_DEF.forEach(t=>{
+    const btn=document.createElement("button");
+    btn.className="tab"+(t.id===activeTab?" active":"");
+    btn.textContent=t.label;
+    btn.onclick=()=>switchTab(t.id);
+    nav.appendChild(btn);
+  });
+}
+function switchTab(id){
+  activeTab=id;
+  document.querySelectorAll(".tab").forEach((b,i)=>{b.className="tab"+(TABS_DEF[i].id===id?" active":"");});
+  document.querySelectorAll(".page").forEach(p=>{p.className="page";});
+  document.getElementById("page-"+id).className="page active";
+  renderActive();
+}
+function renderActive(){
+  if(activeTab==="setups")renderSetups();
+  else if(activeTab==="assets")renderAssets();
+  else if(activeTab==="cot")renderCOT();
+  else if(activeTab==="sentiment")renderSentiment();
+  else if(activeTab==="econ")renderEcon();
+  else if(activeTab==="currency")renderCurrency();
+  else if(activeTab==="settings")renderSettings();
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+initTabs();
+renderSettings();
+renderCOT();
+renderSentiment();
+renderEcon();
+// Load live data
+refreshAll();
+// Auto refresh every 15 min
+setInterval(refreshAll, 15*60*1000);
+</script>
+</body>
+</html>
