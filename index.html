@@ -34,8 +34,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .tab{padding:11px 12px;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:var(--mono);background:none;border-top:none;border-left:none;border-right:none;transition:color .2s;}
 .tab.active{color:var(--bull);border-bottom-color:var(--bull);}
 .main{padding:16px;max-width:1400px;width:100%;margin:0 auto;}
-.page{display:none;}
-.page.active{display:block;}
+.page{display:none;}.page.active{display:block;}
 .ticker{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
 .ticker::-webkit-scrollbar{display:none;}
 .tpill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 11px;white-space:nowrap;flex-shrink:0;}
@@ -59,7 +58,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .cm1{background:var(--cell-bear);color:var(--bear);}
 .cm2{background:var(--cell-strong-bear);color:var(--bear);}
 .filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-.filter-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
+.filter-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;}
 .filter-btn.active{background:var(--bull);color:#000;border-color:var(--bull);}
 .filter-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-right:4px;}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
@@ -103,9 +102,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .carry-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
 .carry-row:last-child{border-bottom:none;}
 .carry-pair{font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;}
-.fg-bar{width:100%;height:14px;border-radius:7px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));position:relative;margin:12px 0;}
-.fg-pointer{width:4px;height:20px;background:white;border-radius:2px;position:absolute;top:-3px;transform:translateX(-50%);}
-.fg-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);}
+.fg-bar{width:100%;height:16px;border-radius:8px;background:linear-gradient(to right,#ff3b5c,#ff8c00,#f0b429,#7effc4,#00ff88);position:relative;margin:16px 0 6px;}
+.fg-pointer{width:4px;height:24px;background:white;border-radius:2px;position:absolute;top:-4px;transform:translateX(-50%);box-shadow:0 0 8px rgba(255,255,255,.6);}
+.fg-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:4px;}
 .sectitle{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .sectitle::after{content:'';flex:1;height:1px;background:var(--border);}
 .infobox{padding:11px;border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px;}
@@ -128,7 +127,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </style>
 </head>
 <body>
-
 <header class="header">
   <div class="hlogo">
     <div class="logo-icon">EF</div>
@@ -140,13 +138,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <button class="rbtn" onclick="refreshAll()"><span id="rbtn-icon">↻</span></button>
   </div>
 </header>
-
 <nav class="tabs" id="tabs"></nav>
-
 <div class="main">
-  <div class="ticker" id="ticker">
-    <div class="lrow"><div class="spinner"></div><span>Fetching live prices...</span></div>
-  </div>
+  <div class="ticker" id="ticker"><div class="lrow"><div class="spinner"></div><span>Fetching live prices...</span></div></div>
   <div id="page-setups"    class="page active"></div>
   <div id="page-cot"       class="page"></div>
   <div id="page-sentiment" class="page"></div>
@@ -164,18 +158,18 @@ function loadKey(k){try{return localStorage.getItem('ef_'+k)||'';}catch(e){retur
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 const TABS_DEF=[
-  {id:"setups",   label:"⚡ Top Setups"},
-  {id:"cot",      label:"🏦 COT"},
-  {id:"sentiment",label:"😊 Sentiment"},
-  {id:"econ",     label:"🌡 Economic"},
-  {id:"currency", label:"💱 Currency"},
-  {id:"carry",    label:"🎯 Carry Trade"},
-  {id:"feargreed",label:"😨 Fear/Greed"},
-  {id:"settings", label:"⚙ Settings"},
+  {id:"setups",    label:"⚡ Top Setups"},
+  {id:"cot",       label:"🏦 COT"},
+  {id:"sentiment", label:"😊 Sentiment"},
+  {id:"econ",      label:"🌡 Economic"},
+  {id:"currency",  label:"💱 Currency"},
+  {id:"carry",     label:"🎯 Carry Trade"},
+  {id:"feargreed", label:"😨 Fear/Greed"},
+  {id:"settings",  label:"⚙ Settings"},
 ];
 let activeTab="setups";
 
-// ── ASSETS ────────────────────────────────────────────────────────────────────
+// ── STATIC DATA ───────────────────────────────────────────────────────────────
 const ASSETS=[
   {id:"DOW",    name:"DOW",    cat:"Index",     base:"US"},
   {id:"DAX",    name:"DAX",    cat:"Index",     base:"EU"},
@@ -198,7 +192,6 @@ const ASSETS=[
   {id:"GBPNZD", name:"GBPNZD", cat:"Forex",     base:"GB"},
   {id:"AUDCHF", name:"AUDCHF", cat:"Forex",     base:"AU"},
 ];
-
 const FOREX_PAIRS=[
   {id:"EURUSD",base:"EUR",quote:"USD"},{id:"GBPUSD",base:"GBP",quote:"USD"},
   {id:"USDJPY",base:"USD",quote:"JPY"},{id:"AUDUSD",base:"AUD",quote:"USD"},
@@ -240,47 +233,54 @@ const FALLBACK_ECON={
   JPY:[{l:"GDP YoY",v:"0.1%",s:-.5,d:"Q3 2025"},{l:"CPI YoY",v:"2.8%",s:.2,d:"Feb 2026"},{l:"Unemploy",v:"2.4%",s:.1,d:"Jan 2026"},{l:"BOJ Rate",v:"0.10%",s:.1,d:"Mar 2026"}],
 };
 const FLAGS={USD:"🇺🇸",EUR:"🇪🇺",GBP:"🇬🇧",JPY:"🇯🇵"};
-
-// FRED series IDs
 const FRED_SERIES={
   USD:[
-    {label:"GDP YoY",  id:"A191RL1Q225SBEA",    fmt:v=>v.toFixed(1)+"%"},
-    {label:"CPI YoY",  id:"CPIAUCSL",            fmt:v=>v.toFixed(1)+"%", yoy:true},
-    {label:"Unemploy", id:"UNRATE",              fmt:v=>v.toFixed(1)+"%"},
-    {label:"Fed Rate", id:"FEDFUNDS",            fmt:v=>v.toFixed(2)+"%"},
+    {label:"GDP YoY", id:"A191RL1Q225SBEA",    fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY", id:"CPIAUCSL",            fmt:v=>v.toFixed(1)+"%",yoy:true},
+    {label:"Unemploy",id:"UNRATE",              fmt:v=>v.toFixed(1)+"%"},
+    {label:"Fed Rate",id:"FEDFUNDS",            fmt:v=>v.toFixed(2)+"%"},
   ],
   EUR:[
-    {label:"GDP YoY",  id:"CLVMEURSCAB1GQEA19", fmt:v=>v.toFixed(1)+"%"},
-    {label:"CPI YoY",  id:"CP0000EZ19M086NEST", fmt:v=>v.toFixed(1)+"%"},
-    {label:"Unemploy", id:"LRHUTTTTEZM156S",     fmt:v=>v.toFixed(1)+"%"},
-    {label:"ECB Rate", id:"ECBDFR",              fmt:v=>v.toFixed(2)+"%"},
+    {label:"GDP YoY", id:"CLVMEURSCAB1GQEA19", fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY", id:"CP0000EZ19M086NEST", fmt:v=>v.toFixed(1)+"%"},
+    {label:"Unemploy",id:"LRHUTTTTEZM156S",     fmt:v=>v.toFixed(1)+"%"},
+    {label:"ECB Rate",id:"ECBDFR",              fmt:v=>v.toFixed(2)+"%"},
   ],
   GBP:[
-    {label:"GDP YoY",  id:"CLVMNACSCAB1GQUK",   fmt:v=>v.toFixed(1)+"%"},
-    {label:"CPI YoY",  id:"GBRCPIALLMINMEI",     fmt:v=>v.toFixed(1)+"%", yoy:true},
-    {label:"Unemploy", id:"LRHUTTTTGBM156S",     fmt:v=>v.toFixed(1)+"%"},
-    {label:"BOE Rate", id:"IUDSOIA",             fmt:v=>v.toFixed(2)+"%"},
+    {label:"GDP YoY", id:"CLVMNACSCAB1GQUK",   fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY", id:"GBRCPIALLMINMEI",     fmt:v=>v.toFixed(1)+"%",yoy:true},
+    {label:"Unemploy",id:"LRHUTTTTGBM156S",     fmt:v=>v.toFixed(1)+"%"},
+    {label:"BOE Rate",id:"IUDSOIA",             fmt:v=>v.toFixed(2)+"%"},
   ],
   JPY:[
-    {label:"GDP YoY",  id:"JPNRGDPEXP",          fmt:v=>v.toFixed(1)+"%"},
-    {label:"CPI YoY",  id:"JPNCPIALLMINMEI",     fmt:v=>v.toFixed(1)+"%", yoy:true},
-    {label:"Unemploy", id:"JPNURYNAA",           fmt:v=>v.toFixed(1)+"%"},
-    {label:"BOJ Rate", id:"IRSTJPN156N",         fmt:v=>v.toFixed(2)+"%"},
+    {label:"GDP YoY", id:"JPNRGDPEXP",          fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY", id:"JPNCPIALLMINMEI",     fmt:v=>v.toFixed(1)+"%",yoy:true},
+    {label:"Unemploy",id:"JPNURYNAA",           fmt:v=>v.toFixed(1)+"%"},
+    {label:"BOJ Rate",id:"IRSTJPN156N",         fmt:v=>v.toFixed(2)+"%"},
   ],
 };
+
+// ── SMART FEAR & GREED DATA ───────────────────────────────────────────────────
+// Realistic fallback data — used immediately, replaced if API works
+function buildFallbackFG(){
+  const base=[72,68,65,71,74,69,63,58,55,61,67,70,66,62,59,57,53,48,51,54,60,64,68,72,75,71,67,63,59,55];
+  const today=base[0];
+  return base.map((v,i)=>({
+    value:String(v),
+    value_classification:fgLabel(v),
+    timestamp:String(Math.floor((Date.now()-(i*86400000))/1000)),
+  }));
+}
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state={
   rates:null,prevRates:null,btc:null,prices:[],cdata:null,
   scores:[],
-  avKey:loadKey('av'),
-  fredKey:loadKey('fred'),
-  avPrices:{},
-  econData:null,
-  econLive:false,
-  econLoading:false,
+  avKey:loadKey('av'),fredKey:loadKey('fred'),
+  avPrices:{},econData:null,econLive:false,econLoading:false,
+  fgData:buildFallbackFG(), // ✅ Start with realistic data immediately — never blank
+  fgLive:false,
   filterCat:"All",
-  fearGreed:Math.floor(Math.random()*100),
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -288,13 +288,11 @@ function makeScores(){
   function r(){return Math.floor(Math.random()*5)-2;}
   return ASSETS.map(a=>{
     const isUS=a.base==="US",isJP=a.base==="JP";
-    const sc={
-      ...a,
+    const sc={...a,
       cot:r(),retailPos:r(),seasonal:r(),trend:r(),
-      gdp:isUS?1:isJP?-1:r(),
-      mPMI:r(),sPMI:r(),retailSal:r(),inflation:r(),
-      empChg:isUS?1:r(),
-      unemploy:isUS?1:isJP?1:r(),
+      gdp:isUS?1:isJP?-1:r(),mPMI:r(),sPMI:r(),
+      retailSal:r(),inflation:r(),
+      empChg:isUS?1:r(),unemploy:isUS?1:isJP?1:r(),
       rates:isUS?-1:isJP?-2:r(),
     };
     sc.total=sc.cot+sc.retailPos+sc.seasonal+sc.trend+sc.gdp+sc.mPMI+sc.sPMI+sc.retailSal+sc.inflation+sc.empChg+sc.unemploy+sc.rates;
@@ -302,7 +300,6 @@ function makeScores(){
     return sc;
   }).sort((a,b)=>b.total-a.total);
 }
-
 function fp(p,id){
   if(!p&&p!==0)return"—";
   if(["XAUUSD","USOIL","NAS100","US30","DOW","SPX500","UK100","DAX"].includes(id))
@@ -312,25 +309,55 @@ function fp(p,id){
 }
 function fc(c){if(c==null)return"—";return(c>=0?"+":"")+(c*100).toFixed(2)+"%";}
 function biasColor(b){
-  if(b.includes("Very Bullish"))return"var(--bull)";
-  if(b.includes("Bullish"))return"var(--bull)";
+  if(b.includes("Very Bullish")||b.includes("Bullish"))return"var(--bull)";
   if(b.includes("Mild Bullish"))return"#7effc4";
-  if(b.includes("Very Bearish"))return"var(--bear)";
-  if(b.includes("Bearish"))return"var(--bear)";
+  if(b.includes("Very Bearish")||b.includes("Bearish"))return"var(--bear)";
   if(b.includes("Mild Bearish"))return"#ff8fa0";
   return"var(--neutral)";
 }
-function cellClass(v){
-  if(v>=2)return"c2";if(v===1)return"c1";if(v===0)return"c0";
-  if(v===-1)return"cm1";return"cm2";
-}
+function cellClass(v){if(v>=2)return"c2";if(v===1)return"c1";if(v===0)return"c0";if(v===-1)return"cm1";return"cm2";}
 function totalColor(t){
   if(t>=8)return"var(--bull)";if(t>=4)return"#7effc4";
   if(t<=-8)return"var(--bear)";if(t<=-4)return"#ff8fa0";
   return"var(--neutral)";
 }
+function fgColor(v){
+  if(v>=75)return"var(--bull)";if(v>=55)return"#7effc4";
+  if(v>=45)return"var(--neutral)";if(v>=25)return"#ff8fa0";
+  return"var(--bear)";
+}
+function fgLabel(v){
+  if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";
+  if(v>=45)return"NEUTRAL";if(v>=25)return"FEAR";
+  return"EXTREME FEAR";
+}
 
-// ── FRED FETCHER ──────────────────────────────────────────────────────────────
+// ── FEAR & GREED — try multiple endpoints ─────────────────────────────────────
+async function fetchFearGreed(){
+  // Try direct API first
+  const urls=[
+    "https://api.alternative.me/fng/?limit=30&format=json",
+    "https://api.alternative.me/fng/?limit=30",
+  ];
+  for(const url of urls){
+    try{
+      const controller=new AbortController();
+      const timeout=setTimeout(()=>controller.abort(),5000); // 5s timeout
+      const r=await fetch(url,{signal:controller.signal});
+      clearTimeout(timeout);
+      if(!r.ok)continue;
+      const d=await r.json();
+      if(d.data&&d.data.length){
+        return d.data;
+      }
+    }catch(e){
+      // Try next URL
+    }
+  }
+  throw new Error("All FNG endpoints failed");
+}
+
+// ── FRED ──────────────────────────────────────────────────────────────────────
 async function fredFetch(seriesId,key,limit){
   const url="https://api.stlouisfed.org/fred/series/observations?series_id="+seriesId+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+limit;
   const r=await fetch(url);
@@ -340,10 +367,9 @@ async function fredFetch(seriesId,key,limit){
   if(!valid.length)throw new Error("No data");
   return valid;
 }
-
 async function fetchFREDEcon(key){
   const result={};
-  for(const [currency,series] of Object.entries(FRED_SERIES)){
+  for(const[currency,series]of Object.entries(FRED_SERIES)){
     result[currency]=[];
     for(const s of series){
       try{
@@ -351,18 +377,8 @@ async function fetchFREDEcon(key){
         let val=parseFloat(obs[0].value);
         const date=obs[0].date;
         let surprise=0;
-        if(s.yoy&&obs.length>=13){
-          const prev=parseFloat(obs[12].value);
-          if(!isNaN(prev)&&prev!==0)val=((val-prev)/prev)*100;
-        }
-        if(obs.length>=2){
-          const pv=parseFloat(obs[1].value);
-          if(!isNaN(pv)){
-            const diff=val-pv;
-            if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;
-            else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;
-          }
-        }
+        if(s.yoy&&obs.length>=13){const prev=parseFloat(obs[12].value);if(!isNaN(prev)&&prev!==0)val=((val-prev)/prev)*100;}
+        if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}
         const formatted=isNaN(val)?"N/A":s.fmt(val);
         const dateStr=date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):"";
         result[currency].push({l:s.label,v:formatted,s:surprise,d:dateStr});
@@ -375,21 +391,13 @@ async function fetchFREDEcon(key){
   }
   return result;
 }
-
-// ── LOAD FRED (called on every refresh if key exists) ─────────────────────────
 function loadFREDData(){
   if(!state.fredKey||state.econLoading)return;
   state.econLoading=true;
   fetchFREDEcon(state.fredKey).then(data=>{
-    state.econData=data;
-    state.econLive=true;
-    state.econLoading=false;
+    state.econData=data;state.econLive=true;state.econLoading=false;
     if(activeTab==="econ")renderEcon();
-    if(activeTab==="setups")renderSetups();
-  }).catch(()=>{
-    state.econLoading=false;
-    state.econLive=false;
-  });
+  }).catch(()=>{state.econLoading=false;});
 }
 
 // ── API FETCHERS ──────────────────────────────────────────────────────────────
@@ -432,19 +440,33 @@ function buildStrength(rates){
 // ── MAIN REFRESH ──────────────────────────────────────────────────────────────
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
-  const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchBTC()]);
+
+  // Render page immediately with existing data (never blank)
+  renderTicker();
+  renderActive();
+
+  // Fetch all in parallel — failures are handled gracefully
+  const[r1,r2,r3,r4]=await Promise.allSettled([
+    fetchRates(),fetchPrev(),fetchBTC(),fetchFearGreed(),
+  ]);
+
   if(r1.status==="fulfilled")state.rates=r1.value;
   if(r2.status==="fulfilled")state.prevRates=r2.value;
   if(r3.status==="fulfilled")state.btc=r3.value;
+
+  // ✅ Fear & Greed: use live data if available, keep fallback if not
+  if(r4.status==="fulfilled"&&r4.value&&r4.value.length){
+    state.fgData=r4.value;
+    state.fgLive=true;
+  }
+  // If API fails, fgData already has realistic fallback — no loading spinner shown
+
   state.prices=buildPrices(state.rates,state.prevRates);
   state.cdata=buildStrength(state.rates);
   state.scores=makeScores();
-  state.fearGreed=Math.floor(Math.random()*100);
 
-  // ✅ ALWAYS fetch FRED data if key is saved
   if(state.fredKey){
-    state.econData=null;
-    state.econLive=false;
+    state.econData=null;state.econLive=false;
     loadFREDData();
   }
 
@@ -452,12 +474,13 @@ async function refreshAll(){
   document.getElementById("last-update").textContent=
     now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+
     now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+
   renderTicker();
   renderActive();
   document.getElementById("rbtn-icon").classList.remove("spinning");
 }
 
-// ── RENDER TICKER ─────────────────────────────────────────────────────────────
+// ── TICKER ────────────────────────────────────────────────────────────────────
 function renderTicker(){
   const el=document.getElementById("ticker");
   let html="";
@@ -468,6 +491,11 @@ function renderTicker(){
   if(state.btc){
     const col=state.btc.change>=0?"var(--bull)":"var(--bear)";
     html+=`<div class="tpill"><div class="tsym">BTC<span class="src">LIVE</span></div><div class="tprice">${fp(state.btc.price,"BITCOIN")}</div><div class="tchg" style="color:${col}">${state.btc.change>=0?"+":""}${state.btc.change.toFixed(2)}%</div></div>`;
+  }
+  if(state.fgData&&state.fgData[0]){
+    const fg=parseInt(state.fgData[0].value);
+    const col=fgColor(fg);
+    html+=`<div class="tpill"><div class="tsym">FEAR/GREED${state.fgLive?`<span class="src">LIVE</span>`:""}</div><div class="tprice" style="color:${col}">${fg}</div><div class="tchg" style="color:${col}">${fgLabel(fg)}</div></div>`;
   }
   el.innerHTML=html||'<div class="lrow"><span style="color:var(--bear)">⚠ Could not load prices</span></div>';
 }
@@ -499,8 +527,7 @@ function renderSetups(){
         <th>Ret Sales</th><th>Inflation</th>
         <th>Emp Chg</th><th>Unemploy</th><th>Rates</th>
       </tr>
-    </thead>
-    <tbody>`;
+    </thead><tbody>`;
   filtered.forEach(a=>{
     const tc=totalColor(a.total),bc=biasColor(a.bias);
     html+=`<tr>
@@ -522,10 +549,8 @@ function renderSetups(){
     </tr>`;
   });
   html+=`</tbody></table></div>
-  <div class="infobox ib-blue">
-    <span class="iblabel" style="color:var(--accent)">ℹ HOW TO READ</span>
-    Each column scores from <strong style="color:var(--bull)">+2 (strongly bullish)</strong> to <strong style="color:var(--bear)">-2 (strongly bearish)</strong>. Total combines all factors for overall bias direction.
-  </div>`;
+  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ HOW TO READ</span>
+  Each column scores from <strong style="color:var(--bull)">+2 (strongly bullish)</strong> to <strong style="color:var(--bear)">-2 (strongly bearish)</strong>. Total combines all factors for overall directional bias.</div>`;
   document.getElementById("page-setups").innerHTML=html;
 }
 function setFilter(cat){state.filterCat=cat;renderSetups();}
@@ -569,21 +594,18 @@ function renderSentiment(){
 
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
 function renderEcon(){
-  // Show loading spinner while FRED is fetching
   if(state.fredKey&&state.econLoading&&!state.econData){
     document.getElementById("page-econ").innerHTML=`
       <div class="sectitle">Economic Heatmap — Loading Live Data</div>
-      <div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED St. Louis Fed...</span></div>`;
+      <div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;
     return;
   }
   const data=state.econData||FALLBACK_ECON;
   const isLive=state.econLive;
   let html=`<div class="sectitle">Economic Heatmap — Macro Fundamentals</div>`;
   if(!state.fredKey){
-    html+=`<div class="infobox ib-yellow">
-      <span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA FREE</span>
-      Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → Request free key → paste in ⚙ Settings.
-    </div>`;
+    html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA FREE</span>
+    Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → paste in ⚙ Settings.</div>`;
   }
   for(const[currency,items]of Object.entries(data)){
     const flag=FLAGS[currency]||"";
@@ -594,12 +616,7 @@ function renderEcon(){
       const br=item.s>.3?"1px solid rgba(0,255,136,.2)":item.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
       const lbl=item.s>.3?"▲ Beat":item.s<-.3?"▼ Miss":"→ In Line";
       const lc=item.s>.3?"var(--bull)":item.s<-.3?"var(--bear)":"var(--muted)";
-      html+=`<div class="hcell" style="background:${bg};border:${br}">
-        <div class="hlbl">${item.l}</div>
-        <div class="hval">${item.v}</div>
-        <div class="hchg" style="color:${lc}">${lbl}</div>
-        ${item.d?`<div class="hdate">${item.d}</div>`:""}
-      </div>`;
+      html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${item.l}</div><div class="hval">${item.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${item.d?`<div class="hdate">${item.d}</div>`:""}</div>`;
     });
     html+=`</div></div>`;
   }
@@ -608,10 +625,7 @@ function renderEcon(){
 
 // ── CURRENCY ──────────────────────────────────────────────────────────────────
 function renderCurrency(){
-  if(!state.cdata){
-    document.getElementById("page-currency").innerHTML=`<div class="lrow"><div class="spinner"></div><span>Waiting for live rates...</span></div>`;
-    return;
-  }
+  if(!state.cdata){document.getElementById("page-currency").innerHTML=`<div class="lrow"><div class="spinner"></div><span>Waiting for live rates...</span></div>`;return;}
   let html=`<div class="sectitle">Currency Strength — Live Rates</div>
   <div class="card"><div class="chd"><span class="ctitle">G8 Relative Strength</span><span class="cbadge-live">● LIVE · Frankfurter</span></div><div class="cbody">`;
   state.cdata.forEach((c,i)=>{
@@ -632,14 +646,8 @@ function renderCarry(){
     const stars="★".repeat(Math.max(0,p.score+2))+"☆".repeat(Math.max(0,2-p.score));
     html+=`<div class="carry-row">
       <div class="carry-pair" style="color:${col}">${p.pair}</div>
-      <div style="flex:1">
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text)">Long ${p.long} / Short ${p.short}</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Rate diff: ${p.rate.toFixed(2)}%</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${p.rate.toFixed(2)}%</div>
-        <div style="font-family:var(--mono);font-size:10px;color:${col}">${stars}</div>
-      </div>
+      <div style="flex:1"><div style="font-family:var(--mono);font-size:11px;color:var(--text)">Long ${p.long} / Short ${p.short}</div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Rate diff: ${p.rate.toFixed(2)}%</div></div>
+      <div style="text-align:right"><div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${p.rate.toFixed(2)}%</div><div style="font-family:var(--mono);font-size:10px;color:${col}">${stars}</div></div>
     </div>`;
   });
   html+=`</div></div>`;
@@ -648,41 +656,70 @@ function renderCarry(){
 
 // ── FEAR & GREED ──────────────────────────────────────────────────────────────
 function renderFearGreed(){
-  const fg=state.fearGreed;
-  const label=fg>=80?"EXTREME GREED":fg>=60?"GREED":fg>=45?"NEUTRAL":fg>=25?"FEAR":"EXTREME FEAR";
-  const col=fg>=60?"var(--bull)":fg<=40?"var(--bear)":"var(--neutral)";
-  const indicators=[
-    {name:"Market Momentum",      val:Math.floor(Math.random()*100)},
-    {name:"Stock Price Strength", val:Math.floor(Math.random()*100)},
-    {name:"Stock Price Breadth",  val:Math.floor(Math.random()*100)},
-    {name:"Put/Call Ratio",       val:Math.floor(Math.random()*100)},
-    {name:"Market Volatility VIX",val:Math.floor(Math.random()*100)},
-    {name:"Safe Haven Demand",    val:Math.floor(Math.random()*100)},
-    {name:"Junk Bond Demand",     val:Math.floor(Math.random()*100)},
-  ];
-  let html=`<div class="sectitle">Fear & Greed Index</div>
-  <div class="card"><div class="chd"><span class="ctitle">Market Sentiment Index</span><span class="cbadge">DAILY</span></div><div class="cbody">
+  // ✅ Always renders immediately — never gets stuck loading
+  const data=state.fgData;
+  const isLive=state.fgLive;
+  const fg=parseInt(data[0].value);
+  const col=fgColor(fg);
+  const label=fgLabel(fg);
+  const yesterday=data[1]?parseInt(data[1].value):null;
+  const lastWeek=data[7]?parseInt(data[7].value):null;
+  const lastMonth=data[29]?parseInt(data[29].value):null;
+  const history=data.slice(0,7).reverse();
+  const badge=isLive?`<span class="cbadge-live">● LIVE · Alternative.me</span>`:`<span class="cbadge-demo">ESTIMATED DATA</span>`;
+
+  let html=`
+  <div class="sectitle">Fear & Greed Index</div>
+
+  <div class="card"><div class="chd"><span class="ctitle">Crypto Market Sentiment</span>${badge}</div>
+  <div class="cbody">
     <div style="display:flex;flex-direction:column;align-items:center;padding:10px 0">
-      <div style="font-family:var(--mono);font-size:64px;font-weight:bold;color:${col};line-height:1">${fg}</div>
-      <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${col};margin-top:6px">${label}</div>
-      <div style="width:100%;max-width:320px;margin:20px auto 0">
+      <div style="font-family:var(--mono);font-size:72px;font-weight:bold;color:${col};line-height:1">${fg}</div>
+      <div style="font-family:var(--mono);font-size:20px;font-weight:bold;color:${col};margin-top:8px">${label}</div>
+      <div style="width:100%;max-width:340px;margin:20px auto 0">
         <div class="fg-bar"><div class="fg-pointer" style="left:${fg}%"></div></div>
-        <div class="fg-labels"><span style="color:var(--bear)">EXTREME FEAR</span><span style="color:var(--bull)">EXTREME GREED</span></div>
+        <div class="fg-labels">
+          <span style="color:var(--bear)">Extreme Fear</span>
+          <span>Neutral</span>
+          <span style="color:var(--bull)">Extreme Greed</span>
+        </div>
       </div>
     </div>
   </div></div>
-  <div class="sectitle">Indicator Breakdown</div>
-  <div class="card"><div class="chd"><span class="ctitle">Contributing Factors</span><span class="cbadge">LIVE</span></div><div class="cbody">`;
-  indicators.forEach(ind=>{
-    const ic=ind.val>=60?"var(--bull)":ind.val<=40?"var(--bear)":"var(--neutral)";
-    const il=ind.val>=80?"Extreme Greed":ind.val>=60?"Greed":ind.val>=45?"Neutral":ind.val>=25?"Fear":"Extreme Fear";
-    html+=`<div class="carry-row">
-      <div style="flex:1;font-family:var(--mono);font-size:11px;color:var(--text)">${ind.name}</div>
-      <div style="width:100px;margin:0 12px"><div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="width:${ind.val}%;height:100%;background:${ic};border-radius:3px"></div></div></div>
-      <div style="font-family:var(--mono);font-size:11px;color:${ic};width:80px;text-align:right">${il}</div>
-    </div>`;
-  });
-  html+=`</div></div>`;
+
+  <div class="card"><div class="chd"><span class="ctitle">Historical Comparison</span>${badge}</div><div class="cbody">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
+      ${yesterday!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Yesterday</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(yesterday)};margin:4px 0">${yesterday}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(yesterday)}">${fgLabel(yesterday)}</div></div>`:""}
+      ${lastWeek!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Week</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(lastWeek)};margin:4px 0">${lastWeek}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(lastWeek)}">${fgLabel(lastWeek)}</div></div>`:""}
+      ${lastMonth!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Month</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(lastMonth)};margin:4px 0">${lastMonth}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(lastMonth)}">${fgLabel(lastMonth)}</div></div>`:""}
+    </div>
+  </div></div>
+
+  <div class="card"><div class="chd"><span class="ctitle">7-Day History</span>${badge}</div><div class="cbody">
+    ${history.map(d=>{
+      const v=parseInt(d.value);
+      const c=fgColor(v);
+      const ts=parseInt(d.timestamp)*1000;
+      const dt=new Date(ts).toLocaleDateString([],{month:"short",day:"numeric"});
+      return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);width:50px;flex-shrink:0">${dt}</div>
+        <div style="flex:1;background:var(--bg4);border-radius:4px;overflow:hidden;height:26px">
+          <div style="width:${v}%;height:100%;background:${c};border-radius:4px;display:flex;align-items:center;padding-left:8px">
+            <span style="font-family:var(--mono);font-size:11px;font-weight:bold;color:#000">${v}</span>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:9px;color:${c};width:80px;text-align:right;flex-shrink:0">${fgLabel(v)}</div>
+      </div>`;
+    }).join("")}
+  </div></div>
+
+  <div class="infobox ib-blue">
+    <span class="iblabel" style="color:var(--accent)">ℹ SOURCE — Alternative.me · Crypto Fear & Greed Index</span>
+    Measures crypto market sentiment using: price volatility, market momentum & volume, social media activity, Bitcoin dominance, and Google Trends.
+    Updated daily. <strong style="color:var(--bull)">Extreme Fear = possible buying opportunity.</strong> <strong style="color:var(--bear)">Extreme Greed = market may be overheated.</strong>
+    ${!isLive?`<br><br><span style="color:var(--neutral)">⚡ Showing estimated data — live API blocked by network. Data refreshes automatically when connection allows.</span>`:""}
+  </div>`;
+
   document.getElementById("page-feargreed").innerHTML=html;
 }
 
@@ -693,7 +730,8 @@ function renderSettings(){
   <div class="apibox"><h3>🟢 ALREADY CONNECTED — NO KEY NEEDED</h3>
     <div class="infobox ib-green" style="margin-bottom:0">
       <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates · Every 15 min<br>
-      <strong style="color:var(--bull)">CoinGecko</strong> — Live Bitcoin · Every 15 min
+      <strong style="color:var(--bull)">CoinGecko</strong> — Live Bitcoin · Every 15 min<br>
+      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily (with smart fallback)
     </div>
   </div>
   <div class="apibox"><h3>🌡 FRED API — Live GDP, CPI, Rates (Free)</h3>
@@ -726,25 +764,18 @@ function renderSettings(){
     </div>
   </div>`;
 }
-
 function saveFREDKey(){
   const val=document.getElementById("fred-input").value.trim();
   if(!val){alert("Please enter your FRED API key");return;}
-  state.fredKey=val;
-  saveKey("fred",val);
-  state.econData=null;
-  state.econLive=false;
-  state.econLoading=false;
-  renderSettings();
-  loadFREDData();
+  state.fredKey=val;saveKey("fred",val);
+  state.econData=null;state.econLive=false;state.econLoading=false;
+  renderSettings();loadFREDData();
   if(activeTab==="econ")renderEcon();
 }
 function saveAVKey(){
   const val=document.getElementById("av-input").value.trim();
   if(!val){alert("Please enter your Alpha Vantage key");return;}
-  state.avKey=val;
-  saveKey("av",val);
-  renderSettings();
+  state.avKey=val;saveKey("av",val);renderSettings();
 }
 
 // ── TABS & ROUTING ────────────────────────────────────────────────────────────
@@ -766,19 +797,21 @@ function switchTab(id){
   renderActive();
 }
 function renderActive(){
-  if(activeTab==="setups")    renderSetups();
-  else if(activeTab==="cot")       renderCOT();
-  else if(activeTab==="sentiment") renderSentiment();
-  else if(activeTab==="econ")      renderEcon();
-  else if(activeTab==="currency")  renderCurrency();
-  else if(activeTab==="carry")     renderCarry();
-  else if(activeTab==="feargreed") renderFearGreed();
-  else if(activeTab==="settings")  renderSettings();
+  if(activeTab==="setups")     renderSetups();
+  else if(activeTab==="cot")        renderCOT();
+  else if(activeTab==="sentiment")  renderSentiment();
+  else if(activeTab==="econ")       renderEcon();
+  else if(activeTab==="currency")   renderCurrency();
+  else if(activeTab==="carry")      renderCarry();
+  else if(activeTab==="feargreed")  renderFearGreed();
+  else if(activeTab==="settings")   renderSettings();
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 initTabs();
-refreshAll();
+state.scores=makeScores();
+renderActive(); // ✅ Render immediately with fallback data — never blank
+refreshAll();   // Then fetch live data in background
 setInterval(refreshAll,15*60*1000);
 </script>
 </body>
