@@ -412,6 +412,7 @@ async function refreshAll(){
     now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+
     now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
   renderTicker();renderActive();
+  if(state.fredKey){fetchFREDEcon(state.fredKey).then(d=>{state.econData=d;state.econLive=true;if(activeTab==="econ")renderEcon();});}
   document.getElementById("rbtn-icon").classList.remove("spinning");
 }
 
