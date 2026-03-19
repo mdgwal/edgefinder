@@ -17,8 +17,6 @@
   --cell-strong-bull:rgba(0,255,136,.35);--cell-strong-bear:rgba(255,59,92,.35);
 }
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
-
-/* HEADER */
 .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;}
 .hlogo{display:flex;align-items:center;gap:10px;}
 .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--bull),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:bold;color:#000;}
@@ -31,19 +29,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .rbtn{background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:14px;padding:4px 10px;border-radius:5px;cursor:pointer;}
 .spinning{display:inline-block;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* TABS */
 .tabs{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{padding:11px 12px;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:var(--mono);background:none;border-top:none;border-left:none;border-right:none;transition:color .2s;}
 .tab.active{color:var(--bull);border-bottom-color:var(--bull);}
-
-/* MAIN */
 .main{padding:16px;max-width:1400px;width:100%;margin:0 auto;}
 .page{display:none;}
 .page.active{display:block;}
-
-/* TICKER */
 .ticker{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
 .ticker::-webkit-scrollbar{display:none;}
 .tpill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 11px;white-space:nowrap;flex-shrink:0;}
@@ -51,47 +43,25 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .tprice{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);}
 .tchg{font-family:var(--mono);font-size:10px;}
 .src{font-family:var(--mono);font-size:7px;padding:1px 3px;border-radius:2px;margin-left:3px;background:rgba(0,255,136,.1);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
-
-/* ── MASTER SCORE TABLE (Nick's style) ── */
 .score-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;}
 .score-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:900px;}
-.score-table th{
-  background:var(--bg3);color:var(--muted);text-align:center;
-  padding:8px 6px;border:1px solid var(--border);
-  font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;
-  white-space:nowrap;
-}
+.score-table th{background:var(--bg3);color:var(--muted);text-align:center;padding:8px 6px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
 .score-table th.left{text-align:left;}
 .score-table th.group{background:var(--bg4);color:var(--accent);font-size:9px;letter-spacing:1px;}
-.score-table td{
-  padding:7px 6px;border:1px solid var(--border);
-  text-align:center;font-size:11px;
-  transition:background .2s;
-}
-.score-table td.asset-name{
-  text-align:left;font-weight:bold;font-size:12px;
-  white-space:nowrap;background:var(--bg2);
-  position:sticky;left:0;z-index:2;
-  padding-left:10px;
-}
+.score-table td{padding:7px 6px;border:1px solid var(--border);text-align:center;font-size:11px;}
+.score-table td.asset-name{text-align:left;font-weight:bold;font-size:12px;white-space:nowrap;background:var(--bg2);position:sticky;left:0;z-index:2;padding-left:10px;}
 .score-table td.bias-cell{font-size:10px;font-weight:600;white-space:nowrap;}
 .score-table td.total-cell{font-size:14px;font-weight:bold;}
 .score-table tr:hover td{filter:brightness(1.15);}
-
-/* Cell color coding exactly like Nick's */
 .c2{background:var(--cell-strong-bull);color:var(--bull);}
 .c1{background:var(--cell-bull);color:var(--bull);}
 .c0{background:var(--bg2);color:var(--muted);}
 .cm1{background:var(--cell-bear);color:var(--bear);}
 .cm2{background:var(--cell-strong-bear);color:var(--bear);}
-
-/* FILTER BAR */
 .filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
 .filter-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
 .filter-btn.active{background:var(--bull);color:#000;border-color:var(--bull);}
 .filter-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-right:4px;}
-
-/* MISC CARDS */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
 .chd{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3);}
 .ctitle{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);}
@@ -99,8 +69,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .cbadge-demo{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid rgba(240,180,41,.3);color:var(--neutral);}
 .cbadge{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:var(--bg4);border:1px solid var(--border);color:var(--muted);}
 .cbody{padding:14px;}
-
-/* SENTIMENT ROWS */
 .srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
 .srow:last-child{border-bottom:none;}
 .spairn{font-family:var(--mono);font-size:11px;width:70px;flex-shrink:0;}
@@ -109,8 +77,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .slong{height:100%;border-radius:4px 0 0 4px;background:var(--bull);}
 .sshort{height:100%;border-radius:0 4px 4px 0;background:var(--bear);}
 .spcts{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px;}
-
-/* COT TABLE */
 .ctbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
 .ctbl th{color:var(--muted);text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;}
 .ctbl td{padding:8px 8px;border-bottom:1px solid rgba(33,38,45,.5);}
@@ -118,8 +84,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .mbw{display:flex;align-items:center;gap:5px;}
 .mbt{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;}
 .mbf{height:100%;border-radius:2px;}
-
-/* ECON HEATMAP */
 .hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;}
 @media(max-width:500px){.hgrid{grid-template-columns:repeat(2,1fr);}}
 .hcell{padding:10px;border-radius:7px;text-align:center;}
@@ -127,8 +91,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .hval{font-family:var(--mono);font-size:15px;font-weight:bold;color:#fff;margin:3px 0;}
 .hchg{font-family:var(--mono);font-size:9px;}
 .hdate{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.4);margin-top:1px;}
-
-/* CURRENCY STRENGTH */
 .crow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
 .crow:last-child{border-bottom:none;}
 .crank{font-family:var(--mono);font-size:10px;color:var(--muted);width:18px;flex-shrink:0;}
@@ -138,24 +100,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .cbart{height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;}
 .cbarf{height:100%;border-radius:4px;transition:width .8s;}
 .cval{font-family:var(--mono);font-size:11px;width:48px;text-align:right;flex-shrink:0;}
-
-/* CARRY TRADE */
 .carry-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
 .carry-row:last-child{border-bottom:none;}
 .carry-pair{font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;}
-.carry-rate{font-family:var(--mono);font-size:11px;flex:1;}
-.carry-score{font-family:var(--mono);font-size:14px;font-weight:bold;width:40px;text-align:right;}
-
-/* FEAR GREED */
-.fg-wrap{display:flex;flex-direction:column;align-items:center;padding:20px;}
-.fg-dial{width:180px;height:90px;position:relative;margin-bottom:16px;}
-.fg-label{font-family:var(--mono);font-size:22px;font-weight:bold;text-align:center;}
-.fg-sublabel{font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;margin-top:4px;}
 .fg-bar{width:100%;height:14px;border-radius:7px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));position:relative;margin:12px 0;}
 .fg-pointer{width:4px;height:20px;background:white;border-radius:2px;position:absolute;top:-3px;transform:translateX(-50%);}
 .fg-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted);}
-
-/* SECTITLE */
 .sectitle{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
 .sectitle::after{content:'';flex:1;height:1px;background:var(--border);}
 .infobox{padding:11px;border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px;}
@@ -174,6 +124,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .key-status{font-family:var(--mono);font-size:10px;margin-top:5px;padding:6px 10px;border-radius:5px;}
 .key-ok{background:rgba(0,255,136,.08);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
 .key-missing{background:rgba(240,180,41,.08);color:var(--neutral);border:1px solid rgba(240,180,41,.2);}
+.econ-loading{display:flex;align-items:center;gap:8px;padding:30px;color:var(--muted);font-family:var(--mono);font-size:11px;justify-content:center;}
 </style>
 </head>
 <body>
@@ -196,14 +147,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   <div class="ticker" id="ticker">
     <div class="lrow"><div class="spinner"></div><span>Fetching live prices...</span></div>
   </div>
-  <div id="page-setups"   class="page active"></div>
-  <div id="page-cot"      class="page"></div>
-  <div id="page-sentiment"class="page"></div>
-  <div id="page-econ"     class="page"></div>
-  <div id="page-currency" class="page"></div>
-  <div id="page-carry"    class="page"></div>
-  <div id="page-feargreed"class="page"></div>
-  <div id="page-settings" class="page"></div>
+  <div id="page-setups"    class="page active"></div>
+  <div id="page-cot"       class="page"></div>
+  <div id="page-sentiment" class="page"></div>
+  <div id="page-econ"      class="page"></div>
+  <div id="page-currency"  class="page"></div>
+  <div id="page-carry"     class="page"></div>
+  <div id="page-feargreed" class="page"></div>
+  <div id="page-settings"  class="page"></div>
 </div>
 
 <script>
@@ -224,7 +175,7 @@ const TABS_DEF=[
 ];
 let activeTab="setups";
 
-// ── ASSETS (matching Nick's list) ────────────────────────────────────────────
+// ── ASSETS ────────────────────────────────────────────────────────────────────
 const ASSETS=[
   {id:"DOW",    name:"DOW",    cat:"Index",     base:"US"},
   {id:"DAX",    name:"DAX",    cat:"Index",     base:"EU"},
@@ -247,38 +198,6 @@ const ASSETS=[
   {id:"GBPNZD", name:"GBPNZD", cat:"Forex",     base:"GB"},
   {id:"AUDCHF", name:"AUDCHF", cat:"Forex",     base:"AU"},
 ];
-
-// ── SCORE DATA (each factor scored -2 to +2 like Nick's) ────────────────────
-// Factors: cot, retailPos, seasonality, trend, gdp, mPMI, sPMI, retailSales, inflation, empChange, unemploy, rates
-function makeScores(){
-  function r(){return Math.floor(Math.random()*5)-2;} // -2 to +2
-  function r2(){return Math.random()>.5?Math.floor(Math.random()*3):-(Math.floor(Math.random()*3));} // slight bias
-  return ASSETS.map(a=>{
-    // Base scores with some logic
-    const isUS=a.base==="US";
-    const isEU=a.base==="EU";
-    const isJP=a.base==="JP";
-    return{
-      ...a,
-      cot:       r(),
-      retailPos: r(),
-      seasonal:  r(),
-      trend:     r(),
-      gdp:       isUS?1:isJP?-1:r(),
-      mPMI:      r(),
-      sPMI:      r(),
-      retailSal: r(),
-      inflation: r(),
-      empChg:    isUS?1:r(),
-      unemploy:  isUS?1:isJP?1:r(),
-      rates:     isUS?-1:isJP?-2:r(),
-    };
-  }).map(a=>{
-    a.total=a.cot+a.retailPos+a.seasonal+a.trend+a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
-    a.bias=a.total>=8?"Very Bullish":a.total>=5?"Bullish":a.total>=2?"Mild Bullish":a.total<=-8?"Very Bearish":a.total<=-5?"Bearish":a.total<=-2?"Mild Bearish":"Neutral";
-    return a;
-  }).sort((a,b)=>b.total-a.total);
-}
 
 const FOREX_PAIRS=[
   {id:"EURUSD",base:"EUR",quote:"USD"},{id:"GBPUSD",base:"GBP",quote:"USD"},
@@ -314,7 +233,7 @@ const CARRY_PAIRS=[
   {pair:"AUDCHF",long:"AUD",short:"CHF",rate:2.60,score:0},
   {pair:"EURCHF",long:"EUR",short:"CHF",rate:2.25,score:-1},
 ];
-const ECON_DATA={
+const FALLBACK_ECON={
   USD:[{l:"GDP YoY",v:"2.8%",s:.3,d:"Q4 2025"},{l:"CPI YoY",v:"3.1%",s:-.1,d:"Feb 2026"},{l:"Unemploy",v:"4.1%",s:0,d:"Feb 2026"},{l:"Fed Rate",v:"5.25%",s:0,d:"Mar 2026"}],
   EUR:[{l:"GDP YoY",v:"0.4%",s:-.2,d:"Q4 2025"},{l:"CPI YoY",v:"2.6%",s:-.4,d:"Feb 2026"},{l:"Unemploy",v:"6.1%",s:.1,d:"Jan 2026"},{l:"ECB Rate",v:"4.50%",s:0,d:"Mar 2026"}],
   GBP:[{l:"GDP YoY",v:"0.6%",s:.2,d:"Q3 2025"},{l:"CPI YoY",v:"3.4%",s:-.3,d:"Feb 2026"},{l:"Unemploy",v:"4.2%",s:-.1,d:"Jan 2026"},{l:"BOE Rate",v:"5.25%",s:0,d:"Mar 2026"}],
@@ -322,17 +241,68 @@ const ECON_DATA={
 };
 const FLAGS={USD:"🇺🇸",EUR:"🇪🇺",GBP:"🇬🇧",JPY:"🇯🇵"};
 
+// FRED series IDs
+const FRED_SERIES={
+  USD:[
+    {label:"GDP YoY",  id:"A191RL1Q225SBEA",    fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY",  id:"CPIAUCSL",            fmt:v=>v.toFixed(1)+"%", yoy:true},
+    {label:"Unemploy", id:"UNRATE",              fmt:v=>v.toFixed(1)+"%"},
+    {label:"Fed Rate", id:"FEDFUNDS",            fmt:v=>v.toFixed(2)+"%"},
+  ],
+  EUR:[
+    {label:"GDP YoY",  id:"CLVMEURSCAB1GQEA19", fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY",  id:"CP0000EZ19M086NEST", fmt:v=>v.toFixed(1)+"%"},
+    {label:"Unemploy", id:"LRHUTTTTEZM156S",     fmt:v=>v.toFixed(1)+"%"},
+    {label:"ECB Rate", id:"ECBDFR",              fmt:v=>v.toFixed(2)+"%"},
+  ],
+  GBP:[
+    {label:"GDP YoY",  id:"CLVMNACSCAB1GQUK",   fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY",  id:"GBRCPIALLMINMEI",     fmt:v=>v.toFixed(1)+"%", yoy:true},
+    {label:"Unemploy", id:"LRHUTTTTGBM156S",     fmt:v=>v.toFixed(1)+"%"},
+    {label:"BOE Rate", id:"IUDSOIA",             fmt:v=>v.toFixed(2)+"%"},
+  ],
+  JPY:[
+    {label:"GDP YoY",  id:"JPNRGDPEXP",          fmt:v=>v.toFixed(1)+"%"},
+    {label:"CPI YoY",  id:"JPNCPIALLMINMEI",     fmt:v=>v.toFixed(1)+"%", yoy:true},
+    {label:"Unemploy", id:"JPNURYNAA",           fmt:v=>v.toFixed(1)+"%"},
+    {label:"BOJ Rate", id:"IRSTJPN156N",         fmt:v=>v.toFixed(2)+"%"},
+  ],
+};
+
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state={
   rates:null,prevRates:null,btc:null,prices:[],cdata:null,
-  scores:makeScores(),
-  avKey:loadKey('av'),fredKey:loadKey('fred'),
-  avPrices:{},econData:null,econLive:false,
-  filterCat:"All",error:false,
+  scores:[],
+  avKey:loadKey('av'),
+  fredKey:loadKey('fred'),
+  avPrices:{},
+  econData:null,
+  econLive:false,
+  econLoading:false,
+  filterCat:"All",
   fearGreed:Math.floor(Math.random()*100),
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
+function makeScores(){
+  function r(){return Math.floor(Math.random()*5)-2;}
+  return ASSETS.map(a=>{
+    const isUS=a.base==="US",isJP=a.base==="JP";
+    const sc={
+      ...a,
+      cot:r(),retailPos:r(),seasonal:r(),trend:r(),
+      gdp:isUS?1:isJP?-1:r(),
+      mPMI:r(),sPMI:r(),retailSal:r(),inflation:r(),
+      empChg:isUS?1:r(),
+      unemploy:isUS?1:isJP?1:r(),
+      rates:isUS?-1:isJP?-2:r(),
+    };
+    sc.total=sc.cot+sc.retailPos+sc.seasonal+sc.trend+sc.gdp+sc.mPMI+sc.sPMI+sc.retailSal+sc.inflation+sc.empChg+sc.unemploy+sc.rates;
+    sc.bias=sc.total>=8?"Very Bullish":sc.total>=5?"Bullish":sc.total>=2?"Mild Bullish":sc.total<=-8?"Very Bearish":sc.total<=-5?"Bearish":sc.total<=-2?"Mild Bearish":"Neutral";
+    return sc;
+  }).sort((a,b)=>b.total-a.total);
+}
+
 function fp(p,id){
   if(!p&&p!==0)return"—";
   if(["XAUUSD","USOIL","NAS100","US30","DOW","SPX500","UK100","DAX"].includes(id))
@@ -360,17 +330,79 @@ function totalColor(t){
   return"var(--neutral)";
 }
 
+// ── FRED FETCHER ──────────────────────────────────────────────────────────────
+async function fredFetch(seriesId,key,limit){
+  const url="https://api.stlouisfed.org/fred/series/observations?series_id="+seriesId+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+limit;
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("FRED failed");
+  const d=await r.json();
+  const valid=(d.observations||[]).filter(o=>o.value!==".");
+  if(!valid.length)throw new Error("No data");
+  return valid;
+}
+
+async function fetchFREDEcon(key){
+  const result={};
+  for(const [currency,series] of Object.entries(FRED_SERIES)){
+    result[currency]=[];
+    for(const s of series){
+      try{
+        const obs=await fredFetch(s.id,key,13);
+        let val=parseFloat(obs[0].value);
+        const date=obs[0].date;
+        let surprise=0;
+        if(s.yoy&&obs.length>=13){
+          const prev=parseFloat(obs[12].value);
+          if(!isNaN(prev)&&prev!==0)val=((val-prev)/prev)*100;
+        }
+        if(obs.length>=2){
+          const pv=parseFloat(obs[1].value);
+          if(!isNaN(pv)){
+            const diff=val-pv;
+            if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;
+            else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;
+          }
+        }
+        const formatted=isNaN(val)?"N/A":s.fmt(val);
+        const dateStr=date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):"";
+        result[currency].push({l:s.label,v:formatted,s:surprise,d:dateStr});
+      }catch(e){
+        const fb=(FALLBACK_ECON[currency]||[]).find(f=>f.l===s.label);
+        result[currency].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});
+      }
+      await new Promise(res=>setTimeout(res,150));
+    }
+  }
+  return result;
+}
+
+// ── LOAD FRED (called on every refresh if key exists) ─────────────────────────
+function loadFREDData(){
+  if(!state.fredKey||state.econLoading)return;
+  state.econLoading=true;
+  fetchFREDEcon(state.fredKey).then(data=>{
+    state.econData=data;
+    state.econLive=true;
+    state.econLoading=false;
+    if(activeTab==="econ")renderEcon();
+    if(activeTab==="setups")renderSetups();
+  }).catch(()=>{
+    state.econLoading=false;
+    state.econLive=false;
+  });
+}
+
 // ── API FETCHERS ──────────────────────────────────────────────────────────────
 async function fetchRates(){
   const r=await fetch("https://api.frankfurter.app/latest?from=USD");
-  if(!r.ok)throw new Error();return (await r.json()).rates;
+  if(!r.ok)throw new Error();return(await r.json()).rates;
 }
 async function fetchPrev(){
   const d=new Date();d.setDate(d.getDate()-1);
   if(d.getDay()===0)d.setDate(d.getDate()-2);
   if(d.getDay()===6)d.setDate(d.getDate()-1);
   const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");
-  if(!r.ok)throw new Error();return (await r.json()).rates;
+  if(!r.ok)throw new Error();return(await r.json()).rates;
 }
 async function fetchBTC(){
   const r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true");
@@ -397,9 +429,10 @@ function buildStrength(rates){
   return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);
 }
 
+// ── MAIN REFRESH ──────────────────────────────────────────────────────────────
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
-  const [r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchBTC()]);
+  const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchBTC()]);
   if(r1.status==="fulfilled")state.rates=r1.value;
   if(r2.status==="fulfilled")state.prevRates=r2.value;
   if(r3.status==="fulfilled")state.btc=r3.value;
@@ -407,16 +440,24 @@ async function refreshAll(){
   state.cdata=buildStrength(state.rates);
   state.scores=makeScores();
   state.fearGreed=Math.floor(Math.random()*100);
+
+  // ✅ ALWAYS fetch FRED data if key is saved
+  if(state.fredKey){
+    state.econData=null;
+    state.econLive=false;
+    loadFREDData();
+  }
+
   const now=new Date();
   document.getElementById("last-update").textContent=
     now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+
     now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-  renderTicker();renderActive();
-  if(state.fredKey){fetchFREDEcon(state.fredKey).then(d=>{state.econData=d;state.econLive=true;if(activeTab==="econ")renderEcon();});}
+  renderTicker();
+  renderActive();
   document.getElementById("rbtn-icon").classList.remove("spinning");
 }
 
-// ── TICKER ────────────────────────────────────────────────────────────────────
+// ── RENDER TICKER ─────────────────────────────────────────────────────────────
 function renderTicker(){
   const el=document.getElementById("ticker");
   let html="";
@@ -431,11 +472,10 @@ function renderTicker(){
   el.innerHTML=html||'<div class="lrow"><span style="color:var(--bear)">⚠ Could not load prices</span></div>';
 }
 
-// ── TOP SETUPS — Nick's style full table ─────────────────────────────────────
+// ── TOP SETUPS ────────────────────────────────────────────────────────────────
 function renderSetups(){
   const cats=["All","Forex","Index","Commodity","Crypto"];
   const filtered=state.filterCat==="All"?state.scores:state.scores.filter(a=>a.cat===state.filterCat);
-
   let html=`
   <div class="filter-bar">
     <span class="filter-label">Category:</span>
@@ -453,25 +493,16 @@ function renderSetups(){
         <th class="group" colspan="8">Economic Data</th>
       </tr>
       <tr>
-        <th>COT</th>
-        <th>Retail Pos</th>
-        <th>Seasonal</th>
-        <th>Trend</th>
-        <th>GDP</th>
-        <th>mPMI</th>
-        <th>sPMI</th>
-        <th>Retail Sales</th>
-        <th>Inflation</th>
-        <th>Emp Chg</th>
-        <th>Unemploy</th>
-        <th>Rates</th>
+        <th>COT</th><th>Retail</th>
+        <th>Seasonal</th><th>Trend</th>
+        <th>GDP</th><th>mPMI</th><th>sPMI</th>
+        <th>Ret Sales</th><th>Inflation</th>
+        <th>Emp Chg</th><th>Unemploy</th><th>Rates</th>
       </tr>
     </thead>
     <tbody>`;
-
   filtered.forEach(a=>{
-    const tc=totalColor(a.total);
-    const bc=biasColor(a.bias);
+    const tc=totalColor(a.total),bc=biasColor(a.bias);
     html+=`<tr>
       <td class="asset-name" style="color:${tc}">${a.name}</td>
       <td class="bias-cell" style="color:${bc}">${a.bias}</td>
@@ -490,28 +521,21 @@ function renderSetups(){
       <td class="${cellClass(a.rates)}">${a.rates>0?"+":""}${a.rates}</td>
     </tr>`;
   });
-
   html+=`</tbody></table></div>
   <div class="infobox ib-blue">
     <span class="iblabel" style="color:var(--accent)">ℹ HOW TO READ</span>
-    Each column shows a score from <strong style="color:var(--bull)">+2 (strong bullish)</strong> to <strong style="color:var(--bear)">-2 (strong bearish)</strong>. 
-    Total score combines all factors. Use highest scoring assets for trade bias direction.
+    Each column scores from <strong style="color:var(--bull)">+2 (strongly bullish)</strong> to <strong style="color:var(--bear)">-2 (strongly bearish)</strong>. Total combines all factors for overall bias direction.
   </div>`;
-
   document.getElementById("page-setups").innerHTML=html;
 }
-
-function setFilter(cat){
-  state.filterCat=cat;renderSetups();
-}
+function setFilter(cat){state.filterCat=cat;renderSetups();}
 
 // ── COT ───────────────────────────────────────────────────────────────────────
 function renderCOT(){
   let html=`<div class="sectitle">Commitment of Traders — Institutional Positioning</div>
-  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA</span>Published every Friday 3:30 PM EST. Reflects positions as of prior Tuesday. Use for directional bias only.</div>
+  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA</span>Published every Friday 3:30 PM EST. Reflects positions as of prior Tuesday.</div>
   <div class="card"><div class="chd"><span class="ctitle">Net Positions — Smart Money</span><span class="cbadge-demo">WEEKLY · W11</span></div>
-  <div style="overflow-x:auto"><table class="ctbl">
-  <thead><tr><th>Asset</th><th>Long %</th><th>Net Pos</th><th>Wk Chg</th><th>Signal</th></tr></thead><tbody>`;
+  <div style="overflow-x:auto"><table class="ctbl"><thead><tr><th>Asset</th><th>Long %</th><th>Net Pos</th><th>Wk Chg</th><th>Signal</th></tr></thead><tbody>`;
   COT_DATA.forEach(row=>{
     const bull=row.lp>55,bear=row.lp<45;
     const col=bull?"var(--bull)":bear?"var(--bear)":"var(--neutral)";
@@ -545,21 +569,37 @@ function renderSentiment(){
 
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
 function renderEcon(){
-  const data=state.econData||ECON_DATA;
+  // Show loading spinner while FRED is fetching
+  if(state.fredKey&&state.econLoading&&!state.econData){
+    document.getElementById("page-econ").innerHTML=`
+      <div class="sectitle">Economic Heatmap — Loading Live Data</div>
+      <div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED St. Louis Fed...</span></div>`;
+    return;
+  }
+  const data=state.econData||FALLBACK_ECON;
   const isLive=state.econLive;
   let html=`<div class="sectitle">Economic Heatmap — Macro Fundamentals</div>`;
-  if(!isLive){
-    html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE</span>Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → get free API key → paste in ⚙ Settings.</div>`;
+  if(!state.fredKey){
+    html+=`<div class="infobox ib-yellow">
+      <span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA FREE</span>
+      Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → Request free key → paste in ⚙ Settings.
+    </div>`;
   }
-  for(const [cur,items] of Object.entries(data)){
+  for(const[currency,items]of Object.entries(data)){
+    const flag=FLAGS[currency]||"";
     const badge=isLive?`<span class="cbadge-live">● LIVE · FRED</span>`:`<span class="cbadge-demo">DEMO DATA</span>`;
-    html+=`<div class="card"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur}</span>${badge}</div><div class="hgrid">`;
+    html+=`<div class="card"><div class="chd"><span class="ctitle">${flag} ${currency}</span>${badge}</div><div class="hgrid">`;
     items.forEach(item=>{
       const bg=item.s>.3?"rgba(0,255,136,.15)":item.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
       const br=item.s>.3?"1px solid rgba(0,255,136,.2)":item.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
       const lbl=item.s>.3?"▲ Beat":item.s<-.3?"▼ Miss":"→ In Line";
       const lc=item.s>.3?"var(--bull)":item.s<-.3?"var(--bear)":"var(--muted)";
-      html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${item.l}</div><div class="hval">${item.v}</div><div class="hchg" style="color:${lc}">${lbl}</div><div class="hdate">${item.d||""}</div></div>`;
+      html+=`<div class="hcell" style="background:${bg};border:${br}">
+        <div class="hlbl">${item.l}</div>
+        <div class="hval">${item.v}</div>
+        <div class="hchg" style="color:${lc}">${lbl}</div>
+        ${item.d?`<div class="hdate">${item.d}</div>`:""}
+      </div>`;
     });
     html+=`</div></div>`;
   }
@@ -585,20 +625,19 @@ function renderCurrency(){
 // ── CARRY TRADE ───────────────────────────────────────────────────────────────
 function renderCarry(){
   let html=`<div class="sectitle">Carry Trade Scanner</div>
-  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>
-  Buy high interest rate currency, sell low interest rate currency. Profit from the rate differential (swap). Best used in low volatility trending markets.</div>
+  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Profit from the rate differential. Best in low volatility trending markets.</div>
   <div class="card"><div class="chd"><span class="ctitle">Best Carry Opportunities</span><span class="cbadge">RANKED BY RATE DIFF</span></div><div class="cbody">`;
   CARRY_PAIRS.forEach(p=>{
     const col=p.score>=2?"var(--bull)":p.score>=1?"#7effc4":p.score<=0?"var(--bear)":"var(--neutral)";
     const stars="★".repeat(Math.max(0,p.score+2))+"☆".repeat(Math.max(0,2-p.score));
     html+=`<div class="carry-row">
       <div class="carry-pair" style="color:${col}">${p.pair}</div>
-      <div class="carry-rate">
+      <div style="flex:1">
         <div style="font-family:var(--mono);font-size:11px;color:var(--text)">Long ${p.long} / Short ${p.short}</div>
         <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Rate diff: ${p.rate.toFixed(2)}%</div>
       </div>
       <div style="text-align:right">
-        <div class="carry-score" style="color:${col}">${p.rate.toFixed(2)}%</div>
+        <div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${p.rate.toFixed(2)}%</div>
         <div style="font-family:var(--mono);font-size:10px;color:${col}">${stars}</div>
       </div>
     </div>`;
@@ -612,56 +651,43 @@ function renderFearGreed(){
   const fg=state.fearGreed;
   const label=fg>=80?"EXTREME GREED":fg>=60?"GREED":fg>=45?"NEUTRAL":fg>=25?"FEAR":"EXTREME FEAR";
   const col=fg>=60?"var(--bull)":fg<=40?"var(--bear)":"var(--neutral)";
-  const pct=fg;
-
-  // Market indicators
   const indicators=[
-    {name:"Market Momentum",val:Math.floor(Math.random()*100)},
-    {name:"Stock Price Strength",val:Math.floor(Math.random()*100)},
-    {name:"Stock Price Breadth",val:Math.floor(Math.random()*100)},
-    {name:"Put/Call Ratio",val:Math.floor(Math.random()*100)},
-    {name:"Market Volatility (VIX)",val:Math.floor(Math.random()*100)},
-    {name:"Safe Haven Demand",val:Math.floor(Math.random()*100)},
-    {name:"Junk Bond Demand",val:Math.floor(Math.random()*100)},
+    {name:"Market Momentum",      val:Math.floor(Math.random()*100)},
+    {name:"Stock Price Strength", val:Math.floor(Math.random()*100)},
+    {name:"Stock Price Breadth",  val:Math.floor(Math.random()*100)},
+    {name:"Put/Call Ratio",       val:Math.floor(Math.random()*100)},
+    {name:"Market Volatility VIX",val:Math.floor(Math.random()*100)},
+    {name:"Safe Haven Demand",    val:Math.floor(Math.random()*100)},
+    {name:"Junk Bond Demand",     val:Math.floor(Math.random()*100)},
   ];
-
   let html=`<div class="sectitle">Fear & Greed Index</div>
-  <div class="card"><div class="chd"><span class="ctitle">Market Sentiment Index</span><span class="cbadge">DAILY</span></div>
-  <div class="cbody">
-    <div class="fg-wrap">
-      <div style="font-family:var(--mono);font-size:60px;font-weight:bold;color:${col};text-align:center">${fg}</div>
-      <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${col};text-align:center;margin-top:4px">${label}</div>
-      <div style="width:100%;max-width:300px;margin:20px auto 0">
-        <div class="fg-bar"><div class="fg-pointer" style="left:${pct}%"></div></div>
-        <div class="fg-labels"><span style="color:var(--bear)">FEAR</span><span>NEUTRAL</span><span style="color:var(--bull)">GREED</span></div>
+  <div class="card"><div class="chd"><span class="ctitle">Market Sentiment Index</span><span class="cbadge">DAILY</span></div><div class="cbody">
+    <div style="display:flex;flex-direction:column;align-items:center;padding:10px 0">
+      <div style="font-family:var(--mono);font-size:64px;font-weight:bold;color:${col};line-height:1">${fg}</div>
+      <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${col};margin-top:6px">${label}</div>
+      <div style="width:100%;max-width:320px;margin:20px auto 0">
+        <div class="fg-bar"><div class="fg-pointer" style="left:${fg}%"></div></div>
+        <div class="fg-labels"><span style="color:var(--bear)">EXTREME FEAR</span><span style="color:var(--bull)">EXTREME GREED</span></div>
       </div>
     </div>
   </div></div>
-
   <div class="sectitle">Indicator Breakdown</div>
   <div class="card"><div class="chd"><span class="ctitle">Contributing Factors</span><span class="cbadge">LIVE</span></div><div class="cbody">`;
-
   indicators.forEach(ind=>{
     const ic=ind.val>=60?"var(--bull)":ind.val<=40?"var(--bear)":"var(--neutral)";
     const il=ind.val>=80?"Extreme Greed":ind.val>=60?"Greed":ind.val>=45?"Neutral":ind.val>=25?"Fear":"Extreme Fear";
     html+=`<div class="carry-row">
       <div style="flex:1;font-family:var(--mono);font-size:11px;color:var(--text)">${ind.name}</div>
-      <div style="width:100px;margin:0 12px">
-        <div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
-          <div style="width:${ind.val}%;height:100%;background:${ic};border-radius:3px"></div>
-        </div>
-      </div>
-      <div style="font-family:var(--mono);font-size:11px;color:${ic};width:70px;text-align:right">${il}</div>
+      <div style="width:100px;margin:0 12px"><div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="width:${ind.val}%;height:100%;background:${ic};border-radius:3px"></div></div></div>
+      <div style="font-family:var(--mono);font-size:11px;color:${ic};width:80px;text-align:right">${il}</div>
     </div>`;
   });
-
   html+=`</div></div>`;
   document.getElementById("page-feargreed").innerHTML=html;
 }
 
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function renderSettings(){
-  const avOk=state.avKey,fredOk=state.fredKey;
   document.getElementById("page-settings").innerHTML=`
   <div class="sectitle">API Settings</div>
   <div class="apibox"><h3>🟢 ALREADY CONNECTED — NO KEY NEEDED</h3>
@@ -671,39 +697,54 @@ function renderSettings(){
     </div>
   </div>
   <div class="apibox"><h3>🌡 FRED API — Live GDP, CPI, Rates (Free)</h3>
-    <div class="key-status ${fredOk?"key-ok":"key-missing"}">${fredOk?"✅ FRED key saved — Economic data is LIVE":"⚠ No key — Economic showing demo data"}</div>
+    <div class="key-status ${state.fredKey?"key-ok":"key-missing"}">${state.fredKey?"✅ FRED key saved — Economic data fetched on every load":"⚠ No key — Economic showing demo data"}</div>
     <div class="apirow" style="margin-top:10px">
       <span class="apilbl">FRED Key</span>
       <input class="apiinp" id="fred-input" placeholder="fred.stlouisfed.org → My Account → API Keys" value="${state.fredKey}"/>
       <button class="apibtn" onclick="saveFREDKey()">💾 Save</button>
     </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
+      1. Go to <span style="color:var(--accent)">fred.stlouisfed.org</span><br>
+      2. Click <strong style="color:var(--text)">My Account → API Keys</strong><br>
+      3. Click <strong style="color:var(--text)">Request API Key</strong> → instant approval<br>
+      4. Copy key → paste above → Save ✅
+    </div>
   </div>
   <div class="apibox"><h3>🔑 ALPHA VANTAGE — Gold, Oil, Indices (Free)</h3>
-    <div class="key-status ${avOk?"key-ok":"key-missing"}">${avOk?"✅ AV key saved — Commodity & Index prices active":"⚠ No key — Gold, Oil showing —"}</div>
+    <div class="key-status ${state.avKey?"key-ok":"key-missing"}">${state.avKey?"✅ AV key saved":"⚠ No key — Gold, Oil showing —"}</div>
     <div class="apirow" style="margin-top:10px">
       <span class="apilbl">AV Key</span>
       <input class="apiinp" id="av-input" placeholder="alphavantage.co → Get Free API Key" value="${state.avKey}"/>
       <button class="apibtn" onclick="saveAVKey()">💾 Save</button>
     </div>
   </div>
-  <div class="apibox"><h3>📱 ADD TO HOME SCREEN (Works Like An App)</h3>
+  <div class="apibox"><h3>📱 ADD TO HOME SCREEN</h3>
     <div style="font-size:11px;color:var(--muted);line-height:2.1">
       <strong style="color:var(--text)">Android Chrome</strong> → Tap ⋮ → "Add to Home screen"<br>
       <strong style="color:var(--text)">iPhone Safari</strong> → Tap Share → "Add to Home Screen"<br>
-      <span style="color:var(--bull)">✅ Opens full screen, no browser bar — works like a native app</span>
+      <span style="color:var(--bull)">✅ Opens full screen like a native app — free forever</span>
     </div>
   </div>`;
 }
 
 function saveFREDKey(){
   const val=document.getElementById("fred-input").value.trim();
-  if(!val)return;
-  state.fredKey=val;saveKey("fred",val);renderSettings();
+  if(!val){alert("Please enter your FRED API key");return;}
+  state.fredKey=val;
+  saveKey("fred",val);
+  state.econData=null;
+  state.econLive=false;
+  state.econLoading=false;
+  renderSettings();
+  loadFREDData();
+  if(activeTab==="econ")renderEcon();
 }
 function saveAVKey(){
   const val=document.getElementById("av-input").value.trim();
-  if(!val)return;
-  state.avKey=val;saveKey("av",val);renderSettings();
+  if(!val){alert("Please enter your Alpha Vantage key");return;}
+  state.avKey=val;
+  saveKey("av",val);
+  renderSettings();
 }
 
 // ── TABS & ROUTING ────────────────────────────────────────────────────────────
@@ -725,14 +766,14 @@ function switchTab(id){
   renderActive();
 }
 function renderActive(){
-  if(activeTab==="setups")renderSetups();
-  else if(activeTab==="cot")renderCOT();
-  else if(activeTab==="sentiment")renderSentiment();
-  else if(activeTab==="econ")renderEcon();
-  else if(activeTab==="currency")renderCurrency();
-  else if(activeTab==="carry")renderCarry();
-  else if(activeTab==="feargreed")renderFearGreed();
-  else if(activeTab==="settings")renderSettings();
+  if(activeTab==="setups")    renderSetups();
+  else if(activeTab==="cot")       renderCOT();
+  else if(activeTab==="sentiment") renderSentiment();
+  else if(activeTab==="econ")      renderEcon();
+  else if(activeTab==="currency")  renderCurrency();
+  else if(activeTab==="carry")     renderCarry();
+  else if(activeTab==="feargreed") renderFearGreed();
+  else if(activeTab==="settings")  renderSettings();
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
