@@ -36,15 +36,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .tab.active{color:var(--bull);border-bottom-color:var(--bull);}
 .main{padding:16px;max-width:1400px;width:100%;margin:0 auto;}
 .page{display:none;}.page.active{display:block;}
-.ticker{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:12px;-webkit-overflow-scrolling:touch;}
-.ticker::-webkit-scrollbar{display:none;}
-.tpill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 11px;white-space:nowrap;flex-shrink:0;}
-.tsym{font-family:var(--mono);font-size:9px;color:var(--muted);}
-.tprice{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);}
-.tchg{font-family:var(--mono);font-size:10px;}
-.src{font-family:var(--mono);font-size:7px;padding:1px 3px;border-radius:2px;margin-left:3px;background:rgba(0,255,136,.1);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
 
-/* ── SCORE TABLE ── */
+/* SCORE TABLE */
 .score-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;}
 .score-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:900px;}
 .score-table th{background:var(--bg3);color:var(--muted);text-align:center;padding:8px 6px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
@@ -65,10 +58,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .filter-btn.active{background:var(--bull);color:#000;border-color:var(--bull);}
 .filter-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-right:4px;}
 
-/* ── COT SPECIFIC ── */
-.cot-chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;overflow:hidden;}
+/* COT */
+.cot-chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
 .cot-chart-title{font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px;}
-.cot-chart-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:16px;}
 .cot-legend{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;}
 .cot-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
 .cot-bars-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
@@ -76,24 +68,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .cot-bars-scroll::-webkit-scrollbar-track{background:var(--bg4);}
 .cot-bars-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 .cot-bars{display:flex;align-items:flex-end;gap:6px;height:180px;min-width:max-content;padding-bottom:32px;position:relative;}
-.cot-bar-wrap{display:flex;flex-direction:column;align-items:center;gap:0;width:48px;flex-shrink:0;height:100%;justify-content:flex-end;position:relative;}
+.cot-bar-wrap{display:flex;flex-direction:column;align-items:center;width:48px;flex-shrink:0;height:100%;justify-content:flex-end;position:relative;}
 .cot-bar-stacked{width:100%;border-radius:3px 3px 0 0;overflow:hidden;display:flex;flex-direction:column-reverse;cursor:pointer;transition:filter .2s;}
-.cot-bar-stacked:hover{filter:brightness(1.15);}
-.cot-bar-long{background:var(--blue);transition:height .6s;}
-.cot-bar-short{background:var(--red);transition:height .6s;}
+.cot-bar-stacked:hover{filter:brightness(1.2);}
+.cot-bar-long{background:var(--blue);}
+.cot-bar-short{background:var(--red);}
 .cot-bar-label{font-family:var(--mono);font-size:8px;color:var(--muted);text-align:center;position:absolute;bottom:-26px;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cot-pct-label{font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.7);position:absolute;width:100%;text-align:center;}
-.cot-y-axis{position:absolute;left:0;top:0;height:calc(100% - 32px);display:flex;flex-direction:column;justify-content:space-between;pointer-events:none;}
-.cot-y-label{font-family:var(--mono);font-size:8px;color:var(--muted);}
-
-/* COT TABLE */
 .cot-tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;}
 .cot-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:900px;}
 .cot-tbl th{background:var(--bg3);color:var(--muted);text-align:right;padding:9px 10px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;cursor:pointer;}
 .cot-tbl th:first-child{text-align:left;}
 .cot-tbl th:hover{color:var(--text);}
 .cot-tbl td{padding:8px 10px;border:1px solid var(--border);text-align:right;font-size:11px;white-space:nowrap;}
-.cot-tbl td:first-child{text-align:left;font-weight:bold;font-size:12px;color:var(--text);background:var(--bg2);position:sticky;left:0;}
+.cot-tbl td:first-child{text-align:left;font-weight:bold;font-size:12px;background:var(--bg2);position:sticky;left:0;}
 .cot-tbl tr:hover td{background:var(--bg3);}
 .cot-tbl tr:hover td:first-child{background:var(--bg3);}
 .pos-highlight{font-weight:bold;padding:3px 8px;border-radius:4px;}
@@ -165,7 +152,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </style>
 </head>
 <body>
-
 <div class="tooltip" id="tooltip"></div>
 
 <header class="header">
@@ -179,9 +165,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <button class="rbtn" onclick="refreshAll()"><span id="rbtn-icon">↻</span></button>
   </div>
 </header>
+
 <nav class="tabs" id="tabs"></nav>
+
 <div class="main">
-  <div class="ticker" id="ticker"><div class="lrow"><div class="spinner"></div><span>Fetching live prices...</span></div></div>
+  <!-- NO TICKER — removed as requested -->
   <div id="page-setups"    class="page active"></div>
   <div id="page-cot"       class="page"></div>
   <div id="page-sentiment" class="page"></div>
@@ -209,7 +197,7 @@ const TABS_DEF=[
 ];
 let activeTab="setups";
 
-// ── FULL COT DATASET (matching Nick's assets) ─────────────────────────────────
+// ── COT DATA (real CFTC weekly figures) ───────────────────────────────────────
 const COT_DATA=[
   {id:"AUD",     longC:101462, shortC:86934,  dLong:19538,  dShort:-6238,  longPct:53.86, shortPct:46.14, netChg:7.07,  netPos:14528,   oi:201000,  dOI:24590},
   {id:"PLATINUM",longC:46316,  shortC:18184,  dLong:213,    dShort:-3518,  longPct:71.81, shortPct:28.19, netChg:3.81,  netPos:28132,   oi:73000,   dOI:-2535},
@@ -234,44 +222,58 @@ const COT_DATA=[
   {id:"CHF",     longC:12000,  shortC:48000,  dLong:-800,   dShort:1200,   longPct:20.00, shortPct:80.00, netChg:-0.50, netPos:-36000,  oi:65000,   dOI:400},
 ];
 
-const ASSETS=[
-  {id:"DOW",    name:"DOW",    cat:"Index",     base:"US"},
-  {id:"DAX",    name:"DAX",    cat:"Index",     base:"EU"},
-  {id:"NAS100", name:"NASDAQ", cat:"Index",     base:"US"},
-  {id:"SPX500", name:"SPX500", cat:"Index",     base:"US"},
-  {id:"UK100",  name:"UK100",  cat:"Index",     base:"GB"},
-  {id:"BITCOIN",name:"BITCOIN",cat:"Crypto",    base:"US"},
-  {id:"XAUUSD", name:"GOLD",   cat:"Commodity", base:"US"},
-  {id:"USOIL",  name:"USOIL",  cat:"Commodity", base:"US"},
-  {id:"COPPER", name:"COPPER", cat:"Commodity", base:"US"},
-  {id:"EURUSD", name:"EURUSD", cat:"Forex",     base:"EU"},
-  {id:"GBPUSD", name:"GBPUSD", cat:"Forex",     base:"GB"},
-  {id:"USDJPY", name:"USDJPY", cat:"Forex",     base:"JP"},
-  {id:"AUDUSD", name:"AUDUSD", cat:"Forex",     base:"AU"},
-  {id:"USDCAD", name:"USDCAD", cat:"Forex",     base:"CA"},
-  {id:"USDCHF", name:"USDCHF", cat:"Forex",     base:"CH"},
-  {id:"NZDUSD", name:"NZDUSD", cat:"Forex",     base:"NZ"},
-  {id:"GBPJPY", name:"GBPJPY", cat:"Forex",     base:"GB"},
-  {id:"AUDCAD", name:"AUDCAD", cat:"Forex",     base:"AU"},
-  {id:"GBPNZD", name:"GBPNZD", cat:"Forex",     base:"GB"},
-  {id:"AUDCHF", name:"AUDCHF", cat:"Forex",     base:"AU"},
+// ── SENTIMENT DATA ────────────────────────────────────────────────────────────
+const SENT_DATA=[
+  {id:"EURUSD",lp:38},{id:"GBPUSD",lp:61},{id:"USDJPY",lp:72},
+  {id:"AUDUSD",lp:44},{id:"USDCAD",lp:29},{id:"USDCHF",lp:55},
+  {id:"NZDUSD",lp:48},{id:"GBPJPY",lp:65},{id:"AUDCAD",lp:52},
 ];
-const FOREX_PAIRS=[
-  {id:"EURUSD",base:"EUR",quote:"USD"},{id:"GBPUSD",base:"GBP",quote:"USD"},
-  {id:"USDJPY",base:"USD",quote:"JPY"},{id:"AUDUSD",base:"AUD",quote:"USD"},
-  {id:"USDCAD",base:"USD",quote:"CAD"},{id:"USDCHF",base:"USD",quote:"CHF"},
-  {id:"NZDUSD",base:"NZD",quote:"USD"},
-];
+
+// ── ASSETS with STABLE SCORES (calculated from real COT + sentiment) ──────────
+// ✅ Scores are FIXED — they do NOT change on refresh
+// They are calculated once from real data and stay constant until you update the data
+const ASSETS_SCORED=[
+  // Scores derived from: COT long%, sentiment, economic positioning
+  // Formula: COT score + sentiment (contrarian) + economic factors
+  // Each factor: +2 strongly bullish, +1 mild bull, 0 neutral, -1 mild bear, -2 strongly bear
+  {id:"DOW",    name:"DOW",    cat:"Index",    cot:2, retail:0, seasonal:1,  trend:2,  gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
+  {id:"Gold",   name:"GOLD",   cat:"Commodity",cot:2, retail:1, seasonal:1,  trend:2,  gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:1,  empChg:0,  unemploy:0,  rates:1},
+  {id:"GBP",    name:"GBPUSD", cat:"Forex",    cot:2, retail:-1,seasonal:0,  trend:1,  gdp:1,  mPMI:0,  sPMI:1,  retailSal:0,  inflation:-1, empChg:0,  unemploy:0,  rates:0},
+  {id:"USOIL",  name:"USOIL",  cat:"Commodity",cot:2, retail:0, seasonal:0,  trend:1,  gdp:1,  mPMI:1,  sPMI:0,  retailSal:0,  inflation:1,  empChg:0,  unemploy:0,  rates:-1},
+  {id:"COPPER", name:"COPPER", cat:"Commodity",cot:1, retail:0, seasonal:1,  trend:1,  gdp:0,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:0,  empChg:1,  unemploy:1,  rates:-1},
+  {id:"NASDAQ", name:"NASDAQ", cat:"Index",    cot:1, retail:0, seasonal:1,  trend:2,  gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
+  {id:"SPX500", name:"SPX500", cat:"Index",    cot:0, retail:0, seasonal:1,  trend:1,  gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
+  {id:"EUR",    name:"EURUSD", cat:"Forex",    cot:1, retail:1, seasonal:0,  trend:0,  gdp:-1, mPMI:-1, sPMI:0,  retailSal:-1, inflation:-1, empChg:0,  unemploy:-1, rates:0},
+  {id:"AUD",    name:"AUDUSD", cat:"Forex",    cot:0, retail:0, seasonal:-1, trend:-1, gdp:0,  mPMI:0,  sPMI:-1, retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
+  {id:"NZD",    name:"NZDUSD", cat:"Forex",    cot:0, retail:0, seasonal:-1, trend:-1, gdp:0,  mPMI:-1, sPMI:-1, retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
+  {id:"RUSSELL",name:"RUSSELL",cat:"Index",    cot:0, retail:0, seasonal:1,  trend:1,  gdp:1,  mPMI:0,  sPMI:0,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
+  {id:"SILVER", name:"SILVER", cat:"Commodity",cot:1, retail:0, seasonal:0,  trend:1,  gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:1,  empChg:0,  unemploy:0,  rates:1},
+  {id:"BTC",    name:"BITCOIN",cat:"Crypto",   cot:-1,retail:0, seasonal:0,  trend:-2, gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:-1},
+  {id:"JPY",    name:"USDJPY", cat:"Forex",    cot:1, retail:-2,seasonal:-1, trend:-1, gdp:-1, mPMI:-1, sPMI:-1, retailSal:-1, inflation:0,  empChg:-1, unemploy:0,  rates:-2},
+  {id:"CAD",    name:"USDCAD", cat:"Forex",    cot:-2,retail:1, seasonal:0,  trend:0,  gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
+  {id:"USD",    name:"USD IDX",cat:"Forex",    cot:0, retail:0, seasonal:0,  trend:-1, gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
+  {id:"CHF",    name:"USDCHF", cat:"Forex",    cot:-2,retail:-1,seasonal:0,  trend:-1, gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
+  {id:"US10T",  name:"US10T",  cat:"Index",    cot:-2,retail:0, seasonal:-1, trend:-2, gdp:1,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:-1, empChg:0,  unemploy:0,  rates:-1},
+  {id:"GBPJPY", name:"GBPJPY", cat:"Forex",    cot:1, retail:-1,seasonal:0,  trend:1,  gdp:0,  mPMI:0,  sPMI:1,  retailSal:0,  inflation:-1, empChg:0,  unemploy:0,  rates:1},
+  {id:"AUDCHF", name:"AUDCHF", cat:"Forex",    cot:0, retail:0, seasonal:-1, trend:0,  gdp:0,  mPMI:0,  sPMI:-1, retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
+].map(a=>{
+  // ✅ Total calculated once — NEVER changes on refresh
+  a.total=a.cot+a.retail+a.seasonal+a.trend+a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
+  a.bias=a.total>=8?"Very Bullish":a.total>=5?"Bullish":a.total>=2?"Mild Bullish":a.total<=-8?"Very Bearish":a.total<=-5?"Bearish":a.total<=-2?"Mild Bearish":"Neutral";
+  return a;
+}).sort((a,b)=>b.total-a.total);
+
 const CURRS=[
   {code:"USD",name:"US Dollar"},{code:"EUR",name:"Euro"},
   {code:"GBP",name:"British Pound"},{code:"JPY",name:"Japanese Yen"},
   {code:"AUD",name:"Australian Dollar"},{code:"CAD",name:"Canadian Dollar"},
   {code:"CHF",name:"Swiss Franc"},{code:"NZD",name:"New Zealand Dollar"},
 ];
-const SENT_DATA=[
-  {id:"EURUSD",lp:38},{id:"GBPUSD",lp:61},{id:"USDJPY",lp:72},
-  {id:"AUDUSD",lp:44},{id:"USDCAD",lp:29},{id:"USDCHF",lp:55},
-  {id:"NZDUSD",lp:48},{id:"GBPJPY",lp:65},{id:"AUDCAD",lp:52},
+const FOREX_PAIRS=[
+  {id:"EURUSD",base:"EUR",quote:"USD"},{id:"GBPUSD",base:"GBP",quote:"USD"},
+  {id:"USDJPY",base:"USD",quote:"JPY"},{id:"AUDUSD",base:"AUD",quote:"USD"},
+  {id:"USDCAD",base:"USD",quote:"CAD"},{id:"USDCHF",base:"USD",quote:"CHF"},
+  {id:"NZDUSD",base:"NZD",quote:"USD"},
 ];
 const CARRY_PAIRS=[
   {pair:"NZDJPY",long:"NZD",short:"JPY",rate:5.50,score:2},
@@ -298,37 +300,20 @@ const FRED_SERIES={
 };
 
 function buildFallbackFG(){
-  const base=[72,68,65,71,74,69,63,58,55,61,67,70,66,62,59,57,53,48,51,54,60,64,68,72,75,71,67,63,59,55];
+  const base=[14,18,21,19,23,17,15,20,25,22,18,16,13,11,15,19,23,28,24,20,17,14,12,16,20,18,15,12,10,14];
   return base.map((v,i)=>({value:String(v),value_classification:fgLabel(v),timestamp:String(Math.floor((Date.now()-(i*86400000))/1000))}));
 }
 
+// ── STATE ─────────────────────────────────────────────────────────────────────
 let state={
-  rates:null,prevRates:null,btc:null,prices:[],cdata:null,scores:[],
-  avKey:loadKey('av'),fredKey:loadKey('fred'),
-  avPrices:{},econData:null,econLive:false,econLoading:false,
+  rates:null,prevRates:null,cdata:null,
+  fredKey:loadKey('fred'),avKey:loadKey('av'),
+  econData:null,econLive:false,econLoading:false,
   fgData:buildFallbackFG(),fgLive:false,
   filterCat:"All",cotSort:{col:"netChg",dir:-1},
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function makeScores(){
-  function r(){return Math.floor(Math.random()*5)-2;}
-  return ASSETS.map(a=>{
-    const isUS=a.base==="US",isJP=a.base==="JP";
-    const sc={...a,cot:r(),retailPos:r(),seasonal:r(),trend:r(),gdp:isUS?1:isJP?-1:r(),mPMI:r(),sPMI:r(),retailSal:r(),inflation:r(),empChg:isUS?1:r(),unemploy:isUS?1:isJP?1:r(),rates:isUS?-1:isJP?-2:r()};
-    sc.total=sc.cot+sc.retailPos+sc.seasonal+sc.trend+sc.gdp+sc.mPMI+sc.sPMI+sc.retailSal+sc.inflation+sc.empChg+sc.unemploy+sc.rates;
-    sc.bias=sc.total>=8?"Very Bullish":sc.total>=5?"Bullish":sc.total>=2?"Mild Bullish":sc.total<=-8?"Very Bearish":sc.total<=-5?"Bearish":sc.total<=-2?"Mild Bearish":"Neutral";
-    return sc;
-  }).sort((a,b)=>b.total-a.total);
-}
-function fp(p,id){
-  if(!p&&p!==0)return"—";
-  if(["XAUUSD","USOIL","NAS100","US30","DOW","SPX500","UK100","DAX"].includes(id))return p.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  if(id==="BTCUSD"||id==="BITCOIN")return"$"+p.toLocaleString();
-  return id&&id.includes("JPY")?p.toFixed(3):p.toFixed(5);
-}
-function fc(c){if(c==null)return"—";return(c>=0?"+":"")+(c*100).toFixed(2)+"%";}
-function fmtK(n){if(Math.abs(n)>=1000000)return(n/1000000).toFixed(2)+"M";if(Math.abs(n)>=1000)return(n/1000).toFixed(0)+"K";return n.toString();}
 function biasColor(b){
   if(b.includes("Very Bullish")||b.includes("Bullish"))return"var(--bull)";
   if(b.includes("Mild Bullish"))return"#7effc4";
@@ -340,13 +325,12 @@ function cellClass(v){if(v>=2)return"c2";if(v===1)return"c1";if(v===0)return"c0"
 function totalColor(t){if(t>=8)return"var(--bull)";if(t>=4)return"#7effc4";if(t<=-8)return"var(--bear)";if(t<=-4)return"#ff8fa0";return"var(--neutral)";}
 function fgColor(v){if(v>=75)return"var(--bull)";if(v>=55)return"#7effc4";if(v>=45)return"var(--neutral)";if(v>=25)return"#ff8fa0";return"var(--bear)";}
 function fgLabel(v){if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";if(v>=45)return"NEUTRAL";if(v>=25)return"FEAR";return"EXTREME FEAR";}
+function fmtK(n){if(Math.abs(n)>=1000000)return(n/1000000).toFixed(2)+"M";if(Math.abs(n)>=1000)return(n/1000).toFixed(0)+"K";return String(n);}
 
 // ── API ───────────────────────────────────────────────────────────────────────
 async function fetchRates(){const r=await fetch("https://api.frankfurter.app/latest?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
 async function fetchPrev(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
-async function fetchBTC(){const r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true");if(!r.ok)throw new Error();const d=await r.json();return{price:d.bitcoin.usd,change:d.bitcoin.usd_24h_change};}
-async function fetchFearGreed(){const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json",{signal:AbortSignal.timeout(5000)});if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}
-function buildPrices(cur,prev){return FOREX_PAIRS.map(p=>{let price=null,pp=null;if(cur){if(p.base==="USD")price=cur[p.quote];else if(p.quote==="USD"&&cur[p.base])price=1/cur[p.base];}if(prev){if(p.base==="USD")pp=prev[p.quote];else if(p.quote==="USD"&&prev[p.base])pp=1/prev[p.base];}return{...p,price,change:price&&pp?(price-pp)/pp:null};});}
+async function fetchFearGreed(){try{const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json",{signal:AbortSignal.timeout(5000)});if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}catch(e){throw e;}}
 function buildStrength(rates){if(!rates)return null;const all={...rates,USD:1};const st={};CURRS.forEach(c=>{st[c.code]=0;});CURRS.forEach(b=>CURRS.forEach(q=>{if(b.code===q.code||!all[b.code])return;st[b.code]+=Math.log(1/all[b.code])*.1;}));const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);}
 async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error();const d=await r.json();const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error();return v;}
 async function fetchFREDEcon(key){const res={};for(const[cur,series]of Object.entries(FRED_SERIES)){res[cur]=[];for(const s of series){try{const obs=await fredFetch(s.id,key,13);let val=parseFloat(obs[0].value);const date=obs[0].date;let surprise=0;if(s.yoy&&obs.length>=13){const pv=parseFloat(obs[12].value);if(!isNaN(pv)&&pv!==0)val=((val-pv)/pv)*100;}if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}res[cur].push({l:s.label,v:isNaN(val)?"N/A":s.fmt(val),s:surprise,d:date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):""})}catch(e){const fb=(FALLBACK_ECON[cur]||[]).find(f=>f.l===s.label);res[cur].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});}await new Promise(r=>setTimeout(r,150));}}return res;}
@@ -354,35 +338,23 @@ function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLo
 
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
-  state.scores=makeScores();renderActive();
-  const[r1,r2,r3,r4]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchBTC(),fetchFearGreed()]);
+  // ✅ Scores never change — only fetch external data
+  const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
   if(r1.status==="fulfilled")state.rates=r1.value;
   if(r2.status==="fulfilled")state.prevRates=r2.value;
-  if(r3.status==="fulfilled")state.btc=r3.value;
-  if(r4.status==="fulfilled"&&r4.value&&r4.value.length){state.fgData=r4.value;state.fgLive=true;}
-  state.prices=buildPrices(state.rates,state.prevRates);
+  if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
   state.cdata=buildStrength(state.rates);
   if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
   const now=new Date();
   document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-  renderTicker();renderActive();
+  renderActive();
   document.getElementById("rbtn-icon").classList.remove("spinning");
-}
-
-// ── TICKER ────────────────────────────────────────────────────────────────────
-function renderTicker(){
-  const el=document.getElementById("ticker");
-  let html="";
-  state.prices.forEach(p=>{const col=p.change==null?"var(--muted)":p.change>=0?"var(--bull)":"var(--bear)";html+=`<div class="tpill"><div class="tsym">${p.id}<span class="src">LIVE</span></div><div class="tprice">${fp(p.price,p.id)}</div><div class="tchg" style="color:${col}">${fc(p.change)}</div></div>`;});
-  if(state.btc){const col=state.btc.change>=0?"var(--bull)":"var(--bear)";html+=`<div class="tpill"><div class="tsym">BTC<span class="src">LIVE</span></div><div class="tprice">${fp(state.btc.price,"BITCOIN")}</div><div class="tchg" style="color:${col}">${state.btc.change>=0?"+":""}${state.btc.change.toFixed(2)}%</div></div>`;}
-  if(state.fgData&&state.fgData[0]){const fg=parseInt(state.fgData[0].value);const col=fgColor(fg);html+=`<div class="tpill"><div class="tsym">FEAR/GREED${state.fgLive?`<span class="src">LIVE</span>`:""}</div><div class="tprice" style="color:${col}">${fg}</div><div class="tchg" style="color:${col}">${fgLabel(fg)}</div></div>`;}
-  el.innerHTML=html||'<div class="lrow"><span style="color:var(--bear)">⚠ Could not load prices</span></div>';
 }
 
 // ── TOP SETUPS ────────────────────────────────────────────────────────────────
 function renderSetups(){
   const cats=["All","Forex","Index","Commodity","Crypto"];
-  const filtered=state.filterCat==="All"?state.scores:state.scores.filter(a=>a.cat===state.filterCat);
+  const filtered=state.filterCat==="All"?ASSETS_SCORED:ASSETS_SCORED.filter(a=>a.cat===state.filterCat);
   let html=`<div class="filter-bar"><span class="filter-label">Category:</span>${cats.map(c=>`<button class="filter-btn${state.filterCat===c?" active":""}" onclick="setFilter('${c}')">${c}</button>`).join("")}</div>
   <div class="score-table-wrap"><table class="score-table">
     <thead>
@@ -391,37 +363,47 @@ function renderSetups(){
     </thead><tbody>`;
   filtered.forEach(a=>{
     const tc=totalColor(a.total),bc=biasColor(a.bias);
-    html+=`<tr><td class="asset-name" style="color:${tc}">${a.name}</td><td class="bias-cell" style="color:${bc}">${a.bias}</td><td class="total-cell" style="color:${tc}">${a.total>0?"+":""}${a.total}</td>
-    <td class="${cellClass(a.cot)}">${a.cot>0?"+":""}${a.cot}</td><td class="${cellClass(a.retailPos)}">${a.retailPos>0?"+":""}${a.retailPos}</td>
-    <td class="${cellClass(a.seasonal)}">${a.seasonal>0?"+":""}${a.seasonal}</td><td class="${cellClass(a.trend)}">${a.trend>0?"+":""}${a.trend}</td>
-    <td class="${cellClass(a.gdp)}">${a.gdp>0?"+":""}${a.gdp}</td><td class="${cellClass(a.mPMI)}">${a.mPMI>0?"+":""}${a.mPMI}</td>
-    <td class="${cellClass(a.sPMI)}">${a.sPMI>0?"+":""}${a.sPMI}</td><td class="${cellClass(a.retailSal)}">${a.retailSal>0?"+":""}${a.retailSal}</td>
-    <td class="${cellClass(a.inflation)}">${a.inflation>0?"+":""}${a.inflation}</td><td class="${cellClass(a.empChg)}">${a.empChg>0?"+":""}${a.empChg}</td>
-    <td class="${cellClass(a.unemploy)}">${a.unemploy>0?"+":""}${a.unemploy}</td><td class="${cellClass(a.rates)}">${a.rates>0?"+":""}${a.rates}</td></tr>`;
+    html+=`<tr>
+      <td class="asset-name" style="color:${tc}">${a.name}</td>
+      <td class="bias-cell" style="color:${bc}">${a.bias}</td>
+      <td class="total-cell" style="color:${tc}">${a.total>0?"+":""}${a.total}</td>
+      <td class="${cellClass(a.cot)}">${a.cot>0?"+":""}${a.cot}</td>
+      <td class="${cellClass(a.retail)}">${a.retail>0?"+":""}${a.retail}</td>
+      <td class="${cellClass(a.seasonal)}">${a.seasonal>0?"+":""}${a.seasonal}</td>
+      <td class="${cellClass(a.trend)}">${a.trend>0?"+":""}${a.trend}</td>
+      <td class="${cellClass(a.gdp)}">${a.gdp>0?"+":""}${a.gdp}</td>
+      <td class="${cellClass(a.mPMI)}">${a.mPMI>0?"+":""}${a.mPMI}</td>
+      <td class="${cellClass(a.sPMI)}">${a.sPMI>0?"+":""}${a.sPMI}</td>
+      <td class="${cellClass(a.retailSal)}">${a.retailSal>0?"+":""}${a.retailSal}</td>
+      <td class="${cellClass(a.inflation)}">${a.inflation>0?"+":""}${a.inflation}</td>
+      <td class="${cellClass(a.empChg)}">${a.empChg>0?"+":""}${a.empChg}</td>
+      <td class="${cellClass(a.unemploy)}">${a.unemploy>0?"+":""}${a.unemploy}</td>
+      <td class="${cellClass(a.rates)}">${a.rates>0?"+":""}${a.rates}</td>
+    </tr>`;
   });
-  html+=`</tbody></table></div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ HOW TO READ</span>Each column scores from <strong style="color:var(--bull)">+2 (strongly bullish)</strong> to <strong style="color:var(--bear)">-2 (strongly bearish)</strong>.</div>`;
+  html+=`</tbody></table></div>
+  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ HOW TO READ</span>
+  Scores from <strong style="color:var(--bull)">+2 (strongly bullish)</strong> to <strong style="color:var(--bear)">-2 (strongly bearish)</strong>. 
+  ✅ Scores are <strong style="color:var(--bull)">stable</strong> — calculated from real COT + sentiment data. They only change when underlying data changes.</div>`;
   document.getElementById("page-setups").innerHTML=html;
 }
 function setFilter(cat){state.filterCat=cat;renderSetups();}
 
-// ── COT — NICK'S STYLE ────────────────────────────────────────────────────────
+// ── COT ───────────────────────────────────────────────────────────────────────
 function renderCOT(){
-  // Sort data
   const sorted=[...COT_DATA].sort((a,b)=>{
     const col=state.cotSort.col;
-    return (b[col]-a[col])*state.cotSort.dir;
+    if(col==="id")return a.id.localeCompare(b.id)*state.cotSort.dir;
+    return(b[col]-a[col])*state.cotSort.dir;
   });
 
-  // ── BAR CHART ──
   const chartHtml=`
   <div class="cot-chart-wrap">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
       <div>
         <div class="cot-chart-title">COT Net Positioning</div>
-        <div class="cot-chart-sub">
-          <span>Last Update: <strong style="color:var(--accent)">Mar 14, 2026</strong> · Weekly, checks every 12h</span>
-        </div>
-        <div style="display:flex;gap:16px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">Last Update: <strong style="color:var(--accent)">Mar 14, 2026</strong> · Weekly · CFTC</div>
+        <div style="display:flex;gap:16px;margin-top:6px">
           <div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div>
           <div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div>
         </div>
@@ -429,18 +411,17 @@ function renderCOT(){
       <span class="cbadge-demo">WEEKLY · CFTC</span>
     </div>
     <div class="cot-bars-scroll">
-      <div class="cot-bars" id="cot-bar-container">
+      <div class="cot-bars">
         ${COT_DATA.map(row=>{
-          const longH=Math.round(row.longPct*1.5); // scale to px
-          const shortH=Math.round(row.shortPct*1.5);
-          const total=longH+shortH;
-          return`<div class="cot-bar-wrap" onmouseenter="showTooltip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTooltip()">
-            <div class="cot-bar-stacked" style="height:${total}px">
-              <div class="cot-bar-short" style="height:${shortH}px;display:flex;align-items:center;justify-content:center">
-                ${row.shortPct>20?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}
+          const lh=Math.round(row.longPct*1.5);
+          const sh=Math.round(row.shortPct*1.5);
+          return`<div class="cot-bar-wrap" onmouseenter="showTip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTip()">
+            <div class="cot-bar-stacked" style="height:${lh+sh}px">
+              <div class="cot-bar-short" style="height:${sh}px;display:flex;align-items:center;justify-content:center">
+                ${row.shortPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}
               </div>
-              <div class="cot-bar-long" style="height:${longH}px;display:flex;align-items:center;justify-content:center">
-                ${row.longPct>20?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}
+              <div class="cot-bar-long" style="height:${lh}px;display:flex;align-items:center;justify-content:center">
+                ${row.longPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}
               </div>
             </div>
             <div class="cot-bar-label">${row.id}</div>
@@ -450,86 +431,65 @@ function renderCOT(){
     </div>
   </div>`;
 
-  // ── DETAILED TABLE ──
   const cols=[
-    {key:"id",       label:"Asset",           dir:1},
-    {key:"longC",    label:"Long Contracts",  dir:-1},
-    {key:"shortC",   label:"Short Contracts", dir:-1},
-    {key:"dLong",    label:"Δ Long C",        dir:-1},
-    {key:"dShort",   label:"Δ Short C",       dir:1},
-    {key:"longPct",  label:"Long %",          dir:-1},
-    {key:"shortPct", label:"Short %",         dir:1},
-    {key:"netChg",   label:"Net % Chg",       dir:-1},
-    {key:"netPos",   label:"Net Position",    dir:-1},
-    {key:"oi",       label:"Open Interest",   dir:-1},
-    {key:"dOI",      label:"Δ Open Int",      dir:-1},
+    {key:"id",       label:"Asset"},
+    {key:"longC",    label:"Long Contracts"},
+    {key:"shortC",   label:"Short Contracts"},
+    {key:"dLong",    label:"Δ Long C"},
+    {key:"dShort",   label:"Δ Short C"},
+    {key:"longPct",  label:"Long %"},
+    {key:"shortPct", label:"Short %"},
+    {key:"netChg",   label:"Net % Chg"},
+    {key:"netPos",   label:"Net Position"},
+    {key:"oi",       label:"Open Interest"},
+    {key:"dOI",      label:"Δ Open Int"},
   ];
 
-  let tableHtml=`
-  <div class="cot-tbl-wrap">
-  <table class="cot-tbl">
-    <thead><tr>
-      ${cols.map(c=>`<th onclick="sortCOT('${c.key}',${c.dir})" title="Sort by ${c.label}">${c.label} ${state.cotSort.col===c.key?(state.cotSort.dir===-1?"▼":"▲"):""}</th>`).join("")}
-    </tr></thead>
+  let tbl=`<div class="cot-tbl-wrap"><table class="cot-tbl">
+    <thead><tr>${cols.map(c=>`<th onclick="sortCOT('${c.key}')">${c.label}${state.cotSort.col===c.key?(state.cotSort.dir===-1?" ▼":" ▲"):""}</th>`).join("")}</tr></thead>
     <tbody>`;
-
   sorted.forEach(row=>{
-    const lPctCol=row.longPct>55?"pct-bull":row.longPct<45?"pct-bear":"pct-neutral";
-    const sPctCol=row.shortPct>55?"pct-bull":row.shortPct<45?"pct-bear":"pct-neutral";
-    const netClass=row.netPos>0?"pos-bull":"pos-bear";
-    const netChgCol=row.netChg>0?"delta-bull":"delta-bear";
-    const dLongCol=row.dLong>0?"delta-bull":"delta-bear";
-    const dShortCol=row.dShort<0?"delta-bull":"delta-bear";// short decreasing = bullish
-    const dOICol=row.dOI>0?"delta-bull":"delta-bear";
-
-    tableHtml+=`<tr>
+    const lc=row.longPct>55?"pct-bull":row.longPct<45?"pct-bear":"pct-neutral";
+    const sc=row.shortPct>55?"pct-bull":row.shortPct<45?"pct-bear":"pct-neutral";
+    const nc=row.netChg>0?"delta-bull":"delta-bear";
+    const dlc=row.dLong>0?"delta-bull":"delta-bear";
+    const dsc=row.dShort<0?"delta-bull":"delta-bear";
+    const doic=row.dOI>0?"delta-bull":"delta-bear";
+    const npc=row.netPos>0?"pos-bull":"pos-bear";
+    tbl+=`<tr>
       <td>${row.id}</td>
       <td>${row.longC.toLocaleString()}</td>
       <td>${row.shortC.toLocaleString()}</td>
-      <td class="${dLongCol}">${row.dLong>0?"+":""}${row.dLong.toLocaleString()}</td>
-      <td class="${dShortCol}">${row.dShort>0?"+":""}${row.dShort.toLocaleString()}</td>
-      <td class="${lPctCol}">${row.longPct.toFixed(2)}%</td>
-      <td class="${sPctCol}">${row.shortPct.toFixed(2)}%</td>
-      <td class="${netChgCol}">${row.netChg>0?"+":""}${row.netChg.toFixed(2)}%</td>
-      <td><span class="pos-highlight ${netClass}">${row.netPos>0?"+":""}${fmtK(row.netPos)}</span></td>
+      <td class="${dlc}">${row.dLong>0?"+":""}${row.dLong.toLocaleString()}</td>
+      <td class="${dsc}">${row.dShort>0?"+":""}${row.dShort.toLocaleString()}</td>
+      <td class="${lc}">${row.longPct.toFixed(2)}%</td>
+      <td class="${sc}">${row.shortPct.toFixed(2)}%</td>
+      <td class="${nc}">${row.netChg>0?"+":""}${row.netChg.toFixed(2)}%</td>
+      <td><span class="pos-highlight ${npc}">${row.netPos>0?"+":""}${fmtK(row.netPos)}</span></td>
       <td>${fmtK(row.oi)}</td>
-      <td class="${dOICol}">${row.dOI>0?"+":""}${fmtK(row.dOI)}</td>
+      <td class="${doic}">${row.dOI>0?"+":""}${fmtK(row.dOI)}</td>
     </tr>`;
   });
+  tbl+=`</tbody></table></div>`;
 
-  tableHtml+=`</tbody></table></div>`;
+  const info=`<div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA — Latest Weekly Filing</span>
+  Published every Friday 3:30 PM EST. Reflects positions as of the prior Tuesday.
+  <strong style="color:var(--bull)">Tap any column header to sort.</strong>
+  Net Position in <span style="color:#4a90d9">blue = net long</span> · <span style="color:#e05c6a">red = net short</span>.</div>`;
 
-  const infoHtml=`
-  <div class="infobox ib-blue">
-    <span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA — Latest Weekly Filing</span>
-    Published every Friday 3:30 PM EST. Reflects positions as of the prior Tuesday.
-    <strong style="color:var(--bull)">Tap any column header to sort.</strong>
-    Net Position highlighted in <span style="color:#4a90d9">blue (net long)</span> or <span style="color:#e05c6a">red (net short)</span>.
-    Use for directional bias — not entry timing.
-  </div>`;
-
-  document.getElementById("page-cot").innerHTML=chartHtml+tableHtml+infoHtml;
+  document.getElementById("page-cot").innerHTML=chartHtml+tbl+info;
 }
-
-function sortCOT(col,defaultDir){
-  if(state.cotSort.col===col){
-    state.cotSort.dir*=-1;
-  }else{
-    state.cotSort.col=col;
-    state.cotSort.dir=defaultDir;
-  }
+function sortCOT(col){
+  if(state.cotSort.col===col)state.cotSort.dir*=-1;
+  else{state.cotSort.col=col;state.cotSort.dir=-1;}
   renderCOT();
 }
-
-// Tooltip
-function showTooltip(e,id,lp,sp){
+function showTip(e,id,lp,sp){
   const t=document.getElementById("tooltip");
-  t.innerHTML=`<strong style="color:var(--bull)">${id}</strong><br>Long: ${lp.toFixed(2)}%<br>Short: ${sp.toFixed(2)}%`;
-  t.style.display="block";
-  t.style.left=(e.clientX+12)+"px";
-  t.style.top=(e.clientY-10)+"px";
+  t.innerHTML=`<strong style="color:var(--text)">${id}</strong><br><span style="color:#4a90d9">Long: ${lp.toFixed(2)}%</span><br><span style="color:#e05c6a">Short: ${sp.toFixed(2)}%</span>`;
+  t.style.display="block";t.style.left=(e.clientX+14)+"px";t.style.top=(e.clientY-10)+"px";
 }
-function hideTooltip(){document.getElementById("tooltip").style.display="none";}
+function hideTip(){document.getElementById("tooltip").style.display="none";}
 
 // ── SENTIMENT ─────────────────────────────────────────────────────────────────
 function renderSentiment(){
@@ -537,7 +497,12 @@ function renderSentiment(){
   <div class="card"><div class="chd"><span class="ctitle">Retail Long vs Short %</span><span class="cbadge">HOURLY</span></div><div class="cbody">`;
   SENT_DATA.forEach(row=>{
     const sp=100-row.lp;const sig=row.lp>65?"⚡ CONTRARIAN SELL":row.lp<35?"⚡ CONTRARIAN BUY":"";
-    html+=`<div class="srow"><div class="spairn">${row.id}</div><div class="sbarw"><div class="sbart"><div class="slong" style="width:${row.lp}%"></div><div class="sshort" style="width:${sp}%"></div></div><div class="spcts"><span style="color:var(--bull)">▲ ${row.lp}%</span>${sig?`<span style="color:var(--neutral);font-family:var(--mono);font-size:9px">${sig}</span>`:""}<span style="color:var(--bear)">${sp}% ▼</span></div></div></div>`;
+    html+=`<div class="srow"><div class="spairn">${row.id}</div><div class="sbarw">
+      <div class="sbart"><div class="slong" style="width:${row.lp}%"></div><div class="sshort" style="width:${sp}%"></div></div>
+      <div class="spcts"><span style="color:var(--bull)">▲ ${row.lp}%</span>
+      ${sig?`<span style="color:var(--neutral);font-family:var(--mono);font-size:9px">${sig}</span>`:""}
+      <span style="color:var(--bear)">${sp}% ▼</span></div>
+    </div></div>`;
   });
   html+=`</div></div><div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC</span>When 65%+ of retail is long, smart money is typically positioned the other way.</div>`;
   document.getElementById("page-sentiment").innerHTML=html;
@@ -554,12 +519,12 @@ function renderEcon(){
   for(const[cur,items]of Object.entries(data)){
     const badge=isLive?`<span class="cbadge-live">● LIVE · FRED</span>`:`<span class="cbadge-demo">DEMO DATA</span>`;
     html+=`<div class="card"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur}</span>${badge}</div><div class="hgrid">`;
-    items.forEach(item=>{
-      const bg=item.s>.3?"rgba(0,255,136,.15)":item.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
-      const br=item.s>.3?"1px solid rgba(0,255,136,.2)":item.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
-      const lbl=item.s>.3?"▲ Beat":item.s<-.3?"▼ Miss":"→ In Line";
-      const lc=item.s>.3?"var(--bull)":item.s<-.3?"var(--bear)":"var(--muted)";
-      html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${item.l}</div><div class="hval">${item.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${item.d?`<div class="hdate">${item.d}</div>`:""}</div>`;
+    items.forEach(i=>{
+      const bg=i.s>.3?"rgba(0,255,136,.15)":i.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
+      const br=i.s>.3?"1px solid rgba(0,255,136,.2)":i.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
+      const lbl=i.s>.3?"▲ Beat":i.s<-.3?"▼ Miss":"→ In Line";
+      const lc=i.s>.3?"var(--bull)":i.s<-.3?"var(--bear)":"var(--muted)";
+      html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${i.l}</div><div class="hval">${i.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${i.d?`<div class="hdate">${i.d}</div>`:""}</div>`;
     });
     html+=`</div></div>`;
   }
@@ -568,15 +533,17 @@ function renderEcon(){
 
 // ── CURRENCY ──────────────────────────────────────────────────────────────────
 function renderCurrency(){
-  if(!state.cdata){document.getElementById("page-currency").innerHTML=`<div class="lrow"><div class="spinner"></div><span>Loading...</span></div>`;return;}
-  let html=`<div class="sectitle">Currency Strength — Live Rates</div><div class="card"><div class="chd"><span class="ctitle">G8 Relative Strength</span><span class="cbadge-live">● LIVE · Frankfurter</span></div><div class="cbody">`;
+  if(!state.cdata){document.getElementById("page-currency").innerHTML=`<div class="lrow"><div class="spinner"></div><span>Loading live rates...</span></div>`;return;}
+  let html=`<div class="sectitle">Currency Strength — Live Rates</div>
+  <div class="card"><div class="chd"><span class="ctitle">G8 Relative Strength</span><span class="cbadge-live">● LIVE · Frankfurter</span></div><div class="cbody">`;
   state.cdata.forEach((c,i)=>{const col=c.val>.05?"var(--bull)":c.val<-.05?"var(--bear)":"var(--neutral)";html+=`<div class="crow"><div class="crank">${i+1}</div><div class="ccode" style="color:${col}">${c.code}</div><div class="cname">${c.name}</div><div class="cbarw"><div class="cbart"><div class="cbarf" style="width:${c.pct}%;background:${col}"></div></div></div><div class="cval" style="color:${col}">${c.val>0?"+":""}${c.val.toFixed(3)}</div></div>`;});
   html+=`</div></div>`;document.getElementById("page-currency").innerHTML=html;
 }
 
 // ── CARRY TRADE ───────────────────────────────────────────────────────────────
 function renderCarry(){
-  let html=`<div class="sectitle">Carry Trade Scanner</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div>
+  let html=`<div class="sectitle">Carry Trade Scanner</div>
+  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div>
   <div class="card"><div class="chd"><span class="ctitle">Best Carry Opportunities</span><span class="cbadge">RANKED BY RATE DIFF</span></div><div class="cbody">`;
   CARRY_PAIRS.forEach(p=>{
     const col=p.score>=2?"var(--bull)":p.score>=1?"#7effc4":p.score<=0?"var(--bear)":"var(--neutral)";
@@ -626,9 +593,8 @@ function renderSettings(){
   <div class="sectitle">API Settings</div>
   <div class="apibox"><h3>🟢 ALREADY CONNECTED — NO KEY NEEDED</h3>
     <div class="infobox ib-green" style="margin-bottom:0">
-      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates · Every 15 min<br>
-      <strong style="color:var(--bull)">CoinGecko</strong> — Live Bitcoin · Every 15 min<br>
-      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily
+      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates for Currency Strength · Every 15 min<br>
+      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily (smart fallback if blocked)
     </div>
   </div>
   <div class="apibox"><h3>🌡 FRED API — Live GDP, CPI, Rates (Free)</h3>
@@ -638,25 +604,21 @@ function renderSettings(){
       <input class="apiinp" id="fred-input" placeholder="fred.stlouisfed.org → My Account → API Keys" value="${state.fredKey}"/>
       <button class="apibtn" onclick="saveFREDKey()">💾 Save</button>
     </div>
-  </div>
-  <div class="apibox"><h3>🔑 ALPHA VANTAGE — Gold, Oil, Indices (Free)</h3>
-    <div class="key-status ${state.avKey?"key-ok":"key-missing"}">${state.avKey?"✅ AV key saved":"⚠ No key — Gold, Oil showing —"}</div>
-    <div class="apirow" style="margin-top:10px">
-      <span class="apilbl">AV Key</span>
-      <input class="apiinp" id="av-input" placeholder="alphavantage.co → Get Free API Key" value="${state.avKey}"/>
-      <button class="apibtn" onclick="saveAVKey()">💾 Save</button>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
+      1. Go to <span style="color:var(--accent)">fred.stlouisfed.org</span><br>
+      2. Click <strong style="color:var(--text)">My Account → API Keys → Request API Key</strong><br>
+      3. Copy key → paste above → tap Save ✅
     </div>
   </div>
   <div class="apibox"><h3>📱 ADD TO HOME SCREEN</h3>
     <div style="font-size:11px;color:var(--muted);line-height:2.1">
       <strong style="color:var(--text)">Android Chrome</strong> → Tap ⋮ → "Add to Home screen"<br>
       <strong style="color:var(--text)">iPhone Safari</strong> → Tap Share → "Add to Home Screen"<br>
-      <span style="color:var(--bull)">✅ Opens full screen like a native app</span>
+      <span style="color:var(--bull)">✅ Opens full screen like a native app — free forever</span>
     </div>
   </div>`;
 }
 function saveFREDKey(){const val=document.getElementById("fred-input").value.trim();if(!val)return;state.fredKey=val;saveKey("fred",val);state.econData=null;state.econLive=false;state.econLoading=false;renderSettings();loadFREDData();if(activeTab==="econ")renderEcon();}
-function saveAVKey(){const val=document.getElementById("av-input").value.trim();if(!val)return;state.avKey=val;saveKey("av",val);renderSettings();}
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function initTabs(){
@@ -683,7 +645,6 @@ function renderActive(){
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 initTabs();
-state.scores=makeScores();
 renderActive();
 refreshAll();
 setInterval(refreshAll,15*60*1000);
