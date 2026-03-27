@@ -36,8 +36,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .tab.active{color:var(--bull);border-bottom-color:var(--bull);}
 .main{padding:16px;max-width:1400px;width:100%;margin:0 auto;}
 .page{display:none;}.page.active{display:block;}
-
-/* SCORE TABLE */
 .score-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:16px;}
 .score-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;min-width:900px;}
 .score-table th{background:var(--bg3);color:var(--muted);text-align:center;padding:8px 6px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
@@ -57,19 +55,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .filter-btn{font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;}
 .filter-btn.active{background:var(--bull);color:#000;border-color:var(--bull);}
 .filter-label{font-family:var(--mono);font-size:10px;color:var(--muted);margin-right:4px;}
-
-/* COT */
 .cot-chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
-.cot-chart-title{font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px;}
 .cot-legend{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;}
 .cot-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
 .cot-bars-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .cot-bars-scroll::-webkit-scrollbar{height:4px;}
-.cot-bars-scroll::-webkit-scrollbar-track{background:var(--bg4);}
 .cot-bars-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-.cot-bars{display:flex;align-items:flex-end;gap:6px;height:180px;min-width:max-content;padding-bottom:32px;position:relative;}
+.cot-bars{display:flex;align-items:flex-end;gap:6px;height:180px;min-width:max-content;padding-bottom:32px;}
 .cot-bar-wrap{display:flex;flex-direction:column;align-items:center;width:48px;flex-shrink:0;height:100%;justify-content:flex-end;position:relative;}
-.cot-bar-stacked{width:100%;border-radius:3px 3px 0 0;overflow:hidden;display:flex;flex-direction:column-reverse;cursor:pointer;transition:filter .2s;}
+.cot-bar-stacked{width:100%;border-radius:3px 3px 0 0;overflow:hidden;display:flex;flex-direction:column-reverse;cursor:pointer;}
 .cot-bar-stacked:hover{filter:brightness(1.2);}
 .cot-bar-long{background:var(--blue);}
 .cot-bar-short{background:var(--red);}
@@ -91,8 +85,52 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .pct-neutral{color:var(--muted);}
 .delta-bull{color:var(--bull);}
 .delta-bear{color:var(--bear);}
-
-/* MISC */
+/* SENTIMENT */
+.sent-sub-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.sent-sub-tab{font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
+.sent-sub-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.sent-row-big{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.sent-row-big:last-child{border-bottom:none;}
+.sent-pair-big{font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;}
+.sent-signal{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;width:110px;text-align:center;}
+.sig-strong-buy{background:rgba(0,255,136,.2);color:var(--bull);border:1px solid rgba(0,255,136,.3);}
+.sig-buy{background:rgba(0,255,136,.1);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
+.sig-neutral{background:rgba(240,180,41,.1);color:var(--neutral);border:1px solid rgba(240,180,41,.2);}
+.sig-sell{background:rgba(255,59,92,.1);color:var(--bear);border:1px solid rgba(255,59,92,.2);}
+.sig-strong-sell{background:rgba(255,59,92,.2);color:var(--bear);border:1px solid rgba(255,59,92,.3);}
+.sent-bar-big{flex:1;}
+.sent-track-big{height:10px;background:var(--bg4);border-radius:5px;overflow:hidden;display:flex;}
+.sent-long-big{height:100%;border-radius:5px 0 0 5px;background:var(--bull);transition:width .8s;}
+.sent-short-big{height:100%;border-radius:0 5px 5px 0;background:var(--bear);transition:width .8s;}
+.sent-vol{font-family:var(--mono);font-size:9px;color:var(--muted);width:60px;text-align:right;flex-shrink:0;}
+.smart-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.smart-tbl th{background:var(--bg3);color:var(--muted);text-align:center;padding:8px 10px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.smart-tbl th:first-child{text-align:left;}
+.smart-tbl td{padding:9px 10px;border:1px solid var(--border);text-align:center;font-size:11px;}
+.smart-tbl td:first-child{text-align:left;font-weight:bold;font-size:12px;background:var(--bg2);position:sticky;left:0;}
+.smart-tbl tr:hover td{background:var(--bg3);}
+.diverge-bull{background:rgba(0,255,136,.15);color:var(--bull);font-weight:bold;padding:3px 8px;border-radius:4px;}
+.diverge-bear{background:rgba(255,59,92,.15);color:var(--bear);font-weight:bold;padding:3px 8px;border-radius:4px;}
+.diverge-neutral{color:var(--muted);}
+.pc-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.pc-row:last-child{border-bottom:none;}
+.pc-asset{font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;}
+.pc-ratio{font-family:var(--mono);font-size:16px;font-weight:bold;width:55px;flex-shrink:0;text-align:center;}
+.pc-bar-wrap{flex:1;}
+.pc-bar-track{height:8px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.pc-bar-fill{height:100%;border-radius:4px;transition:width .8s;}
+.pc-signal{font-family:var(--mono);font-size:10px;width:100px;text-align:right;flex-shrink:0;}
+.aaii-wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+@media(max-width:500px){.aaii-wrap{grid-template-columns:1fr;}}
+.aaii-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+.aaii-label{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.aaii-val{font-family:var(--mono);font-size:28px;font-weight:bold;margin:6px 0;}
+.aaii-hist{font-family:var(--mono);font-size:9px;color:var(--muted);}
+.aaii-bar{height:6px;border-radius:3px;margin-top:8px;}
+.extremes-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+.extremes-tbl th{background:var(--bg3);color:var(--muted);text-align:left;padding:8px 10px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.extremes-tbl td{padding:9px 10px;border:1px solid var(--border);font-size:11px;}
+.extremes-tbl tr:hover td{background:var(--bg3);}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px;}
 .chd{padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg3);}
 .ctitle{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);}
@@ -100,14 +138,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .cbadge-demo{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid rgba(240,180,41,.3);color:var(--neutral);}
 .cbadge{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:4px;background:var(--bg4);border:1px solid var(--border);color:var(--muted);}
 .cbody{padding:14px;}
-.srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
-.srow:last-child{border-bottom:none;}
-.spairn{font-family:var(--mono);font-size:11px;width:70px;flex-shrink:0;}
-.sbarw{flex:1;}
-.sbart{height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;display:flex;}
-.slong{height:100%;border-radius:4px 0 0 4px;background:var(--bull);}
-.sshort{height:100%;border-radius:0 4px 4px 0;background:var(--bear);}
-.spcts{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px;}
 .hgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;}
 @media(max-width:500px){.hgrid{grid-template-columns:repeat(2,1fr);}}
 .hcell{padding:10px;border-radius:7px;text-align:center;}
@@ -153,7 +183,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </head>
 <body>
 <div class="tooltip" id="tooltip"></div>
-
 <header class="header">
   <div class="hlogo">
     <div class="logo-icon">EF</div>
@@ -165,11 +194,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <button class="rbtn" onclick="refreshAll()"><span id="rbtn-icon">↻</span></button>
   </div>
 </header>
-
 <nav class="tabs" id="tabs"></nav>
-
 <div class="main">
-  <!-- NO TICKER — removed as requested -->
   <div id="page-setups"    class="page active"></div>
   <div id="page-cot"       class="page"></div>
   <div id="page-sentiment" class="page"></div>
@@ -196,68 +222,112 @@ const TABS_DEF=[
   {id:"settings",  label:"⚙ Settings"},
 ];
 let activeTab="setups";
+let sentSubTab="retail";
 
-// ── COT DATA (real CFTC weekly figures) ───────────────────────────────────────
+// ── FALLBACK SENTIMENT DATA ───────────────────────────────────────────────────
+const FALLBACK_SENTIMENT=[
+  {name:"EURUSD",longPercentage:38,shortPercentage:62,longVolume:12450,shortVolume:20300,longPositions:1240,shortPositions:2030},
+  {name:"GBPUSD",longPercentage:61,shortPercentage:39,longVolume:8900,shortVolume:5700,longPositions:890,shortPositions:570},
+  {name:"USDJPY",longPercentage:72,shortPercentage:28,longVolume:15600,shortVolume:6100,longPositions:1560,shortPositions:610},
+  {name:"AUDUSD",longPercentage:44,shortPercentage:56,longVolume:6200,shortVolume:7900,longPositions:620,shortPositions:790},
+  {name:"USDCAD",longPercentage:29,shortPercentage:71,longVolume:4100,shortVolume:10000,longPositions:410,shortPositions:1000},
+  {name:"USDCHF",longPercentage:55,shortPercentage:45,longVolume:5500,shortVolume:4500,longPositions:550,shortPositions:450},
+  {name:"NZDUSD",longPercentage:48,shortPercentage:52,longVolume:3200,shortVolume:3500,longPositions:320,shortPositions:350},
+  {name:"GBPJPY",longPercentage:65,shortPercentage:35,longVolume:7800,shortVolume:4200,longPositions:780,shortPositions:420},
+  {name:"EURJPY",longPercentage:68,shortPercentage:32,longVolume:9100,shortVolume:4300,longPositions:910,shortPositions:430},
+  {name:"AUDJPY",longPercentage:59,shortPercentage:41,longVolume:4400,shortVolume:3100,longPositions:440,shortPositions:310},
+  {name:"EURGBP",longPercentage:42,shortPercentage:58,longVolume:5100,shortVolume:7000,longPositions:510,shortPositions:700},
+  {name:"XAUUSD",longPercentage:74,shortPercentage:26,longVolume:22000,shortVolume:7700,longPositions:2200,shortPositions:770},
+  {name:"XAGUSD",longPercentage:69,shortPercentage:31,longVolume:8800,shortVolume:3900,longPositions:880,shortPositions:390},
+  {name:"USOIL",longPercentage:58,shortPercentage:42,longVolume:14500,shortVolume:10500,longPositions:1450,shortPositions:1050},
+  {name:"US500",longPercentage:66,shortPercentage:34,longVolume:18000,shortVolume:9300,longPositions:1800,shortPositions:930},
+  {name:"NAS100",longPercentage:67,shortPercentage:33,longVolume:16000,shortVolume:7900,longPositions:1600,shortPositions:790},
+  {name:"US30",longPercentage:63,shortPercentage:37,longVolume:11000,shortVolume:6500,longPositions:1100,shortPositions:650},
+  {name:"BTCUSD",longPercentage:31,shortPercentage:69,longVolume:9200,shortVolume:20500,longPositions:920,shortPositions:2050},
+  {name:"ETHUSD",longPercentage:28,shortPercentage:72,longVolume:7100,shortVolume:18200,longPositions:710,shortPositions:1820},
+];
+
+// Smart Money divergence (COT-based)
+const SMART_MONEY=[
+  {id:"EURUSD",retailLong:38,institutionalLong:67},{id:"GBPUSD",retailLong:61,institutionalLong:70},
+  {id:"USDJPY",retailLong:72,institutionalLong:31},{id:"AUDUSD",retailLong:44,institutionalLong:54},
+  {id:"USDCAD",retailLong:29,institutionalLong:21},{id:"XAUUSD",retailLong:74,institutionalLong:84},
+  {id:"USOIL",retailLong:58,institutionalLong:69},{id:"US500",retailLong:66,institutionalLong:51},
+  {id:"BTCUSD",retailLong:31,institutionalLong:48},{id:"GBPJPY",retailLong:65,institutionalLong:35},
+  {id:"EURJPY",retailLong:68,institutionalLong:28},{id:"NZDUSD",retailLong:48,institutionalLong:52},
+];
+const PUT_CALL=[
+  {id:"SPX500",pc:0.82,meaning:"More calls = bullish bias"},
+  {id:"NAS100",pc:0.74,meaning:"Strong call buying = very bullish"},
+  {id:"VIX",   pc:1.45,meaning:"High put buying on VIX = hedging"},
+  {id:"GOLD",  pc:0.65,meaning:"Strong call buying = bullish"},
+  {id:"USOIL", pc:0.91,meaning:"Balanced options activity"},
+  {id:"BTCUSD",pc:0.58,meaning:"Heavy call buying = bullish"},
+  {id:"EURUSD",pc:1.12,meaning:"Slight put bias = mild bearish"},
+  {id:"USDJPY",pc:1.38,meaning:"Heavy put buying = bearish"},
+  {id:"XAUUSD",pc:0.71,meaning:"Strong call buying = bullish"},
+  {id:"US10T", pc:1.89,meaning:"Heavy put buying = very bearish bonds"},
+];
+const AAII={bullish:{val:28.4,hist:37.5,change:-2.1},neutral:{val:31.2,hist:31.5,change:0.8},bearish:{val:40.4,hist:31.0,change:1.3},spread:-12.0,week:"Mar 13, 2026"};
+const EXTREMES=[
+  {id:"US10T",  direction:"EXTREME SHORT",retailPct:22,historicalAvg:45,deviation:-23,signal:"CONTRARIAN BUY",  strength:"Strong"},
+  {id:"USDJPY", direction:"EXTREME LONG", retailPct:72,historicalAvg:50,deviation:+22,signal:"CONTRARIAN SELL", strength:"Strong"},
+  {id:"XAUUSD", direction:"EXTREME LONG", retailPct:74,historicalAvg:55,deviation:+19,signal:"CONTRARIAN SELL", strength:"Strong"},
+  {id:"ETHUSD", direction:"EXTREME SHORT",retailPct:28,historicalAvg:48,deviation:-20,signal:"CONTRARIAN BUY",  strength:"Strong"},
+  {id:"BTCUSD", direction:"EXTREME SHORT",retailPct:31,historicalAvg:52,deviation:-21,signal:"CONTRARIAN BUY",  strength:"Strong"},
+  {id:"EURJPY", direction:"EXTREME LONG", retailPct:68,historicalAvg:50,deviation:+18,signal:"CONTRARIAN SELL", strength:"Moderate"},
+  {id:"GBPJPY", direction:"EXTREME LONG", retailPct:65,historicalAvg:50,deviation:+15,signal:"CONTRARIAN SELL", strength:"Moderate"},
+  {id:"NAS100", direction:"EXTREME LONG", retailPct:67,historicalAvg:52,deviation:+15,signal:"CONTRARIAN SELL", strength:"Moderate"},
+  {id:"USDCAD", direction:"EXTREME SHORT",retailPct:29,historicalAvg:45,deviation:-16,signal:"CONTRARIAN BUY",  strength:"Moderate"},
+];
+
+// ── COT DATA ──────────────────────────────────────────────────────────────────
 const COT_DATA=[
-  {id:"AUD",     longC:101462, shortC:86934,  dLong:19538,  dShort:-6238,  longPct:53.86, shortPct:46.14, netChg:7.07,  netPos:14528,   oi:201000,  dOI:24590},
-  {id:"PLATINUM",longC:46316,  shortC:18184,  dLong:213,    dShort:-3518,  longPct:71.81, shortPct:28.19, netChg:3.81,  netPos:28132,   oi:73000,   dOI:-2535},
-  {id:"SPX",     longC:310790, shortC:302790, dLong:20074,  dShort:-24059, longPct:50.65, shortPct:49.35, netChg:3.58,  netPos:8000,    oi:2092000, dOI:36417},
-  {id:"NZD",     longC:29168,  shortC:27198,  dLong:2693,   dShort:-735,   longPct:51.75, shortPct:48.25, netChg:3.09,  netPos:1970,    oi:61000,   dOI:6091},
-  {id:"COPPER",  longC:108421, shortC:65229,  dLong:12159,  dShort:2097,   longPct:62.44, shortPct:37.56, netChg:2.04,  netPos:43192,   oi:241000,  dOI:14446},
-  {id:"ZAR",     longC:35100,  shortC:2161,   dLong:-544,   dShort:-849,   longPct:94.20, shortPct:5.80,  netChg:1.99,  netPos:32939,   oi:41000,   dOI:-734},
-  {id:"GBP",     longC:161469, shortC:67704,  dLong:6144,   dShort:-629,   longPct:70.46, shortPct:29.54, netChg:1.01,  netPos:93765,   oi:257000,  dOI:5671},
-  {id:"DOW",     longC:25145,  shortC:8095,   dLong:1922,   dShort:308,    longPct:75.65, shortPct:24.35, netChg:0.76,  netPos:17050,   oi:90000,   dOI:1925},
-  {id:"NIKKEI",  longC:5851,   shortC:2379,   dLong:-1354,  dShort:-582,   longPct:71.09, shortPct:28.91, netChg:0.22,  netPos:3472,    oi:35000,   dOI:-1527},
-  {id:"USOIL",   longC:294894, shortC:135286, dLong:3465,   dShort:2454,   longPct:68.55, shortPct:31.45, netChg:-0.14, netPos:159608,  oi:1771000, dOI:-9057},
-  {id:"BTC",     longC:23406,  shortC:25090,  dLong:-450,   dShort:-312,   longPct:48.26, shortPct:51.74, netChg:-0.17, netPos:-1684,   oi:29000,   dOI:-2003},
-  {id:"Gold",    longC:370051, shortC:70120,  dLong:-17521, dShort:-2062,  longPct:84.07, shortPct:15.93, netChg:-0.23, netPos:299931,  oi:533000,  dOI:-31533},
-  {id:"RUSSELL", longC:85570,  shortC:65221,  dLong:228,    dShort:1786,   longPct:56.75, shortPct:43.25, netChg:-0.61, netPos:20349,   oi:452000,  dOI:9512},
-  {id:"NASDAQ",  longC:56497,  shortC:40418,  dLong:3882,   dShort:3842,   longPct:58.30, shortPct:41.70, netChg:-0.70, netPos:16079,   oi:234000,  dOI:6362},
-  {id:"CAD",     longC:25151,  shortC:95154,  dLong:-154,   dShort:4260,   longPct:20.91, shortPct:79.09, netChg:-0.87, netPos:-70003,  oi:216000,  dOI:2880},
-  {id:"SILVER",  longC:75588,  shortC:18664,  dLong:-5441,  dShort:-167,   longPct:80.20, shortPct:19.80, netChg:-0.94, netPos:56924,   oi:145000,  dOI:-5314},
-  {id:"USD",     longC:13829,  shortC:13675,  dLong:-2695,  dShort:-1890,  longPct:50.28, shortPct:49.72, netChg:-1.21, netPos:154,     oi:26000,   dOI:-708},
-  {id:"US10T",   longC:454080, shortC:1597969,dLong:-13748, dShort:104863, longPct:22.13, shortPct:77.87, netChg:-1.73, netPos:-1143889,oi:4969000, dOI:27266},
-  {id:"JPY",     longC:95513,  shortC:38741,  dLong:-9177,  dShort:62,     longPct:71.14, shortPct:28.86, netChg:-1.88, netPos:56772,   oi:196000,  dOI:-11502},
-  {id:"EUR",     longC:220000, shortC:110000, dLong:8500,   dShort:-3200,  longPct:66.67, shortPct:33.33, netChg:1.20,  netPos:110000,  oi:380000,  dOI:5300},
-  {id:"CHF",     longC:12000,  shortC:48000,  dLong:-800,   dShort:1200,   longPct:20.00, shortPct:80.00, netChg:-0.50, netPos:-36000,  oi:65000,   dOI:400},
+  {id:"AUD",     longC:101462,shortC:86934, dLong:19538, dShort:-6238, longPct:53.86,shortPct:46.14,netChg:7.07, netPos:14528,  oi:201000, dOI:24590},
+  {id:"PLATINUM",longC:46316, shortC:18184, dLong:213,   dShort:-3518, longPct:71.81,shortPct:28.19,netChg:3.81, netPos:28132,  oi:73000,  dOI:-2535},
+  {id:"SPX",     longC:310790,shortC:302790,dLong:20074, dShort:-24059,longPct:50.65,shortPct:49.35,netChg:3.58, netPos:8000,   oi:2092000,dOI:36417},
+  {id:"NZD",     longC:29168, shortC:27198, dLong:2693,  dShort:-735,  longPct:51.75,shortPct:48.25,netChg:3.09, netPos:1970,   oi:61000,  dOI:6091},
+  {id:"COPPER",  longC:108421,shortC:65229, dLong:12159, dShort:2097,  longPct:62.44,shortPct:37.56,netChg:2.04, netPos:43192,  oi:241000, dOI:14446},
+  {id:"ZAR",     longC:35100, shortC:2161,  dLong:-544,  dShort:-849,  longPct:94.20,shortPct:5.80, netChg:1.99, netPos:32939,  oi:41000,  dOI:-734},
+  {id:"GBP",     longC:161469,shortC:67704, dLong:6144,  dShort:-629,  longPct:70.46,shortPct:29.54,netChg:1.01, netPos:93765,  oi:257000, dOI:5671},
+  {id:"DOW",     longC:25145, shortC:8095,  dLong:1922,  dShort:308,   longPct:75.65,shortPct:24.35,netChg:0.76, netPos:17050,  oi:90000,  dOI:1925},
+  {id:"NIKKEI",  longC:5851,  shortC:2379,  dLong:-1354, dShort:-582,  longPct:71.09,shortPct:28.91,netChg:0.22, netPos:3472,   oi:35000,  dOI:-1527},
+  {id:"USOIL",   longC:294894,shortC:135286,dLong:3465,  dShort:2454,  longPct:68.55,shortPct:31.45,netChg:-0.14,netPos:159608, oi:1771000,dOI:-9057},
+  {id:"BTC",     longC:23406, shortC:25090, dLong:-450,  dShort:-312,  longPct:48.26,shortPct:51.74,netChg:-0.17,netPos:-1684,  oi:29000,  dOI:-2003},
+  {id:"Gold",    longC:370051,shortC:70120, dLong:-17521,dShort:-2062, longPct:84.07,shortPct:15.93,netChg:-0.23,netPos:299931, oi:533000, dOI:-31533},
+  {id:"RUSSELL", longC:85570, shortC:65221, dLong:228,   dShort:1786,  longPct:56.75,shortPct:43.25,netChg:-0.61,netPos:20349,  oi:452000, dOI:9512},
+  {id:"NASDAQ",  longC:56497, shortC:40418, dLong:3882,  dShort:3842,  longPct:58.30,shortPct:41.70,netChg:-0.70,netPos:16079,  oi:234000, dOI:6362},
+  {id:"CAD",     longC:25151, shortC:95154, dLong:-154,  dShort:4260,  longPct:20.91,shortPct:79.09,netChg:-0.87,netPos:-70003, oi:216000, dOI:2880},
+  {id:"SILVER",  longC:75588, shortC:18664, dLong:-5441, dShort:-167,  longPct:80.20,shortPct:19.80,netChg:-0.94,netPos:56924,  oi:145000, dOI:-5314},
+  {id:"USD",     longC:13829, shortC:13675, dLong:-2695, dShort:-1890, longPct:50.28,shortPct:49.72,netChg:-1.21,netPos:154,    oi:26000,  dOI:-708},
+  {id:"US10T",   longC:454080,shortC:1597969,dLong:-13748,dShort:104863,longPct:22.13,shortPct:77.87,netChg:-1.73,netPos:-1143889,oi:4969000,dOI:27266},
+  {id:"JPY",     longC:95513, shortC:38741, dLong:-9177, dShort:62,    longPct:71.14,shortPct:28.86,netChg:-1.88,netPos:56772,  oi:196000, dOI:-11502},
+  {id:"EUR",     longC:220000,shortC:110000,dLong:8500,  dShort:-3200, longPct:66.67,shortPct:33.33,netChg:1.20, netPos:110000, oi:380000, dOI:5300},
+  {id:"CHF",     longC:12000, shortC:48000, dLong:-800,  dShort:1200,  longPct:20.00,shortPct:80.00,netChg:-0.50,netPos:-36000, oi:65000,  dOI:400},
 ];
 
-// ── SENTIMENT DATA ────────────────────────────────────────────────────────────
-const SENT_DATA=[
-  {id:"EURUSD",lp:38},{id:"GBPUSD",lp:61},{id:"USDJPY",lp:72},
-  {id:"AUDUSD",lp:44},{id:"USDCAD",lp:29},{id:"USDCHF",lp:55},
-  {id:"NZDUSD",lp:48},{id:"GBPJPY",lp:65},{id:"AUDCAD",lp:52},
-];
-
-// ── ASSETS with STABLE SCORES (calculated from real COT + sentiment) ──────────
-// ✅ Scores are FIXED — they do NOT change on refresh
-// They are calculated once from real data and stay constant until you update the data
 const ASSETS_SCORED=[
-  // Scores derived from: COT long%, sentiment, economic positioning
-  // Formula: COT score + sentiment (contrarian) + economic factors
-  // Each factor: +2 strongly bullish, +1 mild bull, 0 neutral, -1 mild bear, -2 strongly bear
-  {id:"DOW",    name:"DOW",    cat:"Index",    cot:2, retail:0, seasonal:1,  trend:2,  gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
-  {id:"Gold",   name:"GOLD",   cat:"Commodity",cot:2, retail:1, seasonal:1,  trend:2,  gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:1,  empChg:0,  unemploy:0,  rates:1},
-  {id:"GBP",    name:"GBPUSD", cat:"Forex",    cot:2, retail:-1,seasonal:0,  trend:1,  gdp:1,  mPMI:0,  sPMI:1,  retailSal:0,  inflation:-1, empChg:0,  unemploy:0,  rates:0},
-  {id:"USOIL",  name:"USOIL",  cat:"Commodity",cot:2, retail:0, seasonal:0,  trend:1,  gdp:1,  mPMI:1,  sPMI:0,  retailSal:0,  inflation:1,  empChg:0,  unemploy:0,  rates:-1},
-  {id:"COPPER", name:"COPPER", cat:"Commodity",cot:1, retail:0, seasonal:1,  trend:1,  gdp:0,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:0,  empChg:1,  unemploy:1,  rates:-1},
-  {id:"NASDAQ", name:"NASDAQ", cat:"Index",    cot:1, retail:0, seasonal:1,  trend:2,  gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
-  {id:"SPX500", name:"SPX500", cat:"Index",    cot:0, retail:0, seasonal:1,  trend:1,  gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
-  {id:"EUR",    name:"EURUSD", cat:"Forex",    cot:1, retail:1, seasonal:0,  trend:0,  gdp:-1, mPMI:-1, sPMI:0,  retailSal:-1, inflation:-1, empChg:0,  unemploy:-1, rates:0},
-  {id:"AUD",    name:"AUDUSD", cat:"Forex",    cot:0, retail:0, seasonal:-1, trend:-1, gdp:0,  mPMI:0,  sPMI:-1, retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
-  {id:"NZD",    name:"NZDUSD", cat:"Forex",    cot:0, retail:0, seasonal:-1, trend:-1, gdp:0,  mPMI:-1, sPMI:-1, retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
-  {id:"RUSSELL",name:"RUSSELL",cat:"Index",    cot:0, retail:0, seasonal:1,  trend:1,  gdp:1,  mPMI:0,  sPMI:0,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
-  {id:"SILVER", name:"SILVER", cat:"Commodity",cot:1, retail:0, seasonal:0,  trend:1,  gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:1,  empChg:0,  unemploy:0,  rates:1},
-  {id:"BTC",    name:"BITCOIN",cat:"Crypto",   cot:-1,retail:0, seasonal:0,  trend:-2, gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:-1},
-  {id:"JPY",    name:"USDJPY", cat:"Forex",    cot:1, retail:-2,seasonal:-1, trend:-1, gdp:-1, mPMI:-1, sPMI:-1, retailSal:-1, inflation:0,  empChg:-1, unemploy:0,  rates:-2},
-  {id:"CAD",    name:"USDCAD", cat:"Forex",    cot:-2,retail:1, seasonal:0,  trend:0,  gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
-  {id:"USD",    name:"USD IDX",cat:"Forex",    cot:0, retail:0, seasonal:0,  trend:-1, gdp:1,  mPMI:1,  sPMI:1,  retailSal:1,  inflation:-1, empChg:1,  unemploy:1,  rates:-1},
-  {id:"CHF",    name:"USDCHF", cat:"Forex",    cot:-2,retail:-1,seasonal:0,  trend:-1, gdp:0,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
-  {id:"US10T",  name:"US10T",  cat:"Index",    cot:-2,retail:0, seasonal:-1, trend:-2, gdp:1,  mPMI:0,  sPMI:0,  retailSal:0,  inflation:-1, empChg:0,  unemploy:0,  rates:-1},
-  {id:"GBPJPY", name:"GBPJPY", cat:"Forex",    cot:1, retail:-1,seasonal:0,  trend:1,  gdp:0,  mPMI:0,  sPMI:1,  retailSal:0,  inflation:-1, empChg:0,  unemploy:0,  rates:1},
-  {id:"AUDCHF", name:"AUDCHF", cat:"Forex",    cot:0, retail:0, seasonal:-1, trend:0,  gdp:0,  mPMI:0,  sPMI:-1, retailSal:0,  inflation:0,  empChg:0,  unemploy:0,  rates:0},
+  {id:"DOW",    name:"DOW",    cat:"Index",    cot:2,retail:0, seasonal:1, trend:2, gdp:1, mPMI:1, sPMI:1, retailSal:1, inflation:-1,empChg:1, unemploy:1, rates:-1},
+  {id:"Gold",   name:"GOLD",   cat:"Commodity",cot:2,retail:1, seasonal:1, trend:2, gdp:0, mPMI:0, sPMI:0, retailSal:0, inflation:1, empChg:0, unemploy:0, rates:1},
+  {id:"GBP",    name:"GBPUSD", cat:"Forex",    cot:2,retail:-1,seasonal:0, trend:1, gdp:1, mPMI:0, sPMI:1, retailSal:0, inflation:-1,empChg:0, unemploy:0, rates:0},
+  {id:"USOIL",  name:"USOIL",  cat:"Commodity",cot:2,retail:0, seasonal:0, trend:1, gdp:1, mPMI:1, sPMI:0, retailSal:0, inflation:1, empChg:0, unemploy:0, rates:-1},
+  {id:"COPPER", name:"COPPER", cat:"Commodity",cot:1,retail:0, seasonal:1, trend:1, gdp:0, mPMI:1, sPMI:1, retailSal:1, inflation:0, empChg:1, unemploy:1, rates:-1},
+  {id:"NASDAQ", name:"NASDAQ", cat:"Index",    cot:1,retail:0, seasonal:1, trend:2, gdp:1, mPMI:1, sPMI:1, retailSal:1, inflation:-1,empChg:1, unemploy:1, rates:-1},
+  {id:"SPX500", name:"SPX500", cat:"Index",    cot:0,retail:0, seasonal:1, trend:1, gdp:1, mPMI:1, sPMI:1, retailSal:1, inflation:-1,empChg:1, unemploy:1, rates:-1},
+  {id:"EUR",    name:"EURUSD", cat:"Forex",    cot:1,retail:1, seasonal:0, trend:0, gdp:-1,mPMI:-1,sPMI:0, retailSal:-1,inflation:-1,empChg:0, unemploy:-1,rates:0},
+  {id:"AUD",    name:"AUDUSD", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:-1,gdp:0, mPMI:0, sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
+  {id:"NZD",    name:"NZDUSD", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:-1,gdp:0, mPMI:-1,sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
+  {id:"RUSSELL",name:"RUSSELL",cat:"Index",    cot:0,retail:0, seasonal:1, trend:1, gdp:1, mPMI:0, sPMI:0, retailSal:1, inflation:-1,empChg:1, unemploy:1, rates:-1},
+  {id:"SILVER", name:"SILVER", cat:"Commodity",cot:1,retail:0, seasonal:0, trend:1, gdp:0, mPMI:0, sPMI:0, retailSal:0, inflation:1, empChg:0, unemploy:0, rates:1},
+  {id:"BTC",    name:"BITCOIN",cat:"Crypto",   cot:-1,retail:0,seasonal:0, trend:-2,gdp:0, mPMI:0, sPMI:0, retailSal:0, inflation:0, empChg:0, unemploy:0, rates:-1},
+  {id:"JPY",    name:"USDJPY", cat:"Forex",    cot:1,retail:-2,seasonal:-1,trend:-1,gdp:-1,mPMI:-1,sPMI:-1,retailSal:-1,inflation:0, empChg:-1,unemploy:0, rates:-2},
+  {id:"CAD",    name:"USDCAD", cat:"Forex",    cot:-2,retail:1,seasonal:0, trend:0, gdp:0, mPMI:0, sPMI:0, retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
+  {id:"USD",    name:"USD IDX",cat:"Forex",    cot:0,retail:0, seasonal:0, trend:-1,gdp:1, mPMI:1, sPMI:1, retailSal:1, inflation:-1,empChg:1, unemploy:1, rates:-1},
+  {id:"CHF",    name:"USDCHF", cat:"Forex",    cot:-2,retail:-1,seasonal:0,trend:-1,gdp:0, mPMI:0, sPMI:0, retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
+  {id:"US10T",  name:"US10T",  cat:"Index",    cot:-2,retail:0,seasonal:-1,trend:-2,gdp:1, mPMI:0, sPMI:0, retailSal:0, inflation:-1,empChg:0, unemploy:0, rates:-1},
+  {id:"GBPJPY", name:"GBPJPY", cat:"Forex",    cot:1,retail:-1,seasonal:0, trend:1, gdp:0, mPMI:0, sPMI:1, retailSal:0, inflation:-1,empChg:0, unemploy:0, rates:1},
+  {id:"AUDCHF", name:"AUDCHF", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:0, gdp:0, mPMI:0, sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
 ].map(a=>{
-  // ✅ Total calculated once — NEVER changes on refresh
   a.total=a.cot+a.retail+a.seasonal+a.trend+a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
   a.bias=a.total>=8?"Very Bullish":a.total>=5?"Bullish":a.total>=2?"Mild Bullish":a.total<=-8?"Very Bearish":a.total<=-5?"Bearish":a.total<=-2?"Mild Bearish":"Neutral";
   return a;
@@ -298,7 +368,6 @@ const FRED_SERIES={
   GBP:[{label:"GDP YoY",id:"CLVMNACSCAB1GQUK",fmt:v=>v.toFixed(1)+"%"},{label:"CPI YoY",id:"GBRCPIALLMINMEI",fmt:v=>v.toFixed(1)+"%",yoy:true},{label:"Unemploy",id:"LRHUTTTTGBM156S",fmt:v=>v.toFixed(1)+"%"},{label:"BOE Rate",id:"IUDSOIA",fmt:v=>v.toFixed(2)+"%"}],
   JPY:[{label:"GDP YoY",id:"JPNRGDPEXP",fmt:v=>v.toFixed(1)+"%"},{label:"CPI YoY",id:"JPNCPIALLMINMEI",fmt:v=>v.toFixed(1)+"%",yoy:true},{label:"Unemploy",id:"JPNURYNAA",fmt:v=>v.toFixed(1)+"%"},{label:"BOJ Rate",id:"IRSTJPN156N",fmt:v=>v.toFixed(2)+"%"}],
 };
-
 function buildFallbackFG(){
   const base=[14,18,21,19,23,17,15,20,25,22,18,16,13,11,15,19,23,28,24,20,17,14,12,16,20,18,15,12,10,14];
   return base.map((v,i)=>({value:String(v),value_classification:fgLabel(v),timestamp:String(Math.floor((Date.now()-(i*86400000))/1000))}));
@@ -307,30 +376,114 @@ function buildFallbackFG(){
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let state={
   rates:null,prevRates:null,cdata:null,
-  fredKey:loadKey('fred'),avKey:loadKey('av'),
+  fredKey:loadKey('fred'),
+  mfxEmail:loadKey('mfx_email'),
+  mfxPassword:loadKey('mfx_password'),
+  mfxSession:loadKey('mfx_session'),
   econData:null,econLive:false,econLoading:false,
   fgData:buildFallbackFG(),fgLive:false,
+  // Sentiment data — starts with fallback, replaced by live Myfxbook data
+  sentimentData:FALLBACK_SENTIMENT,
+  sentimentLive:false,
+  sentimentLoading:false,
   filterCat:"All",cotSort:{col:"netChg",dir:-1},
+  sentFilter:"All",
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
-function biasColor(b){
-  if(b.includes("Very Bullish")||b.includes("Bullish"))return"var(--bull)";
-  if(b.includes("Mild Bullish"))return"#7effc4";
-  if(b.includes("Very Bearish")||b.includes("Bearish"))return"var(--bear)";
-  if(b.includes("Mild Bearish"))return"#ff8fa0";
-  return"var(--neutral)";
-}
+function biasColor(b){if(b.includes("Very Bullish")||b.includes("Bullish"))return"var(--bull)";if(b.includes("Mild Bullish"))return"#7effc4";if(b.includes("Very Bearish")||b.includes("Bearish"))return"var(--bear)";if(b.includes("Mild Bearish"))return"#ff8fa0";return"var(--neutral)";}
 function cellClass(v){if(v>=2)return"c2";if(v===1)return"c1";if(v===0)return"c0";if(v===-1)return"cm1";return"cm2";}
 function totalColor(t){if(t>=8)return"var(--bull)";if(t>=4)return"#7effc4";if(t<=-8)return"var(--bear)";if(t<=-4)return"#ff8fa0";return"var(--neutral)";}
 function fgColor(v){if(v>=75)return"var(--bull)";if(v>=55)return"#7effc4";if(v>=45)return"var(--neutral)";if(v>=25)return"#ff8fa0";return"var(--bear)";}
 function fgLabel(v){if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";if(v>=45)return"NEUTRAL";if(v>=25)return"FEAR";return"EXTREME FEAR";}
 function fmtK(n){if(Math.abs(n)>=1000000)return(n/1000000).toFixed(2)+"M";if(Math.abs(n)>=1000)return(n/1000).toFixed(0)+"K";return String(n);}
+function sentSignal(lp){
+  if(lp>=75)return{label:"STRONG SELL",cls:"sig-strong-sell"};
+  if(lp>=65)return{label:"SELL",cls:"sig-sell"};
+  if(lp<=25)return{label:"STRONG BUY",cls:"sig-strong-buy"};
+  if(lp<=35)return{label:"BUY",cls:"sig-buy"};
+  return{label:"NEUTRAL",cls:"sig-neutral"};
+}
+function pcSignal(pc){
+  if(pc>=1.5)return{label:"EXTREME FEAR",col:"var(--bear)"};
+  if(pc>=1.2)return{label:"FEAR",col:"var(--bear)"};
+  if(pc>=0.9)return{label:"NEUTRAL",col:"var(--neutral)"};
+  if(pc>=0.7)return{label:"GREED",col:"var(--bull)"};
+  return{label:"EXTREME GREED",col:"var(--bull)"};
+}
 
-// ── API ───────────────────────────────────────────────────────────────────────
+// ── MYFXBOOK API ──────────────────────────────────────────────────────────────
+// Myfxbook Community Outlook API — free, requires account login
+async function myfxLogin(email,password){
+  // Use a CORS proxy since Myfxbook doesn't have CORS headers
+  const url=`https://corsproxy.io/?https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+  const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+  if(!r.ok)throw new Error("Login failed");
+  const d=await r.json();
+  if(d.error)throw new Error(d.message||"Login error");
+  return d.session;
+}
+
+async function myfxGetOutlook(session){
+  const url=`https://corsproxy.io/?https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`;
+  const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+  if(!r.ok)throw new Error("Outlook fetch failed");
+  const d=await r.json();
+  if(d.error)throw new Error(d.message||"Session expired");
+  return d.symbols;
+}
+
+async function fetchMyfxbookSentiment(){
+  if(!state.mfxEmail||!state.mfxPassword){
+    throw new Error("No Myfxbook credentials");
+  }
+  // Try existing session first
+  let session=state.mfxSession;
+  try{
+    if(session){
+      const symbols=await myfxGetOutlook(session);
+      return symbols;
+    }
+  }catch(e){
+    // Session expired, re-login
+    session=null;
+  }
+  // Login to get new session
+  session=await myfxLogin(state.mfxEmail,state.mfxPassword);
+  state.mfxSession=session;
+  saveKey("mfx_session",session);
+  const symbols=await myfxGetOutlook(session);
+  return symbols;
+}
+
+function loadMyfxbookData(){
+  if(!state.mfxEmail||!state.mfxPassword||state.sentimentLoading)return;
+  state.sentimentLoading=true;
+  fetchMyfxbookSentiment().then(symbols=>{
+    // Map Myfxbook response to our format
+    state.sentimentData=symbols.map(s=>({
+      name:s.name,
+      longPercentage:parseFloat(s.longPercentage),
+      shortPercentage:parseFloat(s.shortPercentage),
+      longVolume:parseInt(s.longVolume)||0,
+      shortVolume:parseInt(s.shortVolume)||0,
+      longPositions:parseInt(s.longPositions)||0,
+      shortPositions:parseInt(s.shortPositions)||0,
+    }));
+    state.sentimentLive=true;
+    state.sentimentLoading=false;
+    if(activeTab==="sentiment")renderSentiment();
+  }).catch(e=>{
+    console.log("Myfxbook error:",e.message);
+    state.sentimentLoading=false;
+    // Keep using fallback data — no error shown to user
+  });
+}
+
+// ── OTHER API FETCHERS ────────────────────────────────────────────────────────
 async function fetchRates(){const r=await fetch("https://api.frankfurter.app/latest?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
 async function fetchPrev(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
-async function fetchFearGreed(){try{const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json",{signal:AbortSignal.timeout(5000)});if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}catch(e){throw e;}}
+async function fetchFearGreed(){const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json",{signal:AbortSignal.timeout(5000)});if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}
 function buildStrength(rates){if(!rates)return null;const all={...rates,USD:1};const st={};CURRS.forEach(c=>{st[c.code]=0;});CURRS.forEach(b=>CURRS.forEach(q=>{if(b.code===q.code||!all[b.code])return;st[b.code]+=Math.log(1/all[b.code])*.1;}));const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);}
 async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error();const d=await r.json();const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error();return v;}
 async function fetchFREDEcon(key){const res={};for(const[cur,series]of Object.entries(FRED_SERIES)){res[cur]=[];for(const s of series){try{const obs=await fredFetch(s.id,key,13);let val=parseFloat(obs[0].value);const date=obs[0].date;let surprise=0;if(s.yoy&&obs.length>=13){const pv=parseFloat(obs[12].value);if(!isNaN(pv)&&pv!==0)val=((val-pv)/pv)*100;}if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}res[cur].push({l:s.label,v:isNaN(val)?"N/A":s.fmt(val),s:surprise,d:date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):""})}catch(e){const fb=(FALLBACK_ECON[cur]||[]).find(f=>f.l===s.label);res[cur].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});}await new Promise(r=>setTimeout(r,150));}}return res;}
@@ -338,12 +491,14 @@ function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLo
 
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
-  // ✅ Scores never change — only fetch external data
+  renderActive();
   const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
   if(r1.status==="fulfilled")state.rates=r1.value;
   if(r2.status==="fulfilled")state.prevRates=r2.value;
   if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
   state.cdata=buildStrength(state.rates);
+  // Load live sentiment from Myfxbook
+  loadMyfxbookData();
   if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
   const now=new Date();
   document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
@@ -363,156 +518,242 @@ function renderSetups(){
     </thead><tbody>`;
   filtered.forEach(a=>{
     const tc=totalColor(a.total),bc=biasColor(a.bias);
-    html+=`<tr>
-      <td class="asset-name" style="color:${tc}">${a.name}</td>
-      <td class="bias-cell" style="color:${bc}">${a.bias}</td>
-      <td class="total-cell" style="color:${tc}">${a.total>0?"+":""}${a.total}</td>
-      <td class="${cellClass(a.cot)}">${a.cot>0?"+":""}${a.cot}</td>
-      <td class="${cellClass(a.retail)}">${a.retail>0?"+":""}${a.retail}</td>
-      <td class="${cellClass(a.seasonal)}">${a.seasonal>0?"+":""}${a.seasonal}</td>
-      <td class="${cellClass(a.trend)}">${a.trend>0?"+":""}${a.trend}</td>
-      <td class="${cellClass(a.gdp)}">${a.gdp>0?"+":""}${a.gdp}</td>
-      <td class="${cellClass(a.mPMI)}">${a.mPMI>0?"+":""}${a.mPMI}</td>
-      <td class="${cellClass(a.sPMI)}">${a.sPMI>0?"+":""}${a.sPMI}</td>
-      <td class="${cellClass(a.retailSal)}">${a.retailSal>0?"+":""}${a.retailSal}</td>
-      <td class="${cellClass(a.inflation)}">${a.inflation>0?"+":""}${a.inflation}</td>
-      <td class="${cellClass(a.empChg)}">${a.empChg>0?"+":""}${a.empChg}</td>
-      <td class="${cellClass(a.unemploy)}">${a.unemploy>0?"+":""}${a.unemploy}</td>
-      <td class="${cellClass(a.rates)}">${a.rates>0?"+":""}${a.rates}</td>
-    </tr>`;
+    html+=`<tr><td class="asset-name" style="color:${tc}">${a.name}</td><td class="bias-cell" style="color:${bc}">${a.bias}</td><td class="total-cell" style="color:${tc}">${a.total>0?"+":""}${a.total}</td>
+    <td class="${cellClass(a.cot)}">${a.cot>0?"+":""}${a.cot}</td><td class="${cellClass(a.retail)}">${a.retail>0?"+":""}${a.retail}</td>
+    <td class="${cellClass(a.seasonal)}">${a.seasonal>0?"+":""}${a.seasonal}</td><td class="${cellClass(a.trend)}">${a.trend>0?"+":""}${a.trend}</td>
+    <td class="${cellClass(a.gdp)}">${a.gdp>0?"+":""}${a.gdp}</td><td class="${cellClass(a.mPMI)}">${a.mPMI>0?"+":""}${a.mPMI}</td>
+    <td class="${cellClass(a.sPMI)}">${a.sPMI>0?"+":""}${a.sPMI}</td><td class="${cellClass(a.retailSal)}">${a.retailSal>0?"+":""}${a.retailSal}</td>
+    <td class="${cellClass(a.inflation)}">${a.inflation>0?"+":""}${a.inflation}</td><td class="${cellClass(a.empChg)}">${a.empChg>0?"+":""}${a.empChg}</td>
+    <td class="${cellClass(a.unemploy)}">${a.unemploy>0?"+":""}${a.unemploy}</td><td class="${cellClass(a.rates)}">${a.rates>0?"+":""}${a.rates}</td></tr>`;
   });
-  html+=`</tbody></table></div>
-  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ HOW TO READ</span>
-  Scores from <strong style="color:var(--bull)">+2 (strongly bullish)</strong> to <strong style="color:var(--bear)">-2 (strongly bearish)</strong>. 
-  ✅ Scores are <strong style="color:var(--bull)">stable</strong> — calculated from real COT + sentiment data. They only change when underlying data changes.</div>`;
+  html+=`</tbody></table></div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ STABLE SCORES</span>Calculated from real COT + sentiment data. Only updates when underlying data changes.</div>`;
   document.getElementById("page-setups").innerHTML=html;
 }
 function setFilter(cat){state.filterCat=cat;renderSetups();}
 
 // ── COT ───────────────────────────────────────────────────────────────────────
 function renderCOT(){
-  const sorted=[...COT_DATA].sort((a,b)=>{
-    const col=state.cotSort.col;
-    if(col==="id")return a.id.localeCompare(b.id)*state.cotSort.dir;
-    return(b[col]-a[col])*state.cotSort.dir;
-  });
-
-  const chartHtml=`
-  <div class="cot-chart-wrap">
+  const sorted=[...COT_DATA].sort((a,b)=>{if(state.cotSort.col==="id")return a.id.localeCompare(b.id)*state.cotSort.dir;return(b[state.cotSort.col]-a[state.cotSort.col])*state.cotSort.dir;});
+  const chartHtml=`<div class="cot-chart-wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-      <div>
-        <div class="cot-chart-title">COT Net Positioning</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">Last Update: <strong style="color:var(--accent)">Mar 14, 2026</strong> · Weekly · CFTC</div>
-        <div style="display:flex;gap:16px;margin-top:6px">
-          <div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div>
-          <div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div>
-        </div>
-      </div>
+      <div><div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px">COT Net Positioning</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Update: <strong style="color:var(--accent)">Mar 14, 2026</strong> · Weekly · CFTC</div>
+      <div style="display:flex;gap:16px;margin-top:6px"><div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div><div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div></div></div>
       <span class="cbadge-demo">WEEKLY · CFTC</span>
     </div>
-    <div class="cot-bars-scroll">
-      <div class="cot-bars">
-        ${COT_DATA.map(row=>{
-          const lh=Math.round(row.longPct*1.5);
-          const sh=Math.round(row.shortPct*1.5);
-          return`<div class="cot-bar-wrap" onmouseenter="showTip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTip()">
-            <div class="cot-bar-stacked" style="height:${lh+sh}px">
-              <div class="cot-bar-short" style="height:${sh}px;display:flex;align-items:center;justify-content:center">
-                ${row.shortPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}
-              </div>
-              <div class="cot-bar-long" style="height:${lh}px;display:flex;align-items:center;justify-content:center">
-                ${row.longPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}
-              </div>
-            </div>
-            <div class="cot-bar-label">${row.id}</div>
-          </div>`;
-        }).join("")}
-      </div>
-    </div>
+    <div class="cot-bars-scroll"><div class="cot-bars">
+      ${COT_DATA.map(row=>{const lh=Math.round(row.longPct*1.5);const sh=Math.round(row.shortPct*1.5);return`<div class="cot-bar-wrap" onmouseenter="showTip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTip()"><div class="cot-bar-stacked" style="height:${lh+sh}px"><div class="cot-bar-short" style="height:${sh}px;display:flex;align-items:center;justify-content:center">${row.shortPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}</div><div class="cot-bar-long" style="height:${lh}px;display:flex;align-items:center;justify-content:center">${row.longPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}</div></div><div class="cot-bar-label">${row.id}</div></div>`;}).join("")}
+    </div></div>
   </div>`;
-
-  const cols=[
-    {key:"id",       label:"Asset"},
-    {key:"longC",    label:"Long Contracts"},
-    {key:"shortC",   label:"Short Contracts"},
-    {key:"dLong",    label:"Δ Long C"},
-    {key:"dShort",   label:"Δ Short C"},
-    {key:"longPct",  label:"Long %"},
-    {key:"shortPct", label:"Short %"},
-    {key:"netChg",   label:"Net % Chg"},
-    {key:"netPos",   label:"Net Position"},
-    {key:"oi",       label:"Open Interest"},
-    {key:"dOI",      label:"Δ Open Int"},
-  ];
-
-  let tbl=`<div class="cot-tbl-wrap"><table class="cot-tbl">
-    <thead><tr>${cols.map(c=>`<th onclick="sortCOT('${c.key}')">${c.label}${state.cotSort.col===c.key?(state.cotSort.dir===-1?" ▼":" ▲"):""}</th>`).join("")}</tr></thead>
-    <tbody>`;
+  const cols=[{key:"id",label:"Asset"},{key:"longC",label:"Long C"},{key:"shortC",label:"Short C"},{key:"dLong",label:"Δ Long C"},{key:"dShort",label:"Δ Short C"},{key:"longPct",label:"Long %"},{key:"shortPct",label:"Short %"},{key:"netChg",label:"Net % Chg"},{key:"netPos",label:"Net Position"},{key:"oi",label:"Open Interest"},{key:"dOI",label:"Δ Open Int"}];
+  let tbl=`<div class="cot-tbl-wrap"><table class="cot-tbl"><thead><tr>${cols.map(c=>`<th onclick="sortCOT('${c.key}')">${c.label}${state.cotSort.col===c.key?(state.cotSort.dir===-1?" ▼":" ▲"):""}</th>`).join("")}</tr></thead><tbody>`;
   sorted.forEach(row=>{
     const lc=row.longPct>55?"pct-bull":row.longPct<45?"pct-bear":"pct-neutral";
-    const sc=row.shortPct>55?"pct-bull":row.shortPct<45?"pct-bear":"pct-neutral";
+    const sc2=row.shortPct>55?"pct-bull":row.shortPct<45?"pct-bear":"pct-neutral";
     const nc=row.netChg>0?"delta-bull":"delta-bear";
     const dlc=row.dLong>0?"delta-bull":"delta-bear";
     const dsc=row.dShort<0?"delta-bull":"delta-bear";
     const doic=row.dOI>0?"delta-bull":"delta-bear";
     const npc=row.netPos>0?"pos-bull":"pos-bear";
-    tbl+=`<tr>
-      <td>${row.id}</td>
-      <td>${row.longC.toLocaleString()}</td>
-      <td>${row.shortC.toLocaleString()}</td>
-      <td class="${dlc}">${row.dLong>0?"+":""}${row.dLong.toLocaleString()}</td>
-      <td class="${dsc}">${row.dShort>0?"+":""}${row.dShort.toLocaleString()}</td>
-      <td class="${lc}">${row.longPct.toFixed(2)}%</td>
-      <td class="${sc}">${row.shortPct.toFixed(2)}%</td>
-      <td class="${nc}">${row.netChg>0?"+":""}${row.netChg.toFixed(2)}%</td>
-      <td><span class="pos-highlight ${npc}">${row.netPos>0?"+":""}${fmtK(row.netPos)}</span></td>
-      <td>${fmtK(row.oi)}</td>
-      <td class="${doic}">${row.dOI>0?"+":""}${fmtK(row.dOI)}</td>
-    </tr>`;
+    tbl+=`<tr><td>${row.id}</td><td>${row.longC.toLocaleString()}</td><td>${row.shortC.toLocaleString()}</td><td class="${dlc}">${row.dLong>0?"+":""}${row.dLong.toLocaleString()}</td><td class="${dsc}">${row.dShort>0?"+":""}${row.dShort.toLocaleString()}</td><td class="${lc}">${row.longPct.toFixed(2)}%</td><td class="${sc2}">${row.shortPct.toFixed(2)}%</td><td class="${nc}">${row.netChg>0?"+":""}${row.netChg.toFixed(2)}%</td><td><span class="pos-highlight ${npc}">${row.netPos>0?"+":""}${fmtK(row.netPos)}</span></td><td>${fmtK(row.oi)}</td><td class="${doic}">${row.dOI>0?"+":""}${fmtK(row.dOI)}</td></tr>`;
   });
   tbl+=`</tbody></table></div>`;
-
-  const info=`<div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA — Latest Weekly Filing</span>
-  Published every Friday 3:30 PM EST. Reflects positions as of the prior Tuesday.
-  <strong style="color:var(--bull)">Tap any column header to sort.</strong>
-  Net Position in <span style="color:#4a90d9">blue = net long</span> · <span style="color:#e05c6a">red = net short</span>.</div>`;
-
-  document.getElementById("page-cot").innerHTML=chartHtml+tbl+info;
+  document.getElementById("page-cot").innerHTML=chartHtml+tbl+`<div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA</span>Published every Friday 3:30 PM EST. Tap column headers to sort. Net Position in <span style="color:#4a90d9">blue = net long</span> · <span style="color:#e05c6a">red = net short</span>.</div>`;
 }
-function sortCOT(col){
-  if(state.cotSort.col===col)state.cotSort.dir*=-1;
-  else{state.cotSort.col=col;state.cotSort.dir=-1;}
-  renderCOT();
-}
-function showTip(e,id,lp,sp){
-  const t=document.getElementById("tooltip");
-  t.innerHTML=`<strong style="color:var(--text)">${id}</strong><br><span style="color:#4a90d9">Long: ${lp.toFixed(2)}%</span><br><span style="color:#e05c6a">Short: ${sp.toFixed(2)}%</span>`;
-  t.style.display="block";t.style.left=(e.clientX+14)+"px";t.style.top=(e.clientY-10)+"px";
-}
+function sortCOT(col){if(state.cotSort.col===col)state.cotSort.dir*=-1;else{state.cotSort.col=col;state.cotSort.dir=-1;}renderCOT();}
+function showTip(e,id,lp,sp){const t=document.getElementById("tooltip");t.innerHTML=`<strong style="color:var(--text)">${id}</strong><br><span style="color:#4a90d9">Long: ${lp.toFixed(2)}%</span><br><span style="color:#e05c6a">Short: ${sp.toFixed(2)}%</span>`;t.style.display="block";t.style.left=(e.clientX+14)+"px";t.style.top=(e.clientY-10)+"px";}
 function hideTip(){document.getElementById("tooltip").style.display="none";}
 
 // ── SENTIMENT ─────────────────────────────────────────────────────────────────
 function renderSentiment(){
-  let html=`<div class="sectitle">Retail Sentiment — Contrarian Signal</div>
-  <div class="card"><div class="chd"><span class="ctitle">Retail Long vs Short %</span><span class="cbadge">HOURLY</span></div><div class="cbody">`;
-  SENT_DATA.forEach(row=>{
-    const sp=100-row.lp;const sig=row.lp>65?"⚡ CONTRARIAN SELL":row.lp<35?"⚡ CONTRARIAN BUY":"";
-    html+=`<div class="srow"><div class="spairn">${row.id}</div><div class="sbarw">
-      <div class="sbart"><div class="slong" style="width:${row.lp}%"></div><div class="sshort" style="width:${sp}%"></div></div>
-      <div class="spcts"><span style="color:var(--bull)">▲ ${row.lp}%</span>
-      ${sig?`<span style="color:var(--neutral);font-family:var(--mono);font-size:9px">${sig}</span>`:""}
-      <span style="color:var(--bear)">${sp}% ▼</span></div>
+  const subTabs=[
+    {id:"retail",     label:"📊 Retail Long/Short"},
+    {id:"smartmoney", label:"🏦 Smart Money vs Retail"},
+    {id:"putcall",    label:"📉 Put/Call Ratio"},
+    {id:"aaii",       label:"📋 AAII Survey"},
+    {id:"extremes",   label:"⚡ Sentiment Extremes"},
+  ];
+  let html=`<div class="sent-sub-tabs">${subTabs.map(t=>`<button class="sent-sub-tab${sentSubTab===t.id?" active":""}" onclick="setSentTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
+
+  // ── RETAIL LONG/SHORT (LIVE Myfxbook) ──
+  if(sentSubTab==="retail"){
+    const data=state.sentimentData;
+    const cats=["All","Forex","Commodity","Index","Crypto"];
+    // Determine category from name
+    function getCat(name){
+      if(["XAUUSD","XAGUSD","USOIL","UKOIL","COPPER"].includes(name))return"Commodity";
+      if(["US500","NAS100","US30","GER40","UK100"].includes(name))return"Index";
+      if(["BTCUSD","ETHUSD","LTCUSD"].includes(name))return"Crypto";
+      return"Forex";
+    }
+    const filtered=state.sentFilter==="All"?data:data.filter(r=>getCat(r.name)===state.sentFilter);
+    const strongSells=data.filter(r=>r.longPercentage>=75).length;
+    const sells=data.filter(r=>r.longPercentage>=65&&r.longPercentage<75).length;
+    const buys=data.filter(r=>r.longPercentage>25&&r.longPercentage<=35).length;
+    const strongBuys=data.filter(r=>r.longPercentage<=25).length;
+    const badge=state.sentimentLive?`<span class="cbadge-live">● LIVE · Myfxbook</span>`:`<span class="cbadge-demo">DEMO DATA — Add Myfxbook in Settings</span>`;
+
+    html+=`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Strong Sell</div>
+        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:var(--bear);margin:4px 0">${strongSells}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">75%+ retail long</div>
+      </div>
+      <div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.12);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Sell Signal</div>
+        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:#ff8fa0;margin:4px 0">${sells}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">65-75% retail long</div>
+      </div>
+      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.12);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Buy Signal</div>
+        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:#7effc4;margin:4px 0">${buys}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">25-35% retail long</div>
+      </div>
+      <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:12px;text-align:center">
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Strong Buy</div>
+        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:var(--bull);margin:4px 0">${strongBuys}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">Below 25% retail long</div>
+      </div>
+    </div>
+    <div class="filter-bar"><span class="filter-label">Filter:</span>${cats.map(c=>`<button class="filter-btn${state.sentFilter===c?" active":""}" onclick="setSentFilter('${c}')">${c}</button>`).join("")}</div>
+    <div class="card"><div class="chd"><span class="ctitle">Retail Positioning — ${filtered.length} Instruments</span>${badge}</div><div class="cbody">`;
+
+    if(state.sentimentLoading&&!state.sentimentLive){
+      html+=`<div class="lrow"><div class="spinner"></div><span>Fetching live data from Myfxbook...</span></div>`;
+    }else{
+      filtered.forEach(row=>{
+        const lp=row.longPercentage;
+        const sp=row.shortPercentage;
+        const sig=sentSignal(lp);
+        const totalVol=row.longVolume+row.shortVolume;
+        const volLabel=totalVol>50000?"Very High":totalVol>20000?"High":totalVol>5000?"Medium":"Low";
+        const volCol=totalVol>50000?"var(--bull)":totalVol>20000?"#7effc4":totalVol>5000?"var(--text)":"var(--muted)";
+        html+=`<div class="sent-row-big">
+          <div class="sent-pair-big">${row.name}</div>
+          <span class="sent-signal ${sig.cls}">${sig.label}</span>
+          <div class="sent-bar-big">
+            <div class="sent-track-big"><div class="sent-long-big" style="width:${lp}%"></div><div class="sent-short-big" style="width:${sp}%"></div></div>
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px">
+              <span style="color:var(--bull)">▲ ${lp.toFixed(1)}% Long (${fmtK(row.longPositions)} pos)</span>
+              <span style="color:var(--bear)">${sp.toFixed(1)}% Short (${fmtK(row.shortPositions)} pos) ▼</span>
+            </div>
+          </div>
+          <div class="sent-vol" style="color:${volCol}">${volLabel}</div>
+        </div>`;
+      });
+    }
+    html+=`</div></div>
+    <div class="infobox ib-yellow">
+      <span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC — SOURCE: Myfxbook Community Outlook</span>
+      When retail is 65%+ long → smart money likely short → <strong style="color:var(--bear)">SELL signal</strong>.<br>
+      When retail is 35% or less long → smart money likely long → <strong style="color:var(--bull)">BUY signal</strong>.<br>
+      70-80% of retail traders lose money. Trading against them gives a statistical edge.<br>
+      ${!state.sentimentLive?`<br><strong style="color:var(--neutral)">👆 Add Myfxbook credentials in ⚙ Settings to get live data updating every few hours.</strong>`:""}
+    </div>`;
+  }
+
+  // ── SMART MONEY vs RETAIL ──
+  else if(sentSubTab==="smartmoney"){
+    html+=`<div class="sectitle">Smart Money vs Retail — Divergence Analysis</div>
+    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: COT (Smart Money) vs Myfxbook (Retail)</span>
+    When Smart Money and Retail diverge by 20%+ it creates high probability contrarian trades.<br>
+    <strong style="color:var(--bull)">Green = Smart Money Bullish, Retail Bearish → BUY.</strong>
+    <strong style="color:var(--bear)">Red = Smart Money Bearish, Retail Bullish → SELL.</strong></div>
+    <div style="overflow-x:auto"><table class="smart-tbl">
+      <thead><tr><th>Asset</th><th>Retail Long %</th><th>Smart Money Long %</th><th>Gap</th><th>Signal</th></tr></thead><tbody>`;
+    SMART_MONEY.forEach(row=>{
+      const gap=row.institutionalLong-row.retailLong;
+      const gapCol=gap>0?"var(--bull)":gap<0?"var(--bear)":"var(--muted)";
+      const signal=gap>20?"⬆ STRONG BUY":gap>10?"⬆ BUY":gap<-20?"⬇ STRONG SELL":gap<-10?"⬇ SELL":"→ NEUTRAL";
+      const sigCol=gap>10?"var(--bull)":gap<-10?"var(--bear)":"var(--muted)";
+      const divLabel=Math.abs(gap)>20?"STRONG"+(gap>0?" BULL":" BEAR"):Math.abs(gap)>10?(gap>0?"BULL":"BEAR"):"NEUTRAL";
+      const divCls=Math.abs(gap)>10?(gap>0?"diverge-bull":"diverge-bear"):"diverge-neutral";
+      const rBar=`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="width:${row.retailLong}%;height:100%;background:var(--bear);border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--bear)">${row.retailLong}%</span></div>`;
+      const sBar=`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="width:${row.institutionalLong}%;height:100%;background:var(--bull);border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--bull)">${row.institutionalLong}%</span></div>`;
+      html+=`<tr><td>${row.id}</td><td>${rBar}</td><td>${sBar}</td><td style="color:${gapCol};font-family:var(--mono);font-weight:bold">${gap>0?"+":""}${gap}%</td><td style="color:${sigCol};font-family:var(--mono);font-weight:bold">${signal}</td></tr>`;
+    });
+    html+=`</tbody></table></div>`;
+  }
+
+  // ── PUT/CALL RATIO ──
+  else if(sentSubTab==="putcall"){
+    html+=`<div class="sectitle">Put/Call Ratio — Options Market Sentiment</div>
+    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: CBOE Options Data</span>
+    <strong style="color:var(--text)">Put</strong> = bearish bet. <strong style="color:var(--text)">Call</strong> = bullish bet.<br>
+    <strong style="color:var(--bull)">Below 0.7</strong> = extreme greed (contrarian sell). <strong style="color:var(--bear)">Above 1.2</strong> = extreme fear (contrarian buy).</div>
+    <div class="card"><div class="chd"><span class="ctitle">Put/Call Ratio — Options Market</span><span class="cbadge">DAILY · CBOE</span></div><div class="cbody">`;
+    PUT_CALL.forEach(row=>{
+      const sig=pcSignal(row.pc);
+      const barPct=Math.min(100,row.pc*50);
+      const barCol=row.pc>=1.2?"var(--bear)":row.pc<=0.7?"var(--bull)":"var(--neutral)";
+      html+=`<div class="pc-row"><div class="pc-asset">${row.id}</div><div class="pc-ratio" style="color:${sig.col}">${row.pc.toFixed(2)}</div><div class="pc-bar-wrap"><div class="pc-bar-track"><div class="pc-bar-fill" style="width:${barPct}%;background:${barCol}"></div></div><div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px">${row.meaning}</div></div><div class="pc-signal" style="color:${sig.col}">${sig.label}</div></div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  // ── AAII SURVEY ──
+  else if(sentSubTab==="aaii"){
+    const spreadCol=AAII.spread>10?"var(--bull)":AAII.spread<-10?"var(--bear)":"var(--neutral)";
+    html+=`<div class="sectitle">AAII Investor Sentiment Survey</div>
+    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: AAII.com — Published Every Thursday</span>
+    American Association of Individual Investors surveys members weekly on 6-month market outlook.<br>
+    Historical avg: <strong style="color:var(--bull)">38% Bullish</strong> · <strong style="color:var(--neutral)">31% Neutral</strong> · <strong style="color:var(--bear)">31% Bearish</strong>. Extreme readings = contrarian signal.</div>
+    <div class="aaii-wrap">
+      <div class="aaii-box" style="border-color:rgba(0,255,136,.3)"><div class="aaii-label">Bullish</div><div class="aaii-val" style="color:var(--bull)">${AAII.bullish.val}%</div><div class="aaii-hist">Historical avg: ${AAII.bullish.hist}%</div><div class="aaii-hist" style="color:${AAII.bullish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${AAII.bullish.change>0?"+":""}${AAII.bullish.change}%</div><div class="aaii-bar" style="background:var(--bull);width:${AAII.bullish.val}%"></div></div>
+      <div class="aaii-box" style="border-color:rgba(240,180,41,.3)"><div class="aaii-label">Neutral</div><div class="aaii-val" style="color:var(--neutral)">${AAII.neutral.val}%</div><div class="aaii-hist">Historical avg: ${AAII.neutral.hist}%</div><div class="aaii-hist" style="color:var(--muted);margin-top:2px">Week: ${AAII.neutral.change>0?"+":""}${AAII.neutral.change}%</div><div class="aaii-bar" style="background:var(--neutral);width:${AAII.neutral.val}%"></div></div>
+      <div class="aaii-box" style="border-color:rgba(255,59,92,.3)"><div class="aaii-label">Bearish</div><div class="aaii-val" style="color:var(--bear)">${AAII.bearish.val}%</div><div class="aaii-hist">Historical avg: ${AAII.bearish.hist}%</div><div class="aaii-hist" style="color:${AAII.bearish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${AAII.bearish.change>0?"+":""}${AAII.bearish.change}%</div><div class="aaii-bar" style="background:var(--bear);width:${AAII.bearish.val}%"></div></div>
+    </div>
+    <div class="card"><div class="chd"><span class="ctitle">Bull-Bear Spread</span><span class="cbadge">Week of ${AAII.week}</span></div><div class="cbody">
+      <div style="display:flex;flex-direction:column;align-items:center;padding:10px 0">
+        <div style="font-family:var(--mono);font-size:48px;font-weight:bold;color:${spreadCol}">${AAII.spread>0?"+":""}${AAII.spread}%</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--muted)">Bull - Bear Spread</div>
+        <div style="font-family:var(--mono);font-size:11px;margin-top:6px;color:${spreadCol}">${AAII.spread<-10?"EXCESSIVE BEARISH — Contrarian Bullish Signal":AAII.spread>10?"EXCESSIVE BULLISH — Contrarian Bearish Signal":"NEAR HISTORICAL AVERAGE"}</div>
+      </div>
+      <div style="height:8px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));border-radius:4px;margin:10px 0;position:relative">
+        <div style="position:absolute;width:4px;height:14px;background:white;border-radius:2px;top:-3px;transform:translateX(-50%);left:${Math.min(95,Math.max(5,50+AAII.spread))}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted)"><span style="color:var(--bear)">Bearish (-50%)</span><span>Neutral (0%)</span><span style="color:var(--bull)">Bullish (+50%)</span></div>
     </div></div>`;
-  });
-  html+=`</div></div><div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC</span>When 65%+ of retail is long, smart money is typically positioned the other way.</div>`;
+  }
+
+  // ── SENTIMENT EXTREMES ──
+  else if(sentSubTab==="extremes"){
+    html+=`<div class="sectitle">Sentiment Extremes — Highest Probability Setups</div>
+    <div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ ASSETS AT HISTORICAL EXTREMES</span>
+    The further from historical average, the stronger the contrarian signal. Always confirm with COT data.</div>
+    <div style="overflow-x:auto"><table class="extremes-tbl">
+      <thead><tr><th>Asset</th><th>Direction</th><th>Retail %</th><th>Hist Avg</th><th>Deviation</th><th>Signal</th><th>Strength</th></tr></thead><tbody>`;
+    EXTREMES.forEach(row=>{
+      const isBull=row.signal.includes("BUY");
+      const sigCol=isBull?"var(--bull)":"var(--bear)";
+      const devCol=row.deviation>0?"var(--bear)":"var(--bull)";
+      const strCol=row.strength==="Strong"?"var(--bull)":"var(--neutral)";
+      html+=`<tr>
+        <td style="font-weight:bold;color:${sigCol}">${row.id}</td>
+        <td><span style="font-family:var(--mono);font-size:10px;color:${row.direction.includes("LONG")?"var(--bear)":"var(--bull)"}">${row.direction}</span></td>
+        <td style="font-family:var(--mono);color:${row.retailPct>50?"var(--bear)":"var(--bull)"}">${row.retailPct}%</td>
+        <td style="font-family:var(--mono);color:var(--muted)">${row.historicalAvg}%</td>
+        <td style="font-family:var(--mono);color:${devCol}">${row.deviation>0?"+":""}${row.deviation}%</td>
+        <td style="font-family:var(--mono);font-weight:bold;color:${sigCol}">${row.signal}</td>
+        <td style="font-family:var(--mono);color:${strCol}">${row.strength}</td>
+      </tr>`;
+    });
+    html+=`</tbody></table></div>
+    <div class="infobox ib-green" style="margin-top:12px">
+      <span class="iblabel" style="color:var(--bull)">✅ HIGHEST PROBABILITY SETUP</span>
+      Best trades = ALL THREE align: <strong style="color:var(--text)">1.</strong> Retail at extreme (this tab) + <strong style="color:var(--text)">2.</strong> Smart Money opposite (Smart Money tab) + <strong style="color:var(--text)">3.</strong> COT confirms (COT tab).
+    </div>`;
+  }
+
   document.getElementById("page-sentiment").innerHTML=html;
 }
+function setSentTab(id){sentSubTab=id;renderSentiment();}
+function setSentFilter(f){state.sentFilter=f;renderSentiment();}
 
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
 function renderEcon(){
-  if(state.fredKey&&state.econLoading&&!state.econData){
-    document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Heatmap</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;
-  }
+  if(state.fredKey&&state.econLoading&&!state.econData){document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Heatmap</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;}
   const data=state.econData||FALLBACK_ECON;const isLive=state.econLive;
   let html=`<div class="sectitle">Economic Heatmap — Macro Fundamentals</div>`;
   if(!state.fredKey)html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA</span>Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → paste in ⚙ Settings.</div>`;
@@ -534,16 +775,14 @@ function renderEcon(){
 // ── CURRENCY ──────────────────────────────────────────────────────────────────
 function renderCurrency(){
   if(!state.cdata){document.getElementById("page-currency").innerHTML=`<div class="lrow"><div class="spinner"></div><span>Loading live rates...</span></div>`;return;}
-  let html=`<div class="sectitle">Currency Strength — Live Rates</div>
-  <div class="card"><div class="chd"><span class="ctitle">G8 Relative Strength</span><span class="cbadge-live">● LIVE · Frankfurter</span></div><div class="cbody">`;
+  let html=`<div class="sectitle">Currency Strength — Live Rates</div><div class="card"><div class="chd"><span class="ctitle">G8 Relative Strength</span><span class="cbadge-live">● LIVE · Frankfurter</span></div><div class="cbody">`;
   state.cdata.forEach((c,i)=>{const col=c.val>.05?"var(--bull)":c.val<-.05?"var(--bear)":"var(--neutral)";html+=`<div class="crow"><div class="crank">${i+1}</div><div class="ccode" style="color:${col}">${c.code}</div><div class="cname">${c.name}</div><div class="cbarw"><div class="cbart"><div class="cbarf" style="width:${c.pct}%;background:${col}"></div></div></div><div class="cval" style="color:${col}">${c.val>0?"+":""}${c.val.toFixed(3)}</div></div>`;});
   html+=`</div></div>`;document.getElementById("page-currency").innerHTML=html;
 }
 
-// ── CARRY TRADE ───────────────────────────────────────────────────────────────
+// ── CARRY ─────────────────────────────────────────────────────────────────────
 function renderCarry(){
-  let html=`<div class="sectitle">Carry Trade Scanner</div>
-  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div>
+  let html=`<div class="sectitle">Carry Trade Scanner</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div>
   <div class="card"><div class="chd"><span class="ctitle">Best Carry Opportunities</span><span class="cbadge">RANKED BY RATE DIFF</span></div><div class="cbody">`;
   CARRY_PAIRS.forEach(p=>{
     const col=p.score>=2?"var(--bull)":p.score>=1?"#7effc4":p.score<=0?"var(--bear)":"var(--neutral)";
@@ -582,8 +821,7 @@ function renderFearGreed(){
   </div></div>
   <div class="card"><div class="chd"><span class="ctitle">7-Day History</span>${badge}</div><div class="cbody">
     ${history.map(d=>{const v=parseInt(d.value);const c=fgColor(v);const dt=new Date(parseInt(d.timestamp)*1000).toLocaleDateString([],{month:"short",day:"numeric"});return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);width:50px;flex-shrink:0">${dt}</div><div style="flex:1;background:var(--bg4);border-radius:4px;overflow:hidden;height:26px"><div style="width:${v}%;height:100%;background:${c};border-radius:4px;display:flex;align-items:center;padding-left:8px"><span style="font-family:var(--mono);font-size:11px;font-weight:bold;color:#000">${v}</span></div></div><div style="font-family:var(--mono);font-size:9px;color:${c};width:80px;text-align:right;flex-shrink:0">${fgLabel(v)}</div></div>`;}).join("")}
-  </div></div>
-  <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE — Alternative.me</span>Measures: price volatility, market momentum, social media, Bitcoin dominance, Google Trends. <strong style="color:var(--bull)">Extreme Fear = possible buying opportunity.</strong> <strong style="color:var(--bear)">Extreme Greed = market may be overheated.</strong></div>`;
+  </div></div>`;
   document.getElementById("page-feargreed").innerHTML=html;
 }
 
@@ -593,10 +831,32 @@ function renderSettings(){
   <div class="sectitle">API Settings</div>
   <div class="apibox"><h3>🟢 ALREADY CONNECTED — NO KEY NEEDED</h3>
     <div class="infobox ib-green" style="margin-bottom:0">
-      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates for Currency Strength · Every 15 min<br>
-      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily (smart fallback if blocked)
+      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates for Currency Strength<br>
+      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily
     </div>
   </div>
+
+  <div class="apibox">
+    <h3>😊 MYFXBOOK — Live Retail Sentiment (Free)</h3>
+    <div class="key-status ${state.mfxEmail?"key-ok":"key-missing"}">${state.mfxEmail?"✅ Myfxbook connected — Retail sentiment is LIVE":"⚠ No credentials — Sentiment showing demo data"}</div>
+    <div style="font-size:11px;color:var(--muted);margin:10px 0;line-height:1.8">
+      1. Register free at <span style="color:var(--accent)">myfxbook.com</span><br>
+      2. Enter your email and password below<br>
+      3. Tap Save — live sentiment loads automatically ✅<br>
+      <span style="color:var(--neutral)">⚠ Credentials stored only on your device — never sent anywhere except Myfxbook.</span>
+    </div>
+    <div class="apirow">
+      <span class="apilbl">Email</span>
+      <input class="apiinp" id="mfx-email" type="email" placeholder="Your myfxbook.com email" value="${state.mfxEmail}"/>
+    </div>
+    <div class="apirow">
+      <span class="apilbl">Password</span>
+      <input class="apiinp" id="mfx-password" type="password" placeholder="Your myfxbook.com password" value="${state.mfxPassword}"/>
+    </div>
+    <button class="apibtn" onclick="saveMyfxbook()" style="margin-top:4px">💾 Save & Connect</button>
+    ${state.mfxEmail?`<button onclick="clearMyfxbook()" style="background:var(--bg4);color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-family:var(--mono);font-size:11px;cursor:pointer;margin-left:8px">Clear</button>`:""}
+  </div>
+
   <div class="apibox"><h3>🌡 FRED API — Live GDP, CPI, Rates (Free)</h3>
     <div class="key-status ${state.fredKey?"key-ok":"key-missing"}">${state.fredKey?"✅ FRED key saved — Economic data is LIVE":"⚠ No key — Economic showing demo data"}</div>
     <div class="apirow" style="margin-top:10px">
@@ -607,16 +867,36 @@ function renderSettings(){
     <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
       1. Go to <span style="color:var(--accent)">fred.stlouisfed.org</span><br>
       2. Click <strong style="color:var(--text)">My Account → API Keys → Request API Key</strong><br>
-      3. Copy key → paste above → tap Save ✅
+      3. Paste above → Save ✅
     </div>
   </div>
   <div class="apibox"><h3>📱 ADD TO HOME SCREEN</h3>
     <div style="font-size:11px;color:var(--muted);line-height:2.1">
       <strong style="color:var(--text)">Android Chrome</strong> → Tap ⋮ → "Add to Home screen"<br>
       <strong style="color:var(--text)">iPhone Safari</strong> → Tap Share → "Add to Home Screen"<br>
-      <span style="color:var(--bull)">✅ Opens full screen like a native app — free forever</span>
+      <span style="color:var(--bull)">✅ Opens full screen like a native app</span>
     </div>
   </div>`;
+}
+
+function saveMyfxbook(){
+  const email=document.getElementById("mfx-email").value.trim();
+  const password=document.getElementById("mfx-password").value.trim();
+  if(!email||!password){alert("Please enter both email and password");return;}
+  state.mfxEmail=email;state.mfxPassword=password;state.mfxSession="";
+  saveKey("mfx_email",email);saveKey("mfx_password",password);saveKey("mfx_session","");
+  state.sentimentLive=false;state.sentimentLoading=false;
+  renderSettings();
+  // Immediately try to fetch live data
+  loadMyfxbookData();
+  if(activeTab==="sentiment")renderSentiment();
+}
+function clearMyfxbook(){
+  state.mfxEmail="";state.mfxPassword="";state.mfxSession="";
+  saveKey("mfx_email","");saveKey("mfx_password","");saveKey("mfx_session","");
+  state.sentimentLive=false;state.sentimentData=FALLBACK_SENTIMENT;
+  renderSettings();
+  if(activeTab==="sentiment")renderSentiment();
 }
 function saveFREDKey(){const val=document.getElementById("fred-input").value.trim();if(!val)return;state.fredKey=val;saveKey("fred",val);state.econData=null;state.econLive=false;state.econLoading=false;renderSettings();loadFREDData();if(activeTab==="econ")renderEcon();}
 
