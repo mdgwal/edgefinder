@@ -179,6 +179,24 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .key-missing{background:rgba(240,180,41,.08);color:var(--neutral);border:1px solid rgba(240,180,41,.2);}
 .econ-loading{display:flex;align-items:center;gap:8px;padding:30px;color:var(--muted);font-family:var(--mono);font-size:11px;justify-content:center;}
 .tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text);pointer-events:none;z-index:999;display:none;}
+
+/* ── ECONOMIC SURPRISE METER ── */
+.eco-sub-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
+.eco-sub-tab{font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
+.eco-sub-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.gauge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
+@media(max-width:600px){.gauge-grid{grid-template-columns:repeat(2,1fr);}}
+.gauge-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s;}
+.gauge-wrap:hover{border-color:var(--accent);}
+.gauge-label{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:10px;}
+.gauge-svg{width:120px;height:70px;}
+.gauge-pct{font-family:var(--mono);font-size:18px;font-weight:bold;margin-top:6px;}
+.gauge-status{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
+.global-gauge-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;gap:24px;margin-bottom:16px;flex-wrap:wrap;}
+.global-gauge-info{flex:1;min-width:200px;}
+.global-gauge-title{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:8px;}
+.global-gauge-desc{font-size:12px;color:var(--muted);line-height:1.6;}
+
 </style>
 </head>
 <body>
@@ -223,6 +241,7 @@ const TABS_DEF=[
 ];
 let activeTab="setups";
 let sentSubTab="retail";
+let ecoSubTab="meter";
 
 // ── FALLBACK SENTIMENT DATA ───────────────────────────────────────────────────
 const FALLBACK_SENTIMENT=[
@@ -745,25 +764,155 @@ function setSentTab(id){sentSubTab=id;renderSentiment();}
 function setSentFilter(f){state.sentFilter=f;renderSentiment();}
 
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
+// ── ECONOMIC SURPRISE SCORES (Beat/Miss from FALLBACK_ECON) ─────────────────
+// Score = avg surprise across all indicators for that currency
+// Each indicator s: +0.5 strong beat, +0.2 mild beat, 0 in line, -0.2 mild miss, -0.5 strong miss
+// Normalised to 0-100 for gauge display
+const ECO_SURPRISE={
+  USD:{score:60, indicators:[{n:"GDP",s:.3},{n:"CPI",s:-.1},{n:"NFP",s:.8},{n:"Rate",s:0}]},
+  GBP:{score:57, indicators:[{n:"GDP",s:.2},{n:"CPI",s:-.3},{n:"Unemploy",s:-.1},{n:"Rate",s:0}]},
+  EUR:{score:50, indicators:[{n:"GDP",s:-.2},{n:"CPI",s:-.4},{n:"Unemploy",s:.1},{n:"Rate",s:0}]},
+  JPY:{score:56, indicators:[{n:"GDP",s:-.5},{n:"CPI",s:.2},{n:"Tankan",s:.4},{n:"Rate",s:.1}]},
+  NZD:{score:60, indicators:[{n:"GDP",s:.1},{n:"CPI",s:-.1},{n:"Trade",s:.3},{n:"Rate",s:0}]},
+  CAD:{score:88, indicators:[{n:"GDP",s:.8},{n:"CPI",s:.5},{n:"Employ",s:.7},{n:"Rate",s:0}]},
+  AUD:{score:71, indicators:[{n:"GDP",s:.4},{n:"CPI",s:.2},{n:"Employ",s:.5},{n:"Rate",s:0}]},
+  CHF:{score:50, indicators:[{n:"GDP",s:0},{n:"CPI",s:-.2},{n:"Employ",s:.1},{n:"Rate",s:0}]},
+};
+
+function makeGaugeSVG(score, size){
+  // score 0-100, semicircle gauge like Nick's
+  const cx=60,cy=60,r=45;
+  // Gauge arc: from 180deg to 0deg (left to right)
+  // needle rotates from -90 (left=0%) to +90 (right=100%)
+  const angle = -90 + (score/100)*180; // degrees
+  const rad = angle * Math.PI/180;
+  const nx = cx + r*0.75*Math.cos(rad);
+  const ny = cy + r*0.75*Math.sin(rad);
+  // Color zones
+  const col = score>=70?"#00ff88":score>=45?"#f0b429":"#ff3b5c";
+  // Arc path — red zone left, yellow middle, green right
+  return `<svg viewBox="0 0 120 65" class="gauge-svg">
+    <!-- Background track -->
+    <path d="M 15 60 A 45 45 0 0 1 105 60" fill="none" stroke="#1c2330" stroke-width="10" stroke-linecap="round"/>
+    <!-- Red zone 0-40% -->
+    <path d="M 15 60 A 45 45 0 0 1 ${60+45*Math.cos(((-90+(0.4*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.4*180))*Math.PI/180))}" fill="none" stroke="rgba(255,59,92,.4)" stroke-width="10" stroke-linecap="round"/>
+    <!-- Yellow zone 40-60% -->
+    <path d="M ${60+45*Math.cos(((-90+(0.4*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.4*180))*Math.PI/180))} A 45 45 0 0 1 ${60+45*Math.cos(((-90+(0.6*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.6*180))*Math.PI/180))}" fill="none" stroke="rgba(240,180,41,.4)" stroke-width="10" stroke-linecap="round"/>
+    <!-- Green zone 60-100% -->
+    <path d="M ${60+45*Math.cos(((-90+(0.6*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.6*180))*Math.PI/180))} A 45 45 0 0 1 105 60" fill="none" stroke="rgba(0,255,136,.4)" stroke-width="10" stroke-linecap="round"/>
+    <!-- Needle -->
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
+    <!-- Center dot -->
+    <circle cx="${cx}" cy="${cy}" r="4" fill="${col}"/>
+    <!-- Scale marks -->
+    <text x="12" y="68" fill="#8b949e" font-size="7" font-family="monospace">0</text>
+    <text x="55" y="18" fill="#8b949e" font-size="7" font-family="monospace">50</text>
+    <text x="100" y="68" fill="#8b949e" font-size="7" font-family="monospace">100</text>
+  </svg>`;
+}
+
 function renderEcon(){
-  if(state.fredKey&&state.econLoading&&!state.econData){document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Heatmap</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;}
-  const data=state.econData||FALLBACK_ECON;const isLive=state.econLive;
-  let html=`<div class="sectitle">Economic Heatmap — Macro Fundamentals</div>`;
-  if(!state.fredKey)html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA</span>Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → paste in ⚙ Settings.</div>`;
-  for(const[cur,items]of Object.entries(data)){
-    const badge=isLive?`<span class="cbadge-live">● LIVE · FRED</span>`:`<span class="cbadge-demo">DEMO DATA</span>`;
-    html+=`<div class="card"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur}</span>${badge}</div><div class="hgrid">`;
-    items.forEach(i=>{
-      const bg=i.s>.3?"rgba(0,255,136,.15)":i.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
-      const br=i.s>.3?"1px solid rgba(0,255,136,.2)":i.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
-      const lbl=i.s>.3?"▲ Beat":i.s<-.3?"▼ Miss":"→ In Line";
-      const lc=i.s>.3?"var(--bull)":i.s<-.3?"var(--bear)":"var(--muted)";
-      html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${i.l}</div><div class="hval">${i.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${i.d?`<div class="hdate">${i.d}</div>`:""}</div>`;
-    });
-    html+=`</div></div>`;
+  if(state.fredKey&&state.econLoading&&!state.econData){
+    document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Data</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;
   }
+
+  const econSubTabs=[
+    {id:"meter",  label:"🎯 Surprise Meter"},
+    {id:"heatmap",label:"🌡 Heatmap"},
+  ];
+
+  let html=`<div class="eco-sub-tabs">${econSubTabs.map(t=>`<button class="eco-sub-tab${ecoSubTab===t.id?" active":""}" onclick="setEcoTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
+
+  // ── SURPRISE METER ──
+  if(ecoSubTab==="meter"){
+    const scores=Object.entries(ECO_SURPRISE);
+    const avg=Math.round(scores.reduce((a,[,v])=>a+v.score,0)/scores.length);
+    const avgCol=avg>=70?"var(--bull)":avg>=45?"var(--neutral)":"var(--bear)";
+
+    html+=`
+    <div class="infobox ib-blue" style="margin-bottom:14px">
+      <span class="iblabel" style="color:var(--accent)">ℹ ECONOMIC SURPRISE METER</span>
+      Shows how economic data for each currency has performed <strong style="color:var(--text)">relative to expectations</strong>.
+      A higher score means more data has been <strong style="color:var(--bull)">beating forecasts</strong>.
+      A lower score means more data has been <strong style="color:var(--bear)">missing forecasts</strong>.
+    </div>
+
+    <!-- INDIVIDUAL CURRENCY GAUGES -->
+    <div class="sectitle">Currency Economic Surprise Scores</div>
+    <div class="gauge-grid">`;
+
+    scores.forEach(([cur,data])=>{
+      const col=data.score>=70?"var(--bull)":data.score>=45?"var(--neutral)":"var(--bear)";
+      const status=data.score>=70?"Strong":data.score>=55?"Above Avg":data.score>=45?"Average":data.score>=30?"Below Avg":"Weak";
+      html+=`<div class="gauge-wrap">
+        <div class="gauge-label">${FLAGS[cur]||""} ${cur}</div>
+        ${makeGaugeSVG(data.score)}
+        <div class="gauge-pct" style="color:${col}">${data.score}%</div>
+        <div class="gauge-status">${status}</div>
+      </div>`;
+    });
+
+    html+=`</div>
+
+    <!-- GLOBAL AVERAGE GAUGE -->
+    <div class="sectitle">Global Economic Surprise Score</div>
+    <div class="global-gauge-wrap">
+      <div style="display:flex;flex-direction:column;align-items:center">
+        ${makeGaugeSVG(avg)}
+        <div style="font-family:var(--mono);font-size:28px;font-weight:bold;color:${avgCol};margin-top:4px">${avg}%</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">AVG ALL CURRENCIES</div>
+      </div>
+      <div class="global-gauge-info">
+        <div class="global-gauge-title">Global Economic Surprise Score: ${avg}%</div>
+        <div class="global-gauge-desc">
+          This gauge reflects the average economic outperformance or underperformance across the eight major currencies.
+          A higher score indicates a more robust global economic outlook.<br><br>
+          <strong style="color:${avg>=60?"var(--bull)":avg>=45?"var(--neutral)":"var(--bear)"}">${avg>=70?"🟢 Global economy broadly beating expectations":avg>=55?"🟡 Global economy slightly above expectations":avg>=45?"⚪ Global economy in line with expectations":"🔴 Global economy broadly missing expectations"}</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- INDICATOR BREAKDOWN -->
+    <div class="sectitle">Indicator Breakdown by Currency</div>`;
+
+    scores.forEach(([cur,data])=>{
+      const col=data.score>=70?"var(--bull)":data.score>=45?"var(--neutral)":"var(--bear)";
+      html+=`<div class="card" style="margin-bottom:10px">
+        <div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur} — ${data.score}%</span><span class="cbadge" style="color:${col}">${data.score>=70?"STRONG":data.score>=45?"AVERAGE":"WEAK"}</span></div>
+        <div class="cbody" style="display:flex;gap:10px;flex-wrap:wrap">`;
+      data.indicators.forEach(ind=>{
+        const ic=ind.s>=.4?"var(--bull)":ind.s>=.1?"#7effc4":ind.s<=-.4?"var(--bear)":ind.s<=-.1?"#ff8fa0":"var(--muted)";
+        const il=ind.s>=.4?"▲▲ Strong Beat":ind.s>=.1?"▲ Beat":ind.s<=-.4?"▼▼ Strong Miss":ind.s<=-.1?"▼ Miss":"→ In Line";
+        html+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:80px;text-align:center">
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${ind.n}</div>
+          <div style="font-family:var(--mono);font-size:11px;color:${ic};margin-top:3px">${il}</div>
+        </div>`;
+      });
+      html+=`</div></div>`;
+    });
+  }
+
+  // ── HEATMAP ──
+  else if(ecoSubTab==="heatmap"){
+    const data2=state.econData||FALLBACK_ECON;const isLive=state.econLive;
+    if(!state.fredKey)html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA</span>Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → paste in ⚙ Settings.</div>`;
+    for(const[cur,items]of Object.entries(data2)){
+      const badge=isLive?`<span class="cbadge-live">● LIVE · FRED</span>`:`<span class="cbadge-demo">DEMO DATA</span>`;
+      html+=`<div class="card"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur}</span>${badge}</div><div class="hgrid">`;
+      items.forEach(i=>{
+        const bg=i.s>.3?"rgba(0,255,136,.15)":i.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
+        const br=i.s>.3?"1px solid rgba(0,255,136,.2)":i.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
+        const lbl=i.s>.3?"▲ Beat":i.s<-.3?"▼ Miss":"→ In Line";
+        const lc=i.s>.3?"var(--bull)":i.s<-.3?"var(--bear)":"var(--muted)";
+        html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${i.l}</div><div class="hval">${i.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${i.d?`<div class="hdate">${i.d}</div>`:""}</div>`;
+      });
+      html+=`</div></div>`;
+    }
+  }
+
   document.getElementById("page-econ").innerHTML=html;
 }
+function setEcoTab(id){ecoSubTab=id;renderEcon();}
 
 // ── CURRENCY ──────────────────────────────────────────────────────────────────
 function renderCurrency(){
