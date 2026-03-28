@@ -412,48 +412,41 @@ function pcSignal(pc){
   return{label:"EXTREME GREED",col:"var(--bull)"};
 }
 
-// ── MYFXBOOK API ──────────────────────────────────────────────────────────────
-// Myfxbook Community Outlook API — free, requires account login
+// ── MYFXBOOK API — multi-proxy fallback ──────────────────────────────────────
+const PROXIES=[
+  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+];
+async function proxyFetch(targetUrl){
+  for(const makeProxy of PROXIES){
+    try{
+      const r=await fetch(makeProxy(targetUrl));
+      if(!r.ok)continue;
+      const text=await r.text();
+      try{const outer=JSON.parse(text);if(outer.contents)return JSON.parse(outer.contents);return outer;}
+      catch(e){return JSON.parse(text);}
+    }catch(e){continue;}
+  }
+  throw new Error("All proxies failed");
+}
 async function myfxLogin(email,password){
-  // Use a CORS proxy since Myfxbook doesn't have CORS headers
-  const url=`https://corsproxy.io/?https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-  const r=await fetch(url);
-  if(!r.ok)throw new Error("Login failed");
-  const d=await r.json();
+  const d=await proxyFetch(`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
   if(d.error)throw new Error(d.message||"Login error");
   return d.session;
 }
-
 async function myfxGetOutlook(session){
-  const url=`https://corsproxy.io/?https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`;
-  const r=await fetch(url);
-  if(!r.ok)throw new Error("Outlook fetch failed");
-  const d=await r.json();
+  const d=await proxyFetch(`https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`);
   if(d.error)throw new Error(d.message||"Session expired");
   return d.symbols;
 }
-
 async function fetchMyfxbookSentiment(){
-  if(!state.mfxEmail||!state.mfxPassword){
-    throw new Error("No Myfxbook credentials");
-  }
-  // Try existing session first
+  if(!state.mfxEmail||!state.mfxPassword)throw new Error("No credentials");
   let session=state.mfxSession;
-  try{
-    if(session){
-      const symbols=await myfxGetOutlook(session);
-      return symbols;
-    }
-  }catch(e){
-    // Session expired, re-login
-    session=null;
-  }
-  // Login to get new session
+  if(session){try{return await myfxGetOutlook(session);}catch(e){session=null;}}
   session=await myfxLogin(state.mfxEmail,state.mfxPassword);
-  state.mfxSession=session;
-  saveKey("mfx_session",session);
-  const symbols=await myfxGetOutlook(session);
-  return symbols;
+  state.mfxSession=session;saveKey("mfx_session",session);
+  return await myfxGetOutlook(session);
 }
 
 function loadMyfxbookData(){
