@@ -184,13 +184,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .eco-sub-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .eco-sub-tab{font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
 .eco-sub-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
-.gauge-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px;}
-@media(max-width:600px){.gauge-grid{grid-template-columns:repeat(2,1fr);}}
-.gauge-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:border-color .2s;}
-.gauge-wrap:hover{border-color:var(--accent);}
-.gauge-label{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:10px;}
-.gauge-svg{width:120px;height:70px;}
-.gauge-pct{font-family:var(--mono);font-size:18px;font-weight:bold;margin-top:6px;}
+.gauge-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px;}
+@media(min-width:600px){.gauge-grid{grid-template-columns:repeat(4,1fr);}}
+.gauge-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 10px 12px;display:flex;flex-direction:column;align-items:center;}
+.gauge-label{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:8px;}
+.gauge-pct{font-family:var(--mono);font-size:20px;font-weight:bold;margin-top:4px;}
 .gauge-status{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;}
 .global-gauge-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;align-items:center;gap:24px;margin-bottom:16px;flex-wrap:wrap;}
 .global-gauge-info{flex:1;min-width:200px;}
@@ -471,8 +469,16 @@ async function fetchMyfxbookSentiment(){
 function loadMyfxbookData(){
   if(!state.mfxEmail||!state.mfxPassword||state.sentimentLoading)return;
   state.sentimentLoading=true;
+  // ✅ Always show demo data immediately while fetching — never blank
+  if(activeTab==="sentiment")renderSentiment();
+  // Set a hard 15s timeout — if all proxies fail, show demo data
+  const timeout=setTimeout(()=>{
+    state.sentimentLoading=false;
+    state.sentimentLive=false;
+    if(activeTab==="sentiment")renderSentiment();
+  },15000);
   fetchMyfxbookSentiment().then(symbols=>{
-    // Map Myfxbook response to our format
+    clearTimeout(timeout);
     state.sentimentData=symbols.map(s=>({
       name:s.name,
       longPercentage:parseFloat(s.longPercentage),
@@ -486,9 +492,12 @@ function loadMyfxbookData(){
     state.sentimentLoading=false;
     if(activeTab==="sentiment")renderSentiment();
   }).catch(e=>{
+    clearTimeout(timeout);
     console.log("Myfxbook error:",e.message);
     state.sentimentLoading=false;
-    // Keep using fallback data — no error shown to user
+    state.sentimentLive=false;
+    // Show demo data — no blank screen
+    if(activeTab==="sentiment")renderSentiment();
   });
 }
 
@@ -632,8 +641,10 @@ function renderSentiment(){
     <div class="card"><div class="chd"><span class="ctitle">Retail Positioning — ${filtered.length} Instruments</span>${badge}</div><div class="cbody">`;
 
     if(state.sentimentLoading&&!state.sentimentLive){
-      html+=`<div class="lrow"><div class="spinner"></div><span>Fetching live data from Myfxbook...</span></div>`;
-    }else{
+      // Show demo data with loading indicator — not a blank spinner
+      html+=`<div class="lrow" style="margin-bottom:10px"><div class="spinner"></div><span style="color:var(--accent)">Connecting to Myfxbook... showing demo data meanwhile</span></div>`;
+    }
+    if(true){
       filtered.forEach(row=>{
         const lp=row.longPercentage;
         const sp=row.shortPercentage;
@@ -779,35 +790,51 @@ const ECO_SURPRISE={
   CHF:{score:50, indicators:[{n:"GDP",s:0},{n:"CPI",s:-.2},{n:"Employ",s:.1},{n:"Rate",s:0}]},
 };
 
-function makeGaugeSVG(score, size){
-  // score 0-100, semicircle gauge like Nick's
-  const cx=60,cy=60,r=45;
-  // Gauge arc: from 180deg to 0deg (left to right)
-  // needle rotates from -90 (left=0%) to +90 (right=100%)
-  const angle = -90 + (score/100)*180; // degrees
-  const rad = angle * Math.PI/180;
-  const nx = cx + r*0.75*Math.cos(rad);
-  const ny = cy + r*0.75*Math.sin(rad);
-  // Color zones
+function makeGaugeSVG(score){
+  // Proper semicircle gauge: 180deg arc from left to right
+  // cx=60, cy=62, r=44
+  // Start point (0%):  left  = (16, 62)
+  // End point (100%):  right = (104,62)
+  // Angles: 0% = 180deg, 100% = 0deg (going counterclockwise for sweep=1)
+  const cx=60, cy=62, r=44;
+
+  function ptAt(pct){
+    const a = Math.PI - (pct/100)*Math.PI; // 180deg -> 0deg
+    return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
+  }
+
+  const [x40a,y40a]=ptAt(40);
+  const [x60a,y60a]=ptAt(60);
+  const [x100,y100]=ptAt(100);
+  const [x0, y0] =ptAt(0);
+  const [nx,  ny] =ptAt(score);
   const col = score>=70?"#00ff88":score>=45?"#f0b429":"#ff3b5c";
-  // Arc path — red zone left, yellow middle, green right
-  return `<svg viewBox="0 0 120 65" class="gauge-svg">
-    <!-- Background track -->
-    <path d="M 15 60 A 45 45 0 0 1 105 60" fill="none" stroke="#1c2330" stroke-width="10" stroke-linecap="round"/>
+
+  return `<svg viewBox="0 0 120 68" style="width:130px;height:75px">
+    <!-- BG track -->
+    <path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}"
+      fill="none" stroke="#1c2330" stroke-width="11" stroke-linecap="butt"/>
     <!-- Red zone 0-40% -->
-    <path d="M 15 60 A 45 45 0 0 1 ${60+45*Math.cos(((-90+(0.4*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.4*180))*Math.PI/180))}" fill="none" stroke="rgba(255,59,92,.4)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x40a.toFixed(1)} ${y40a.toFixed(1)}"
+      fill="none" stroke="rgba(255,59,92,.55)" stroke-width="11" stroke-linecap="butt"/>
     <!-- Yellow zone 40-60% -->
-    <path d="M ${60+45*Math.cos(((-90+(0.4*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.4*180))*Math.PI/180))} A 45 45 0 0 1 ${60+45*Math.cos(((-90+(0.6*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.6*180))*Math.PI/180))}" fill="none" stroke="rgba(240,180,41,.4)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M ${x40a.toFixed(1)} ${y40a.toFixed(1)} A ${r} ${r} 0 0 1 ${x60a.toFixed(1)} ${y60a.toFixed(1)}"
+      fill="none" stroke="rgba(240,180,41,.55)" stroke-width="11" stroke-linecap="butt"/>
     <!-- Green zone 60-100% -->
-    <path d="M ${60+45*Math.cos(((-90+(0.6*180))*Math.PI/180))} ${60+45*Math.sin(((-90+(0.6*180))*Math.PI/180))} A 45 45 0 0 1 105 60" fill="none" stroke="rgba(0,255,136,.4)" stroke-width="10" stroke-linecap="round"/>
+    <path d="M ${x60a.toFixed(1)} ${y60a.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}"
+      fill="none" stroke="rgba(0,255,136,.55)" stroke-width="11" stroke-linecap="butt"/>
+    <!-- Needle shadow -->
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
+      stroke="rgba(0,0,0,.4)" stroke-width="4" stroke-linecap="round"/>
     <!-- Needle -->
-    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
-    <!-- Center dot -->
-    <circle cx="${cx}" cy="${cy}" r="4" fill="${col}"/>
-    <!-- Scale marks -->
-    <text x="12" y="68" fill="#8b949e" font-size="7" font-family="monospace">0</text>
-    <text x="55" y="18" fill="#8b949e" font-size="7" font-family="monospace">50</text>
-    <text x="100" y="68" fill="#8b949e" font-size="7" font-family="monospace">100</text>
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
+      stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Center hub -->
+    <circle cx="${cx}" cy="${cy}" r="5" fill="#0d1117" stroke="${col}" stroke-width="2"/>
+    <!-- Labels -->
+    <text x="11" y="67" fill="#8b949e" font-size="8" font-family="monospace">0</text>
+    <text x="53" y="16" fill="#8b949e" font-size="8" font-family="monospace">50</text>
+    <text x="99" y="67" fill="#8b949e" font-size="8" font-family="monospace">100</text>
   </svg>`;
 }
 
