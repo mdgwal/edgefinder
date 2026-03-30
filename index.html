@@ -405,6 +405,8 @@ let state={
   sentimentLoading:false,
   filterCat:"All",cotSort:{col:"netChg",dir:-1},
   sentFilter:"All",
+  // COT live data from CFTC
+  cotData:null,cotLive:false,cotLoading:false,cotLastUpdate:null,
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -414,6 +416,159 @@ function totalColor(t){if(t>=8)return"var(--bull)";if(t>=4)return"#7effc4";if(t<
 function fgColor(v){if(v>=75)return"var(--bull)";if(v>=55)return"#7effc4";if(v>=45)return"var(--neutral)";if(v>=25)return"#ff8fa0";return"var(--bear)";}
 function fgLabel(v){if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";if(v>=45)return"NEUTRAL";if(v>=25)return"FEAR";return"EXTREME FEAR";}
 function fmtK(n){if(Math.abs(n)>=1000000)return(n/1000000).toFixed(2)+"M";if(Math.abs(n)>=1000)return(n/1000).toFixed(0)+"K";return String(n);}
+
+// ── CFTC COT LIVE FETCH ────────────────────────────────────────────────────────
+// CFTC publishes FinFutWk.txt every Friday ~3:30 PM EST
+// Contains non-commercial (speculative/smart money) positions for all futures
+const CFTC_URL="https://www.cftc.gov/files/dea/newcot/FinFutWk.txt";
+
+// Map CFTC market names → our asset IDs
+const CFTC_MAP={
+  "EURO FX":                        {id:"EUR",  name:"Euro"},
+  "BRITISH POUND STERLING":         {id:"GBP",  name:"British Pound"},
+  "JAPANESE YEN":                   {id:"JPY",  name:"Japanese Yen"},
+  "AUSTRALIAN DOLLAR":              {id:"AUD",  name:"Australian Dollar"},
+  "CANADIAN DOLLAR":                {id:"CAD",  name:"Canadian Dollar"},
+  "SWISS FRANC":                    {id:"CHF",  name:"Swiss Franc"},
+  "NEW ZEALAND DOLLAR":             {id:"NZD",  name:"New Zealand Dollar"},
+  "U.S. DOLLAR INDEX":              {id:"USD",  name:"US Dollar Index"},
+  "GOLD":                           {id:"Gold", name:"Gold"},
+  "SILVER":                         {id:"SILVER",name:"Silver"},
+  "CRUDE OIL, LIGHT SWEET":         {id:"USOIL",name:"Crude Oil"},
+  "BITCOIN":                        {id:"BTC",  name:"Bitcoin"},
+  "NASDAQ-100 MINI":                {id:"NASDAQ",name:"NASDAQ-100"},
+  "S&P 500 MINI":                   {id:"SPX",  name:"S&P 500"},
+  "DOW JONES INDUSTRIAL AVG":       {id:"DOW",  name:"Dow Jones"},
+  "10-YEAR U.S. TREASURY NOTES":    {id:"US10T",name:"US 10Y T-Note"},
+  "COPPER-GRADE #1":                {id:"COPPER",name:"Copper"},
+  "PLATINUM":                       {id:"PLATINUM",name:"Platinum"},
+};
+
+function parseCFTCcsv(csvText){
+  const lines=csvText.trim().split("\n");
+  const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
+  // Column indices
+  const iName   = header.findIndex(h=>h.includes("Market_and_Exchange"));
+  const iDate   = header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
+  const iOI     = header.findIndex(h=>h==="Open_Interest_All");
+  const iLong   = header.findIndex(h=>h==="NonComm_Positions_Long_All");
+  const iShort  = header.findIndex(h=>h==="NonComm_Positions_Short_All");
+  const iLongOld= header.findIndex(h=>h==="NonComm_Positions_Long_Old")||iLong;
+  const iShortOld=header.findIndex(h=>h==="NonComm_Positions_Short_Old")||iShort;
+
+  const results=[];
+  // We need previous week too — grab last 2 entries per market
+  const seen={};
+
+  for(let i=1;i<lines.length;i++){
+    // Parse CSV line handling quoted fields
+    const cols=[];let cur="",inQ=false;
+    for(const ch of lines[i]){
+      if(ch==='"'){inQ=!inQ;}
+      else if(ch===","&&!inQ){cols.push(cur.trim());cur="";}
+      else cur+=ch;
+    }
+    cols.push(cur.trim());
+    if(cols.length<10)continue;
+
+    const rawName=(cols[iName]||"").replace(/"/g,"").trim();
+    // Find matching CFTC_MAP key
+    let matched=null;
+    for(const key of Object.keys(CFTC_MAP)){
+      if(rawName.toUpperCase().includes(key.toUpperCase())){matched=key;break;}
+    }
+    if(!matched)continue;
+
+    const id=CFTC_MAP[matched].id;
+    const longC=parseInt(cols[iLong])||0;
+    const shortC=parseInt(cols[iShort])||0;
+    const oi=parseInt(cols[iOI])||0;
+    const date=(cols[iDate]||"").replace(/"/g,"");
+
+    if(!seen[id]){
+      // First occurrence = latest week
+      seen[id]={first:{longC,shortC,oi,date}};
+    }else if(!seen[id].second){
+      // Second occurrence = previous week
+      seen[id].second={longC,shortC};
+    }
+  }
+
+  // Build final COT rows
+  const rows=[];
+  for(const [key,info] of Object.entries(CFTC_MAP)){
+    const s=seen[info.id];
+    if(!s||!s.first)continue;
+    const {longC,shortC,oi,date}=s.first;
+    const total=longC+shortC;
+    if(total===0)continue;
+    const longPct=parseFloat(((longC/total)*100).toFixed(2));
+    const shortPct=parseFloat(((shortC/total)*100).toFixed(2));
+    const netPos=longC-shortC;
+    // Change vs previous week
+    let dLong=0,dShort=0,netChg=0;
+    if(s.second){
+      dLong=longC-s.second.longC;
+      dShort=shortC-s.second.shortC;
+      const prevTotal=s.second.longC+s.second.shortC;
+      const prevLongPct=prevTotal>0?(s.second.longC/prevTotal)*100:50;
+      netChg=parseFloat((longPct-prevLongPct).toFixed(2));
+    }
+    rows.push({
+      id:info.id, name:info.name,
+      longC,shortC,dLong,dShort,
+      longPct,shortPct,netChg,
+      netPos,oi,dOI:0,date,
+    });
+  }
+  // Sort by netChg desc (same as default)
+  return rows.sort((a,b)=>b.netChg-a.netChg);
+}
+
+async function fetchCFTCData(){
+  const proxies=[
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+  for(const makeProxy of proxies){
+    try{
+      const r=await fetch(makeProxy(CFTC_URL));
+      if(!r.ok)continue;
+      const text=await r.text();
+      // allorigins wraps in {contents:"..."}
+      let csv=text;
+      try{const j=JSON.parse(text);if(j.contents)csv=j.contents;}catch(e){}
+      if(!csv||csv.length<1000)continue;
+      const rows=parseCFTCcsv(csv);
+      if(rows.length>0)return rows;
+    }catch(e){continue;}
+  }
+  throw new Error("CFTC fetch failed");
+}
+
+function loadCOTData(){
+  if(state.cotLoading)return;
+  // Only re-fetch if we don't have data or data is older than 12 hours
+  if(state.cotData&&state.cotLastUpdate){
+    const age=(Date.now()-state.cotLastUpdate)/1000/60/60;
+    if(age<12)return; // Fresh enough
+  }
+  state.cotLoading=true;
+  fetchCFTCData().then(rows=>{
+    state.cotData=rows;
+    state.cotLive=true;
+    state.cotLoading=false;
+    state.cotLastUpdate=Date.now();
+    if(activeTab==="cot")renderCOT();
+  }).catch(e=>{
+    console.log("CFTC COT fetch failed:",e.message);
+    state.cotLoading=false;
+    state.cotLive=false;
+    // Keep using hardcoded fallback
+  });
+}
+
 function sentSignal(lp){
   if(lp>=75)return{label:"STRONG SELL",cls:"sig-strong-sell"};
   if(lp>=65)return{label:"SELL",cls:"sig-sell"};
@@ -519,6 +674,7 @@ async function refreshAll(){
   if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
   state.cdata=buildStrength(state.rates);
   // Load live sentiment from Myfxbook
+  loadCOTData();
   loadMyfxbookData();
   if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
   const now=new Date();
@@ -554,18 +710,47 @@ function setFilter(cat){state.filterCat=cat;renderSetups();}
 
 // ── COT ───────────────────────────────────────────────────────────────────────
 function renderCOT(){
-  const sorted=[...COT_DATA].sort((a,b)=>{if(state.cotSort.col==="id")return a.id.localeCompare(b.id)*state.cotSort.dir;return(b[state.cotSort.col]-a[state.cotSort.col])*state.cotSort.dir;});
+  // ✅ Use live CFTC data if available, fall back to hardcoded
+  const data = state.cotData && state.cotData.length ? state.cotData : COT_DATA;
+  const isLive = state.cotLive;
+  const isLoading = state.cotLoading;
+
+  // Work out last update label
+  let lastUpdateLabel = "Mar 14, 2026";
+  if(isLive && data[0] && data[0].date){
+    try{
+      const d = new Date(data[0].date.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"));
+      lastUpdateLabel = d.toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"});
+    }catch(e){}
+  }
+
+  const badge = isLive
+    ? `<span class="cbadge-live">● LIVE · CFTC</span>`
+    : isLoading
+      ? `<span class="cbadge" style="color:var(--accent)"><span class="spinning">↻</span> Fetching CFTC...</span>`
+      : `<span class="cbadge-demo">FALLBACK DATA</span>`;
+
+  const sorted=[...data].sort((a,b)=>{if(state.cotSort.col==="id")return a.id.localeCompare(b.id)*state.cotSort.dir;return(b[state.cotSort.col]-a[state.cotSort.col])*state.cotSort.dir;});
+
   const chartHtml=`<div class="cot-chart-wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-      <div><div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px">COT Net Positioning</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Update: <strong style="color:var(--accent)">Mar 14, 2026</strong> · Weekly · CFTC</div>
-      <div style="display:flex;gap:16px;margin-top:6px"><div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div><div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div></div></div>
-      <span class="cbadge-demo">WEEKLY · CFTC</span>
+      <div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px">COT Net Positioning</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">
+          Last Update: <strong style="color:var(--accent)">${lastUpdateLabel}</strong> · Weekly · CFTC
+        </div>
+        <div style="display:flex;gap:16px;margin-top:6px">
+          <div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div>
+          <div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div>
+        </div>
+      </div>
+      ${badge}
     </div>
     <div class="cot-bars-scroll"><div class="cot-bars">
-      ${COT_DATA.map(row=>{const lh=Math.round(row.longPct*1.5);const sh=Math.round(row.shortPct*1.5);return`<div class="cot-bar-wrap" onmouseenter="showTip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTip()"><div class="cot-bar-stacked" style="height:${lh+sh}px"><div class="cot-bar-short" style="height:${sh}px;display:flex;align-items:center;justify-content:center">${row.shortPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}</div><div class="cot-bar-long" style="height:${lh}px;display:flex;align-items:center;justify-content:center">${row.longPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}</div></div><div class="cot-bar-label">${row.id}</div></div>`;}).join("")}
+      ${data.map(row=>{const lh=Math.round(row.longPct*1.5);const sh=Math.round(row.shortPct*1.5);return`<div class="cot-bar-wrap" onmouseenter="showTip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTip()"><div class="cot-bar-stacked" style="height:${lh+sh}px"><div class="cot-bar-short" style="height:${sh}px;display:flex;align-items:center;justify-content:center">${row.shortPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}</div><div class="cot-bar-long" style="height:${lh}px;display:flex;align-items:center;justify-content:center">${row.longPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}</div></div><div class="cot-bar-label">${row.id}</div></div>`;}).join("")}
     </div></div>
   </div>`;
+
   const cols=[{key:"id",label:"Asset"},{key:"longC",label:"Long C"},{key:"shortC",label:"Short C"},{key:"dLong",label:"Δ Long C"},{key:"dShort",label:"Δ Short C"},{key:"longPct",label:"Long %"},{key:"shortPct",label:"Short %"},{key:"netChg",label:"Net % Chg"},{key:"netPos",label:"Net Position"},{key:"oi",label:"Open Interest"},{key:"dOI",label:"Δ Open Int"}];
   let tbl=`<div class="cot-tbl-wrap"><table class="cot-tbl"><thead><tr>${cols.map(c=>`<th onclick="sortCOT('${c.key}')">${c.label}${state.cotSort.col===c.key?(state.cotSort.dir===-1?" ▼":" ▲"):""}</th>`).join("")}</tr></thead><tbody>`;
   sorted.forEach(row=>{
@@ -579,7 +764,12 @@ function renderCOT(){
     tbl+=`<tr><td>${row.id}</td><td>${row.longC.toLocaleString()}</td><td>${row.shortC.toLocaleString()}</td><td class="${dlc}">${row.dLong>0?"+":""}${row.dLong.toLocaleString()}</td><td class="${dsc}">${row.dShort>0?"+":""}${row.dShort.toLocaleString()}</td><td class="${lc}">${row.longPct.toFixed(2)}%</td><td class="${sc2}">${row.shortPct.toFixed(2)}%</td><td class="${nc}">${row.netChg>0?"+":""}${row.netChg.toFixed(2)}%</td><td><span class="pos-highlight ${npc}">${row.netPos>0?"+":""}${fmtK(row.netPos)}</span></td><td>${fmtK(row.oi)}</td><td class="${doic}">${row.dOI>0?"+":""}${fmtK(row.dOI)}</td></tr>`;
   });
   tbl+=`</tbody></table></div>`;
-  document.getElementById("page-cot").innerHTML=chartHtml+tbl+`<div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA</span>Published every Friday 3:30 PM EST. Tap column headers to sort. Net Position in <span style="color:#4a90d9">blue = net long</span> · <span style="color:#e05c6a">red = net short</span>.</div>`;
+  document.getElementById("page-cot").innerHTML=chartHtml+tbl+`<div class="infobox ib-blue">
+    <span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA — ${isLive?"● LIVE · Auto-fetched from CFTC.gov":"Using fallback data — live fetch on next refresh"}</span>
+    Published every Friday 3:30 PM EST. Reflects positions as of prior Tuesday.
+    Tap column headers to sort. Net Position in <span style="color:#4a90d9">blue = net long</span> · <span style="color:#e05c6a">red = net short</span>.
+    Data refreshes automatically every 12 hours.
+  </div>`;
 }
 function sortCOT(col){if(state.cotSort.col===col)state.cotSort.dir*=-1;else{state.cotSort.col=col;state.cotSort.dir=-1;}renderCOT();}
 function showTip(e,id,lp,sp){const t=document.getElementById("tooltip");t.innerHTML=`<strong style="color:var(--text)">${id}</strong><br><span style="color:#4a90d9">Long: ${lp.toFixed(2)}%</span><br><span style="color:#e05c6a">Short: ${sp.toFixed(2)}%</span>`;t.style.display="block";t.style.left=(e.clientX+14)+"px";t.style.top=(e.clientY-10)+"px";}
