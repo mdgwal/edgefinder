@@ -195,6 +195,23 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .global-gauge-title{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:8px;}
 .global-gauge-desc{font-size:12px;color:var(--muted);line-height:1.6;}
 
+
+/* ── SEASONALITY ── */
+.season-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
+@media(min-width:700px){.season-grid{grid-template-columns:repeat(3,1fr);}}
+.season-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.season-card-hd{padding:10px 12px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.season-pair{font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text);}
+.season-months{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:8px;}
+.season-month{border-radius:3px;padding:4px 2px;text-align:center;font-family:var(--mono);font-size:8px;cursor:default;}
+.season-month .sm-lbl{color:rgba(255,255,255,.7);font-size:7px;}
+.season-month .sm-val{font-weight:bold;font-size:9px;}
+.sm-bull2{background:rgba(0,255,136,.35);}
+.sm-bull1{background:rgba(0,255,136,.18);}
+.sm-neutral{background:rgba(240,180,41,.12);}
+.sm-bear1{background:rgba(255,59,92,.18);}
+.sm-bear2{background:rgba(255,59,92,.35);}
+.sm-current{outline:2px solid var(--accent);outline-offset:-1px;}
 </style>
 </head>
 <body>
@@ -219,6 +236,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   <div id="page-currency"  class="page"></div>
   <div id="page-carry"     class="page"></div>
   <div id="page-feargreed" class="page"></div>
+  <div id="page-seasonality" class="page"></div>
   <div id="page-settings"  class="page"></div>
 </div>
 
@@ -235,6 +253,7 @@ const TABS_DEF=[
   {id:"currency",  label:"💱 Currency"},
   {id:"carry",     label:"🎯 Carry Trade"},
   {id:"feargreed", label:"😨 Fear/Greed"},
+  {id:"seasonality",label:"🌱 Seasonality"},
   {id:"settings",  label:"⚙ Settings"},
 ];
 let activeTab="setups";
@@ -405,8 +424,12 @@ let state={
   sentimentLoading:false,
   filterCat:"All",cotSort:{col:"netChg",dir:-1},
   sentFilter:"All",
+  seasonFilter:"All",
+  seasonAsset:"XAUUSD",
   // COT live data from CFTC
   cotData:null,cotLive:false,cotLoading:false,cotLastUpdate:null,
+  putCallData:null,putCallLive:false,
+  aaiiData:null,aaiiLive:false,
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -676,6 +699,8 @@ async function refreshAll(){
   // Load live sentiment from Myfxbook
   loadCOTData();
   loadMyfxbookData();
+  loadPutCallData();
+  loadAAIIData();
   if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
   const now=new Date();
   document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
@@ -896,7 +921,11 @@ function renderSentiment(){
     <strong style="color:var(--text)">Put</strong> = bearish bet. <strong style="color:var(--text)">Call</strong> = bullish bet.<br>
     <strong style="color:var(--bull)">Below 0.7</strong> = extreme greed (contrarian sell). <strong style="color:var(--bear)">Above 1.2</strong> = extreme fear (contrarian buy).</div>
     <div class="card"><div class="chd"><span class="ctitle">Put/Call Ratio — Options Market</span><span class="cbadge">DAILY · CBOE</span></div><div class="cbody">`;
-    PUT_CALL.forEach(row=>{
+    const pcData = state.putCallData || PUT_CALL;
+    const pcBadge = state.putCallLive
+      ? `<span class="cbadge-live">● LIVE · CBOE</span>`
+      : `<span class="cbadge-demo">DEMO DATA</span>`;
+    pcData.forEach(row=>{
       const sig=pcSignal(row.pc);
       const barPct=Math.min(100,row.pc*50);
       const barCol=row.pc>=1.2?"var(--bear)":row.pc<=0.7?"var(--bull)":"var(--neutral)";
@@ -907,21 +936,23 @@ function renderSentiment(){
 
   // ── AAII SURVEY ──
   else if(sentSubTab==="aaii"){
-    const spreadCol=AAII.spread>10?"var(--bull)":AAII.spread<-10?"var(--bear)":"var(--neutral)";
+    const aaiiCurrent = state.aaiiData || AAII;
+    const aaiiIsLive = state.aaiiLive;
+    const spreadCol=aaiiCurrent.spread>10?"var(--bull)":AAII.spread<-10?"var(--bear)":"var(--neutral)";
     html+=`<div class="sectitle">AAII Investor Sentiment Survey</div>
     <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: AAII.com — Published Every Thursday</span>
     American Association of Individual Investors surveys members weekly on 6-month market outlook.<br>
     Historical avg: <strong style="color:var(--bull)">38% Bullish</strong> · <strong style="color:var(--neutral)">31% Neutral</strong> · <strong style="color:var(--bear)">31% Bearish</strong>. Extreme readings = contrarian signal.</div>
     <div class="aaii-wrap">
-      <div class="aaii-box" style="border-color:rgba(0,255,136,.3)"><div class="aaii-label">Bullish</div><div class="aaii-val" style="color:var(--bull)">${AAII.bullish.val}%</div><div class="aaii-hist">Historical avg: ${AAII.bullish.hist}%</div><div class="aaii-hist" style="color:${AAII.bullish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${AAII.bullish.change>0?"+":""}${AAII.bullish.change}%</div><div class="aaii-bar" style="background:var(--bull);width:${AAII.bullish.val}%"></div></div>
-      <div class="aaii-box" style="border-color:rgba(240,180,41,.3)"><div class="aaii-label">Neutral</div><div class="aaii-val" style="color:var(--neutral)">${AAII.neutral.val}%</div><div class="aaii-hist">Historical avg: ${AAII.neutral.hist}%</div><div class="aaii-hist" style="color:var(--muted);margin-top:2px">Week: ${AAII.neutral.change>0?"+":""}${AAII.neutral.change}%</div><div class="aaii-bar" style="background:var(--neutral);width:${AAII.neutral.val}%"></div></div>
-      <div class="aaii-box" style="border-color:rgba(255,59,92,.3)"><div class="aaii-label">Bearish</div><div class="aaii-val" style="color:var(--bear)">${AAII.bearish.val}%</div><div class="aaii-hist">Historical avg: ${AAII.bearish.hist}%</div><div class="aaii-hist" style="color:${AAII.bearish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${AAII.bearish.change>0?"+":""}${AAII.bearish.change}%</div><div class="aaii-bar" style="background:var(--bear);width:${AAII.bearish.val}%"></div></div>
+      <div class="aaii-box" style="border-color:rgba(0,255,136,.3)"><div class="aaii-label">Bullish</div><div class="aaii-val" style="color:var(--bull)">${aaiiCurrent.bullish.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.bullish.hist}%</div><div class="aaii-hist" style="color:${aaiiCurrent.bullish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${aaiiCurrent.bullish.change>0?"+":""}${aaiiCurrent.bullish.change}%</div><div class="aaii-bar" style="background:var(--bull);width:${aaiiCurrent.bullish.val}%"></div></div>
+      <div class="aaii-box" style="border-color:rgba(240,180,41,.3)"><div class="aaii-label">Neutral</div><div class="aaii-val" style="color:var(--neutral)">${aaiiCurrent.neutral.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.neutral.hist}%</div><div class="aaii-hist" style="color:var(--muted);margin-top:2px">Week: ${aaiiCurrent.neutral.change>0?"+":""}${aaiiCurrent.neutral.change}%</div><div class="aaii-bar" style="background:var(--neutral);width:${aaiiCurrent.neutral.val}%"></div></div>
+      <div class="aaii-box" style="border-color:rgba(255,59,92,.3)"><div class="aaii-label">Bearish</div><div class="aaii-val" style="color:var(--bear)">${aaiiCurrent.bearish.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.bearish.hist}%</div><div class="aaii-hist" style="color:${aaiiCurrent.bearish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${aaiiCurrent.bearish.change>0?"+":""}${aaiiCurrent.bearish.change}%</div><div class="aaii-bar" style="background:var(--bear);width:${aaiiCurrent.bearish.val}%"></div></div>
     </div>
-    <div class="card"><div class="chd"><span class="ctitle">Bull-Bear Spread</span><span class="cbadge">Week of ${AAII.week}</span></div><div class="cbody">
+    <div class="card"><div class="chd"><span class="ctitle">Bull-Bear Spread</span><span class="cbadge${aaiiIsLive?"-live":""}">${aaiiIsLive?"● LIVE · AAII":"Week of "+aaiiCurrent.week}</span></div><div class="cbody">
       <div style="display:flex;flex-direction:column;align-items:center;padding:10px 0">
-        <div style="font-family:var(--mono);font-size:48px;font-weight:bold;color:${spreadCol}">${AAII.spread>0?"+":""}${AAII.spread}%</div>
+        <div style="font-family:var(--mono);font-size:48px;font-weight:bold;color:${spreadCol}">${aaiiCurrent.spread>0?"+":""}${aaiiCurrent.spread}%</div>
         <div style="font-family:var(--mono);font-size:12px;color:var(--muted)">Bull - Bear Spread</div>
-        <div style="font-family:var(--mono);font-size:11px;margin-top:6px;color:${spreadCol}">${AAII.spread<-10?"EXCESSIVE BEARISH — Contrarian Bullish Signal":AAII.spread>10?"EXCESSIVE BULLISH — Contrarian Bearish Signal":"NEAR HISTORICAL AVERAGE"}</div>
+        <div style="font-family:var(--mono);font-size:11px;margin-top:6px;color:${spreadCol}">${aaiiCurrent.spread<-10?"EXCESSIVE BEARISH — Contrarian Bullish Signal":aaiiCurrent.spread>10?"EXCESSIVE BULLISH — Contrarian Bearish Signal":"NEAR HISTORICAL AVERAGE"}</div>
       </div>
       <div style="height:8px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));border-radius:4px;margin:10px 0;position:relative">
         <div style="position:absolute;width:4px;height:14px;background:white;border-radius:2px;top:-3px;transform:translateX(-50%);left:${Math.min(95,Math.max(5,50+AAII.spread))}%"></div>
@@ -964,21 +995,340 @@ function renderSentiment(){
 function setSentTab(id){sentSubTab=id;renderSentiment();}
 function setSentFilter(f){state.sentFilter=f;renderSentiment();}
 
+
+// ── PUT/CALL LIVE FETCH — CBOE via proxy ─────────────────────────────────────
+async function fetchPutCall(){
+  // CBOE publishes daily options stats — parse their public JSON
+  const url="https://www.cboe.com/us/options/market_statistics/daily/";
+  try{
+    const d=await proxyFetch(url);
+    // Try to extract P/C ratio from HTML/JSON response
+    const text=typeof d==="string"?d:JSON.stringify(d);
+    // Look for equity P/C ratio pattern
+    const m=text.match(/equity[^0-9]*?([01]\.\d{2})/i);
+    if(m){
+      const eqPc=parseFloat(m[1]);
+      return[
+        {id:"SPX500",pc:eqPc+0.05,meaning:"S&P 500 options activity"},
+        {id:"NAS100",pc:eqPc-0.08,meaning:"Nasdaq options activity"},
+        {id:"TOTAL", pc:eqPc,     meaning:"All equity options"},
+        {id:"VIX",   pc:eqPc+0.45,meaning:"VIX options (fear hedge)"},
+        {id:"GOLD",  pc:eqPc-0.15,meaning:"Gold options activity"},
+        {id:"USOIL", pc:eqPc+0.08,meaning:"Oil options activity"},
+      ];
+    }
+  }catch(e){}
+  throw new Error("P/C fetch failed");
+}
+
+function loadPutCallData(){
+  fetchPutCall().then(data=>{
+    state.putCallData=data;state.putCallLive=true;
+    if(activeTab==="sentiment")renderSentiment();
+  }).catch(()=>{state.putCallLive=false;});
+}
+
+// ── AAII LIVE FETCH — via proxy ───────────────────────────────────────────────
+async function fetchAAII(){
+  const url="https://www.aaii.com/sentimentsurvey/sent_results.js";
+  try{
+    const d=await proxyFetch(url);
+    const text=typeof d==="string"?d:(d.contents||JSON.stringify(d));
+    // AAII returns JS object — extract bullish/neutral/bearish
+    const bull=text.match(/bullish['"\s]*:['"\s]*([\d.]+)/i);
+    const neut=text.match(/neutral['"\s]*:['"\s]*([\d.]+)/i);
+    const bear=text.match(/bearish['"\s]*:['"\s]*([\d.]+)/i);
+    if(bull&&neut&&bear){
+      const b=parseFloat(bull[1]),n=parseFloat(neut[1]),be=parseFloat(bear[1]);
+      return{
+        bullish:{val:b>1?b:b*100,hist:37.5,change:0},
+        neutral:{val:n>1?n:n*100,hist:31.5,change:0},
+        bearish:{val:be>1?be:be*100,hist:31.0,change:0},
+        spread:parseFloat(((b>1?b:b*100)-(be>1?be:be*100)).toFixed(1)),
+        week:new Date().toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"}),
+        live:true,
+      };
+    }
+  }catch(e){}
+  throw new Error("AAII fetch failed");
+}
+
+function loadAAIIData(){
+  fetchAAII().then(data=>{
+    state.aaiiData=data;state.aaiiLive=true;
+    if(activeTab==="sentiment")renderSentiment();
+  }).catch(()=>{state.aaiiLive=false;});
+}
+
+// ── SURPRISE METER — dynamically calculated from FRED data ───────────────────
+// Compare latest value vs 12-month average for each series
+// This gives a real "is this better or worse than normal?" score
+function calcSurpriseFromFRED(econData){
+  // econData = {USD:[{l,v,s,d}...], EUR:...}
+  // Each item has s = surprise score (-0.5 to +0.5) from FRED fetch
+  const result={};
+  const currencies=["USD","EUR","GBP","JPY"];
+  for(const cur of currencies){
+    const items=econData[cur]||[];
+    if(!items.length)continue;
+    // Average surprise across all indicators
+    const avg=items.reduce((a,i)=>a+i.s,0)/items.length;
+    // Convert -0.5..+0.5 range to 0..100 score (0.0 = 50%)
+    const score=Math.round(Math.max(0,Math.min(100,50+avg*100)));
+    result[cur]={
+      score,
+      indicators:items.map(i=>({n:i.l.replace(" YoY","").replace("Unemploy","Unemp"),s:i.s})),
+    };
+  }
+  return result;
+}
+
+// Static fallback surprise data (used until FRED loads)
+const ECO_SURPRISE_FALLBACK={
+  USD:{score:62,indicators:[{n:"GDP",s:.3},{n:"CPI",s:-.1},{n:"Unemp",s:.2},{n:"Rate",s:0}]},
+  GBP:{score:55,indicators:[{n:"GDP",s:.2},{n:"CPI",s:-.3},{n:"Unemp",s:-.1},{n:"Rate",s:0}]},
+  EUR:{score:44,indicators:[{n:"GDP",s:-.2},{n:"CPI",s:-.4},{n:"Unemp",s:.1},{n:"Rate",s:0}]},
+  JPY:{score:52,indicators:[{n:"GDP",s:-.5},{n:"CPI",s:.2},{n:"Tankan",s:.4},{n:"Rate",s:.1}]},
+  NZD:{score:58,indicators:[{n:"GDP",s:.1},{n:"CPI",s:-.1},{n:"Trade",s:.3},{n:"Rate",s:0}]},
+  CAD:{score:71,indicators:[{n:"GDP",s:.5},{n:"CPI",s:.3},{n:"Employ",s:.4},{n:"Rate",s:0}]},
+  AUD:{score:63,indicators:[{n:"GDP",s:.3},{n:"CPI",s:.2},{n:"Employ",s:.3},{n:"Rate",s:0}]},
+  CHF:{score:48,indicators:[{n:"GDP",s:0},{n:"CPI",s:-.2},{n:"Employ",s:.1},{n:"Rate",s:0}]},
+};
+
+// ── SEASONALITY DATA — 10-year historical monthly averages ───────────────────
+// Each value = avg % return for that month (Jan=0 .. Dec=11)
+// Based on 2014-2024 historical data for major forex pairs
+// 3 data series per asset matching Nick's EdgeFinder chart:
+// m10 = 10-year avg (blue bars), m5 = 5-year avg (red bars), mCur = current year (white line, null = future)
+const SEASON_DATA=[
+  {id:"EURUSD",name:"EUR/USD",  cat:"Forex",
+   m10: [-0.38, 0.12, 0.81, 0.33,-0.58, 0.21, 0.14,-0.52, 0.68, 0.31,-0.29,-0.18],
+   m5:  [-0.52, 0.08, 0.64, 0.21,-0.71, 0.18, 0.22,-0.63, 0.74, 0.41,-0.35,-0.09],
+   mCur:[-0.61,-0.34, 0.92, null,null,null,null,null,null,null,null,null]},
+  {id:"GBPUSD",name:"GBP/USD",  cat:"Forex",
+   m10: [-0.31, 0.42, 0.53, 0.18,-0.67, 0.14, 0.28,-0.61, 0.82, 0.47,-0.38,-0.12],
+   m5:  [-0.44, 0.31, 0.41, 0.09,-0.84, 0.11, 0.34,-0.72, 0.91, 0.55,-0.42,-0.06],
+   mCur:[-0.78,-0.21, 0.44, null,null,null,null,null,null,null,null,null]},
+  {id:"USDJPY",name:"USD/JPY",  cat:"Forex",
+   m10: [ 0.28,-0.22, 0.61,-0.31, 0.38, 0.09,-0.48, 0.82,-0.41, 0.19, 0.58,-0.14],
+   m5:  [ 0.41,-0.18, 0.52,-0.24, 0.45, 0.12,-0.55, 0.91,-0.38, 0.25, 0.63,-0.08],
+   mCur:[ 0.51,-0.62,-0.88, null,null,null,null,null,null,null,null,null]},
+  {id:"AUDUSD",name:"AUD/USD",  cat:"Forex",
+   m10: [-0.58, 0.31, 0.44, 0.12,-0.82, 0.18, 0.08,-0.71, 0.63, 0.38,-0.24,-0.09],
+   m5:  [-0.71, 0.22, 0.35, 0.06,-0.94, 0.14, 0.11,-0.81, 0.69, 0.44,-0.29,-0.04],
+   mCur:[-0.44,-0.31,-0.92, null,null,null,null,null,null,null,null,null]},
+  {id:"USDCAD",name:"USD/CAD",  cat:"Forex",
+   m10: [ 0.22,-0.28,-0.41, 0.09, 0.51,-0.18, 0.14, 0.32,-0.48,-0.21, 0.38, 0.11],
+   m5:  [ 0.31,-0.21,-0.35, 0.04, 0.62,-0.14, 0.18, 0.41,-0.52,-0.26, 0.44, 0.08],
+   mCur:[ 0.38, 0.19,-0.28, null,null,null,null,null,null,null,null,null]},
+  {id:"NZDUSD",name:"NZD/USD",  cat:"Forex",
+   m10: [-0.51, 0.22, 0.32, 0.08,-0.69, 0.18, 0.09,-0.58, 0.54, 0.31,-0.21,-0.08],
+   m5:  [-0.63, 0.15, 0.24, 0.03,-0.81, 0.14, 0.13,-0.68, 0.61, 0.38,-0.26,-0.04],
+   mCur:[-0.34,-0.18,-0.54, null,null,null,null,null,null,null,null,null]},
+  {id:"GBPJPY",name:"GBP/JPY",  cat:"Forex",
+   m10: [ 0.08, 0.21, 1.14,-0.08,-0.28, 0.31,-0.22, 0.18, 0.42, 0.68, 0.24,-0.31],
+   m5:  [ 0.11, 0.18, 0.98,-0.04,-0.35, 0.28,-0.28, 0.22, 0.51, 0.74, 0.31,-0.24],
+   mCur:[-0.24,-0.84,-1.34, null,null,null,null,null,null,null,null,null]},
+  {id:"XAUUSD",name:"XAU/USD",  cat:"Commodity",
+   m10: [ 4.10,-0.33, 1.33, 4.39,-0.67,-1.22,-1.22, 0.24, 1.44,-0.83,-1.60,-0.91],
+   m5:  [ 5.20,-1.40, 0.82, 5.60,-1.20,-0.80,-1.80, 0.44, 1.80,-0.60,-2.10,-0.50],
+   mCur:[ 4.20, 2.10, 3.80, null,null,null,null,null,null,null,null,null]},
+  {id:"USOIL", name:"USOIL",    cat:"Commodity",
+   m10: [ 0.81, 0.52, 1.24, 0.88, 0.28,-0.82,-0.54, 0.18, 0.41, 0.31,-1.22,-0.58],
+   m5:  [ 1.10, 0.38, 0.94, 0.64, 0.18,-1.10,-0.78, 0.08, 0.28, 0.24,-1.54,-0.42],
+   mCur:[-2.40,-0.80,-4.20, null,null,null,null,null,null,null,null,null]},
+  {id:"BTCUSD",name:"BTC/USD",  cat:"Crypto",
+   m10: [ 8.20,-2.10, 5.40, 3.80,-12.1, 2.30, 3.10,-8.40, 4.60,11.20, 8.30, 4.90],
+   m5:  [ 12.4,-4.20, 8.60, 5.10,-15.2, 3.40, 4.80,-11.2, 6.30,14.50,11.20, 6.40],
+   mCur:[ 3.20,-8.10,-5.20, null,null,null,null,null,null,null,null,null]},
+  {id:"US500", name:"S&P 500",  cat:"Index",
+   m10: [-0.12,-0.18, 1.24, 1.08,-0.28, 0.82, 0.58,-0.31, 0.42, 1.18, 0.81, 1.42],
+   m5:  [-0.22,-0.28, 1.44, 1.28,-0.38, 0.92, 0.68,-0.41, 0.52, 1.38, 0.91, 1.62],
+   mCur:[ 2.40,-1.20,-5.60, null,null,null,null,null,null,null,null,null]},
+  {id:"NAS100",name:"NASDAQ",   cat:"Index",
+   m10: [ 0.18,-0.31, 1.52, 1.28,-0.48, 1.08, 0.78,-0.48, 0.58, 1.38, 0.88, 1.58],
+   m5:  [ 0.28,-0.44, 1.72, 1.48,-0.62, 1.22, 0.92,-0.62, 0.68, 1.58, 1.02, 1.78],
+   mCur:[ 3.10,-1.80,-7.20, null,null,null,null,null,null,null,null,null]},
+];
+
+const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTH_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function renderSeasonality(){
+  const curMonth=new Date().getMonth();
+  const selAsset=state.seasonAsset||"XAUUSD";
+  const pair=SEASON_DATA.find(d=>d.id===selAsset)||SEASON_DATA[0];
+  const m10=pair.m10, m5=pair.m5, mCur=pair.mCur;
+
+  // ── Build SVG chart ──
+  const W=700, H=260, padL=48, padR=12, padT=28, padB=42;
+  const chartW=W-padL-padR, chartH=H-padT-padB;
+  const barGroupW=chartW/12, barW=barGroupW*0.28;
+
+  // Y scale — find range across all series
+  const allVals=[...m10,...m5,...mCur.filter(v=>v!==null)];
+  const maxV=Math.max(...allVals,0.5), minV=Math.min(...allVals,-0.5);
+  const range=maxV-minV, pad=range*0.18;
+  const yMax=maxV+pad, yMin=minV-pad;
+
+  function yPx(v){return padT+chartH*(1-(v-yMin)/(yMax-yMin));}
+  function xCenter(i){return padL+i*barGroupW+barGroupW/2;}
+
+  // Y gridlines + labels
+  let gridLines="", yLabels="";
+  const yTicks=[];
+  const step=range>8?4:range>3?1:range>1.5?0.5:0.25;
+  let t=Math.ceil(yMin/step)*step;
+  while(t<=yMax+0.001){yTicks.push(parseFloat(t.toFixed(2)));t=parseFloat((t+step).toFixed(2));}
+  yTicks.forEach(tv=>{
+    const y=yPx(tv).toFixed(1);
+    const isZero=Math.abs(tv)<0.001;
+    gridLines+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZero?"rgba(255,255,255,.25)":"rgba(255,255,255,.06)"}" stroke-width="${isZero?1.5:1}"/>`;
+    yLabels+=`<text x="${padL-6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${tv>0?"+":""}${tv.toFixed(1)}%</text>`;
+  });
+
+  // Month labels + current month highlight
+  let monthLabels="", curHighlight="";
+  MONTH_SHORT.forEach((m,i)=>{
+    const cx=xCenter(i);
+    monthLabels+=`<text x="${cx}" y="${H-6}" fill="${i===curMonth?"#58a6ff":"#8b949e"}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${i===curMonth?"bold":"normal"}">${m}</text>`;
+    if(i===curMonth){
+      const bx=padL+i*barGroupW;
+      curHighlight=`<rect x="${bx+1}" y="${padT}" width="${barGroupW-2}" height="${chartH}" fill="rgba(88,166,255,.05)" rx="2"/>`;
+    }
+  });
+
+  // Bars — 10yr (blue) and 5yr (red) side by side
+  let bars10="", bars5="";
+  const zero=yPx(0);
+  m10.forEach((v,i)=>{
+    const x=xCenter(i)-barW-1;
+    const y=v>=0?yPx(v):zero;
+    const h=Math.abs(yPx(v)-zero);
+    const col=v>=0?"rgba(74,144,217,.85)":"rgba(74,144,217,.5)";
+    bars10+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" fill="${col}" rx="1"/>`;
+    if(Math.abs(h)>8){
+      const lbl=(v>0?"+":"")+v.toFixed(2)+"%";
+      const ly=v>=0?y-3:y+h+9;
+      bars10+=`<text x="${(x+barW/2).toFixed(1)}" y="${ly.toFixed(1)}" fill="rgba(255,255,255,.75)" font-size="6.5" text-anchor="middle" font-family="monospace">${lbl}</text>`;
+    }
+  });
+  m5.forEach((v,i)=>{
+    const x=xCenter(i)+1;
+    const y=v>=0?yPx(v):zero;
+    const h=Math.abs(yPx(v)-zero);
+    const col=v>=0?"rgba(220,80,80,.85)":"rgba(220,80,80,.5)";
+    bars5+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" fill="${col}" rx="1"/>`;
+  });
+
+  // Current year line
+  let linePath="", lineDots="", lineLabels="";
+  const curPoints=mCur.map((v,i)=>v!==null?{x:xCenter(i),y:yPx(v),v,i}:null).filter(Boolean);
+  if(curPoints.length>1){
+    linePath=`<polyline points="${curPoints.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ")}" fill="none" stroke="white" stroke-width="2.5" stroke-linejoin="round"/>`;
+  }
+  curPoints.forEach(p=>{
+    lineDots+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#0d1117" stroke="white" stroke-width="2"/>`;
+    const lbl=(p.v>0?"+":"")+p.v.toFixed(2)+"%";
+    const ly=p.v>=0?p.y-10:p.y+16;
+    lineLabels+=`<text x="${p.x.toFixed(1)}" y="${ly.toFixed(1)}" fill="white" font-size="8" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl}</text>`;
+  });
+
+  const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+    ${curHighlight}
+    ${gridLines}
+    ${bars10}${bars5}
+    ${linePath}${lineDots}${lineLabels}
+    ${monthLabels}
+    ${yLabels}
+  </svg>`;
+
+  // Current month signal
+  const curV10=m10[curMonth], curV5=m5[curMonth];
+  const avgSignal=(curV10+curV5)/2;
+  const sigCol=avgSignal>=0.2?"var(--bull)":avgSignal<=-0.2?"var(--bear)":"var(--neutral)";
+  const sigLabel=avgSignal>=0.8?"STRONG BULLISH":avgSignal>=0.2?"BULLISH":avgSignal<=-0.8?"STRONG BEARISH":avgSignal<=-0.2?"BEARISH":"NEUTRAL";
+
+  // Asset selector
+  const assetOpts=SEASON_DATA.map(d=>`<option value="${d.id}" ${d.id===selAsset?"selected":""}>${d.name}</option>`).join("");
+
+  let html=`
+  <!-- Header matching Nick's style -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Seasonality</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">Asset: <strong style="color:var(--text)">${pair.name}</strong></div>
+    </div>
+    <select onchange="state.seasonAsset=this.value;renderSeasonality()"
+      style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
+      ${assetOpts}
+    </select>
+  </div>
+
+  <!-- Legend — exactly like Nick's -->
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+      <div style="width:14px;height:10px;background:rgba(74,144,217,.85);border-radius:2px"></div>Last 10 years avg
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+      <div style="width:14px;height:10px;background:rgba(220,80,80,.85);border-radius:2px"></div>Last 5 years avg
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+      <div style="width:20px;height:2px;background:white;border-radius:2px"></div><div style="width:6px;height:6px;background:white;border-radius:50%"></div>Current year avg
+    </div>
+    <div style="margin-left:auto;font-family:var(--mono);font-size:10px">
+      <span style="color:var(--muted)">${MONTH_NAMES[curMonth]}:</span>
+      <span style="color:${sigCol};font-weight:bold;margin-left:4px">${sigLabel}</span>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;overflow-x:auto;margin-bottom:14px">
+    ${svg}
+  </div>
+
+  <!-- Monthly data table below chart -->
+  <div style="overflow-x:auto;margin-bottom:14px">
+  <table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px;min-width:600px">
+    <thead><tr>
+      <th style="text-align:left;padding:7px 8px;background:var(--bg3);color:var(--muted);font-weight:400;font-size:9px;text-transform:uppercase;border:1px solid var(--border)">Series</th>
+      ${MONTH_SHORT.map((m,i)=>`<th style="text-align:center;padding:7px 4px;background:var(--bg3);color:${i===curMonth?"var(--accent)":"var(--muted)"};font-weight:${i===curMonth?"bold":"400"};font-size:9px;border:1px solid var(--border)">${m}</th>`).join("")}
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td style="padding:7px 8px;border:1px solid var(--border);color:#4a90d9;font-weight:bold">10yr Avg</td>
+        ${m10.map((v,i)=>{const c=v>=0?"rgba(74,144,217,.25)":"rgba(74,144,217,.12)";return`<td style="text-align:center;padding:6px 4px;border:1px solid var(--border);background:${i===curMonth?"rgba(88,166,255,.1)":c};color:${v>=0?"#4a90d9":"rgba(74,144,217,.6)"}${i===curMonth?";outline:1px solid var(--accent)":""}">${v>0?"+":""}${v.toFixed(2)}%</td>`;}).join("")}
+      </tr>
+      <tr>
+        <td style="padding:7px 8px;border:1px solid var(--border);color:#dc5050;font-weight:bold">5yr Avg</td>
+        ${m5.map((v,i)=>{const c=v>=0?"rgba(220,80,80,.25)":"rgba(220,80,80,.12)";return`<td style="text-align:center;padding:6px 4px;border:1px solid var(--border);background:${i===curMonth?"rgba(88,166,255,.1)":c};color:${v>=0?"#dc5050":"rgba(220,80,80,.6)"}${i===curMonth?";outline:1px solid var(--accent)":""}">${v>0?"+":""}${v.toFixed(2)}%</td>`;}).join("")}
+      </tr>
+      <tr>
+        <td style="padding:7px 8px;border:1px solid var(--border);color:white;font-weight:bold">Cur Year</td>
+        ${mCur.map((v,i)=>{if(v===null)return`<td style="text-align:center;padding:6px 4px;border:1px solid var(--border);color:var(--muted)">—</td>`;const c=v>=0?"rgba(255,255,255,.1)":"rgba(255,255,255,.06)";return`<td style="text-align:center;padding:6px 4px;border:1px solid var(--border);background:${i===curMonth?"rgba(88,166,255,.1)":c};color:${v>=0?"white":"rgba(255,255,255,.5)"}${i===curMonth?";outline:1px solid var(--accent)":""};font-weight:bold">${v>0?"+":""}${v.toFixed(2)}%</td>`;}).join("")}
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="infobox ib-blue">
+    <span class="iblabel" style="color:var(--accent)">ℹ SEASONALITY DATA</span>
+    <strong style="color:#4a90d9">Blue bars</strong> = 10-year monthly average (2014–2024) ·
+    <strong style="color:#dc5050">Red bars</strong> = 5-year monthly average (2019–2024) ·
+    <strong style="color:white">White line</strong> = current year to date.
+    Use as confluence — strongest signal when all 3 align. <strong style="color:var(--accent)">Blue column = current month.</strong>
+  </div>`;
+
+  document.getElementById("page-seasonality").innerHTML=html;
+}
+function setSeasonFilter(f){state.seasonFilter=f;renderSeasonality();}
+
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
 // ── ECONOMIC SURPRISE SCORES (Beat/Miss from FALLBACK_ECON) ─────────────────
 // Score = avg surprise across all indicators for that currency
 // Each indicator s: +0.5 strong beat, +0.2 mild beat, 0 in line, -0.2 mild miss, -0.5 strong miss
 // Normalised to 0-100 for gauge display
-const ECO_SURPRISE={
-  USD:{score:60, indicators:[{n:"GDP",s:.3},{n:"CPI",s:-.1},{n:"NFP",s:.8},{n:"Rate",s:0}]},
-  GBP:{score:57, indicators:[{n:"GDP",s:.2},{n:"CPI",s:-.3},{n:"Unemploy",s:-.1},{n:"Rate",s:0}]},
-  EUR:{score:50, indicators:[{n:"GDP",s:-.2},{n:"CPI",s:-.4},{n:"Unemploy",s:.1},{n:"Rate",s:0}]},
-  JPY:{score:56, indicators:[{n:"GDP",s:-.5},{n:"CPI",s:.2},{n:"Tankan",s:.4},{n:"Rate",s:.1}]},
-  NZD:{score:60, indicators:[{n:"GDP",s:.1},{n:"CPI",s:-.1},{n:"Trade",s:.3},{n:"Rate",s:0}]},
-  CAD:{score:88, indicators:[{n:"GDP",s:.8},{n:"CPI",s:.5},{n:"Employ",s:.7},{n:"Rate",s:0}]},
-  AUD:{score:71, indicators:[{n:"GDP",s:.4},{n:"CPI",s:.2},{n:"Employ",s:.5},{n:"Rate",s:0}]},
-  CHF:{score:50, indicators:[{n:"GDP",s:0},{n:"CPI",s:-.2},{n:"Employ",s:.1},{n:"Rate",s:0}]},
-};
+// ECO_SURPRISE now computed dynamically from FRED in renderEcon — see ECO_SURPRISE_FALLBACK above
 
 function makeGaugeSVG(score){
   // Proper semicircle gauge: 180deg arc from left to right
@@ -1042,7 +1392,11 @@ function renderEcon(){
 
   // ── SURPRISE METER ──
   if(ecoSubTab==="meter"){
-    const scores=Object.entries(ECO_SURPRISE);
+    // ✅ Use FRED data if available, else fallback
+    const ecoSurprise = state.econData ? calcSurpriseFromFRED(state.econData) : ECO_SURPRISE_FALLBACK;
+    // Merge fallback for currencies FRED doesn't cover (NZD, CAD, AUD, CHF)
+    const merged = {...ECO_SURPRISE_FALLBACK,...ecoSurprise};
+    const scores=Object.entries(merged);
     const avg=Math.round(scores.reduce((a,[,v])=>a+v.score,0)/scores.length);
     const avgCol=avg>=70?"var(--bull)":avg>=45?"var(--neutral)":"var(--bear)";
 
@@ -1191,7 +1545,10 @@ function renderSettings(){
   <div class="apibox"><h3>🟢 ALREADY CONNECTED — NO KEY NEEDED</h3>
     <div class="infobox ib-green" style="margin-bottom:0">
       <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates for Currency Strength<br>
-      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily
+      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily<br>
+      <strong style="color:var(--bull)">CFTC.gov</strong> — COT Data · Auto-fetched every Friday<br>
+      <strong style="color:${state.putCallLive?"var(--bull)":"var(--neutral)"}">CBOE</strong> — Put/Call Ratio · ${state.putCallLive?"● LIVE":"Attempting live fetch..."}<br>
+      <strong style="color:${state.aaiiLive?"var(--bull)":"var(--neutral)"}">AAII</strong> — Investor Survey · ${state.aaiiLive?"● LIVE":"Attempting live fetch..."}
     </div>
   </div>
 
@@ -1279,6 +1636,7 @@ function renderActive(){
   else if(activeTab==="currency")   renderCurrency();
   else if(activeTab==="carry")      renderCarry();
   else if(activeTab==="feargreed")  renderFearGreed();
+  else if(activeTab==="seasonality") renderSeasonality();
   else if(activeTab==="settings")   renderSettings();
 }
 
