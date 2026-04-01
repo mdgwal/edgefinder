@@ -413,6 +413,7 @@ function buildFallbackFG(){
 let state={
   rates:null,prevRates:null,cdata:null,
   fredKey:loadKey('fred'),
+  avKey:loadKey('av'),
   mfxEmail:loadKey('mfx_email'),
   mfxPassword:loadKey('mfx_password'),
   mfxSession:loadKey('mfx_session'),
@@ -429,6 +430,7 @@ let state={
   seasonView:"monthly",
   // COT live data from CFTC
   cotData:null,cotLive:false,cotLoading:false,cotLastUpdate:null,
+  seasonLastFetch:0,seasonFetching:false,
   putCallData:null,putCallLive:false,
   aaiiData:null,aaiiLive:false,
 };
@@ -1255,25 +1257,44 @@ async function fetchSeasonalityForAsset(assetId){
   };
 }
 
-// Load seasonality — selected asset first, then rest with 12s gaps (AV free = 5 calls/min)
+// Load seasonality — only fetches if: no key ever used before, or data >24h old
+// ✅ Never resets existing live data — keeps showing last good data on refresh
 async function loadSeasonalityLive(){
-  if(!state.avKey)return; // silently skip if no key
-  const selId=state.seasonAsset||"XAUUSD";
-  const ids=SEASON_DATA.map(d=>d.id);
-  const ordered=[selId,...ids.filter(id=>id!==selId)];
+  if(!state.avKey)return;
+  if(state.seasonFetching)return; // already running
+
+  // ✅ Skip if all data is already live and fetched within 24 hours
+  const allLive = SEASON_DATA.every(d=>d.live);
+  const age = (Date.now() - state.seasonLastFetch) / 3600000; // hours
+  if(allLive && age < 24){
+    if(activeTab==="seasonality")renderSeasonality();
+    return;
+  }
+
+  state.seasonFetching = true;
+  const selId = state.seasonAsset || "XAUUSD";
+  const ids = SEASON_DATA.map(d=>d.id);
+  // Selected asset first, then only non-live ones to save API calls
+  const notLive = ids.filter(id=>!SEASON_DATA.find(d=>d.id===id)?.live);
+  const ordered = [selId, ...notLive.filter(id=>id!==selId)];
+
   for(const id of ordered){
+    if(!state.avKey)break; // stop if key removed mid-fetch
     try{
-      const live=await fetchSeasonalityForAsset(id);
+      const live = await fetchSeasonalityForAsset(id);
       if(!live)continue;
-      SEASON_DATA=SEASON_DATA.map(d=>d.id===id?{...d,...live}:d);
-      if(id===state.seasonAsset&&activeTab==="seasonality")renderSeasonality();
+      // ✅ Merge live data into existing — never wipe good data
+      SEASON_DATA = SEASON_DATA.map(d=>d.id===id ? {...d,...live} : d);
+      if(id===state.seasonAsset && activeTab==="seasonality")renderSeasonality();
     }catch(e){
       console.log("Season fetch failed for "+id+":",e.message);
-      if(e.message.includes("rate limit"))await new Promise(r=>setTimeout(r,60000));
+      if(e.message.includes("rate limit"))await new Promise(r=>setTimeout(r,65000));
     }
-    // AV free tier = 5 calls/min → 12s gap
-    await new Promise(r=>setTimeout(r,12000));
+    await new Promise(r=>setTimeout(r,12500)); // 12.5s = safe within 5/min
   }
+
+  state.seasonLastFetch = Date.now();
+  state.seasonFetching = false;
   if(activeTab==="seasonality")renderSeasonality();
 }
 
@@ -1434,18 +1455,21 @@ function renderSeasonality(){
   // MONTHLY VIEW — bar chart per month (like Image 2)
   // ════════════════════════════════════════════════════════
   else {
-    const m10 = pair.m10, mCur = pair.mCur;
-    const W=700, H=260, padL=52, padR=16, padT=28, padB=50;
+    const m10 = pair.m10, m5 = pair.m5, mCur = pair.mCur;
+    const W=700, H=270, padL=52, padR=16, padT=28, padB=50;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
     const n = 12;
-    const barW = chartW/n * 0.55;
+    const slotW = chartW / n;
+    // 3 bars per slot: m10 (blue), m5 (red), gap
+    const barW = slotW * 0.36;
+    const gap = slotW * 0.04;
 
-    const allVals = [...m10, ...mCur.filter(v=>v!=null), 0];
+    const allVals = [...m10, ...m5, ...mCur.filter(v=>v!=null), 0];
     const yMax = Math.max(...allVals) * 1.25 + 0.2;
     const yMin = Math.min(...allVals) * 1.25 - 0.2;
 
-    function xCenter(i){ return padL + i*(chartW/n) + (chartW/n)/2; }
+    function xCenter(i){ return padL + i*slotW + slotW/2; }
     function yPx(v){ return padT + chartH*(1-(v-yMin)/(yMax-yMin)); }
     const zero = yPx(0);
 
@@ -1456,69 +1480,101 @@ function renderSeasonality(){
     for(let t = Math.ceil(yMin/yStep)*yStep; t <= yMax+0.01; t = parseFloat((t+yStep).toFixed(4))){
       const y = yPx(t).toFixed(1);
       const isZ = Math.abs(t)<0.001;
-      grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZ?'rgba(255,255,255,.2)':'rgba(255,255,255,.06)'}" stroke-width="${isZ?1:0.5}"/>`;
+      grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZ?'rgba(255,255,255,.22)':'rgba(255,255,255,.06)'}" stroke-width="${isZ?1:0.5}"/>`;
       yLbl += `<text x="${padL-6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${t>0?"+":""}${t.toFixed(2)}%</text>`;
     }
 
-    // Bars + labels + current month highlight + current year dots
-    let bars="", barLabels="", curDots="", curHighlight="";
-    m10.forEach((v,i)=>{
+    // Bars: blue (m10) left, red (m5) right + dots for current year
+    let bars10="", bars5="", barLabels="", curDots="", curHighlight="";
+    for(let i=0;i<12;i++){
+      const v10 = m10[i], v5 = m5[i], cv = mCur[i];
       const cx = xCenter(i);
-      const x = cx - barW/2;
-      const y = v>=0 ? yPx(v) : zero;
-      const h = Math.max(2, Math.abs(yPx(v)-zero));
       const isCur = i === curMonth;
-      if(isCur) curHighlight = `<rect x="${padL+i*(chartW/n)+2}" y="${padT}" width="${chartW/n-4}" height="${chartH}" fill="rgba(88,166,255,.06)" rx="2"/>`;
-      // Bar color: blue, lighter if past months
-      const barCol = isCur ? "#4a90d9" : i < curMonth ? "rgba(74,144,217,.9)" : "rgba(74,144,217,.5)";
-      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${barCol}" rx="2"/>`;
-      // % label above/below bar
-      const lbl = (v>0?"+":"")+v.toFixed(2)+"%";
-      const ly = v >= 0 ? y - 5 : parseFloat(y) + h + 11;
-      barLabels += `<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" fill="${isCur?'#fff':'rgba(255,255,255,.8)'}" font-size="8" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${lbl}</text>`;
+
+      // Current month column highlight
+      if(isCur) curHighlight = `<rect x="${(padL+i*slotW+1).toFixed(1)}" y="${padT}" width="${(slotW-2).toFixed(1)}" height="${chartH}" fill="rgba(88,166,255,.06)" rx="2"/>`;
+
+      // Blue bar (10yr) — left of center
+      const x10 = cx - gap/2 - barW;
+      const y10 = v10>=0 ? yPx(v10) : zero;
+      const h10 = Math.max(2, Math.abs(yPx(v10)-zero));
+      const col10 = isCur ? "#4a90d9" : i<curMonth ? "rgba(74,144,217,.92)" : "rgba(74,144,217,.45)";
+      bars10 += `<rect x="${x10.toFixed(1)}" y="${y10.toFixed(1)}" width="${barW.toFixed(1)}" height="${h10.toFixed(1)}" fill="${col10}" rx="1.5"/>`;
+
+      // Red bar (5yr) — right of center
+      const x5 = cx + gap/2;
+      const y5 = v5>=0 ? yPx(v5) : zero;
+      const h5 = Math.max(2, Math.abs(yPx(v5)-zero));
+      const col5 = isCur ? "#dc5050" : i<curMonth ? "rgba(220,80,80,.92)" : "rgba(220,80,80,.45)";
+      bars5 += `<rect x="${x5.toFixed(1)}" y="${y5.toFixed(1)}" width="${barW.toFixed(1)}" height="${h5.toFixed(1)}" fill="${col5}" rx="1.5"/>`;
+
+      // % label for m10 on highlighted month only
+      if(isCur){
+        const lbl10 = (v10>0?"+":"")+v10.toFixed(2)+"%";
+        const ly10 = v10>=0 ? y10-5 : y10+h10+11;
+        barLabels += `<text x="${(x10+barW/2).toFixed(1)}" y="${ly10.toFixed(1)}" fill="#4a90d9" font-size="7.5" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl10}</text>`;
+        const lbl5 = (v5>0?"+":"")+v5.toFixed(2)+"%";
+        const ly5 = v5>=0 ? y5-5 : y5+h5+11;
+        barLabels += `<text x="${(x5+barW/2).toFixed(1)}" y="${ly5.toFixed(1)}" fill="#dc5050" font-size="7.5" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl5}</text>`;
+      } else {
+        // Show m10 label on all bars
+        const lbl = (v10>0?"+":"")+v10.toFixed(2)+"%";
+        const ly = v10>=0 ? y10-4 : y10+h10+10;
+        barLabels += `<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" fill="rgba(255,255,255,.65)" font-size="7" text-anchor="middle" font-family="monospace">${lbl}</text>`;
+      }
+
       // Current year dot
-      const cv = mCur[i];
       if(cv != null){
         const dy = yPx(cv);
-        curDots += `<circle cx="${cx.toFixed(1)}" cy="${dy.toFixed(1)}" r="5" fill="white" stroke="#0d1117" stroke-width="1.5"/>`;
+        curDots += `<circle cx="${cx.toFixed(1)}" cy="${dy.toFixed(1)}" r="4.5" fill="white" stroke="#0d1117" stroke-width="1.5"/>`;
       }
+
       // Month label
       barLabels += `<text x="${cx.toFixed(1)}" y="${H-padB+14}" fill="${isCur?'#58a6ff':'#8b949e'}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${MONTH_NAMES[i]}</text>`;
-    });
+    }
 
     const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${grid}
+      ${grid}${yLbl}
       ${curHighlight}
-      ${bars}${barLabels}${curDots}
+      ${bars10}${bars5}${barLabels}${curDots}
     </svg>`;
 
     // Current month detail
-    const v10cur = m10[curMonth];
+    const v10cur = m10[curMonth], v5cur = m5[curMonth];
     const vCur = mCur[curMonth];
     const sigCol = v10cur >= 0.2 ? "var(--bull)" : v10cur <= -0.2 ? "var(--bear)" : "var(--neutral)";
+    const lastFetchStr = state.seasonLastFetch ? new Date(state.seasonLastFetch).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : "never";
 
     html += `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text)">Seasonality — Avg. returns by month — ${pair.name}</div>
-        <div style="display:flex;gap:16px">
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <div style="width:12px;height:10px;background:rgba(74,144,217,.9);border-radius:2px"></div>10 Year Avg
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+            <div style="width:12px;height:10px;background:rgba(74,144,217,.92);border-radius:2px"></div>10 Year Avg
           </div>
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+            <div style="width:12px;height:10px;background:rgba(220,80,80,.92);border-radius:2px"></div>5 Year Avg
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
             <div style="width:10px;height:10px;background:white;border-radius:50%"></div>This Year
           </div>
+          ${pair.live?`<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Updated: ${lastFetchStr}</span>`:""}
         </div>
       </div>
       <div style="overflow-x:auto">${svg}</div>
     </div>
 
     <!-- Current month callout box matching Nick's tooltip style -->
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;display:inline-block;min-width:200px">
-      <div style="font-family:var(--mono);font-size:11px;font-weight:bold;color:var(--text);margin-bottom:6px">${MONTH_NAMES[curMonth]}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:3px">
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;display:inline-block;min-width:240px">
+      <div style="font-family:var(--mono);font-size:11px;font-weight:bold;color:var(--text);margin-bottom:8px">${MONTH_NAMES[curMonth]}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">
         <span style="display:inline-block;width:10px;height:10px;background:rgba(74,144,217,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>
         10 Year Avg: <strong style="color:${sigCol}">${v10cur>0?"+":""}${v10cur.toFixed(2)}%</strong>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">
+        <span style="display:inline-block;width:10px;height:10px;background:rgba(220,80,80,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>
+        5 Year Avg: <strong style="color:${v5cur>=0.2?"var(--bull)":v5cur<=-0.2?"var(--bear)":"var(--neutral)"}">${v5cur>0?"+":""}${v5cur.toFixed(2)}%</strong>
       </div>
       ${vCur!=null?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">
         <span style="display:inline-block;width:10px;height:10px;background:white;border-radius:50%;margin-right:5px;vertical-align:middle"></span>
