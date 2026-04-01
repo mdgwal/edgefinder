@@ -85,7 +85,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .pct-neutral{color:var(--muted);}
 .delta-bull{color:var(--bull);}
 .delta-bear{color:var(--bear);}
-/* SENTIMENT */
 .sent-sub-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .sent-sub-tab{font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
 .sent-sub-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
@@ -165,6 +164,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .ib-blue{background:rgba(88,166,255,.06);border:1px solid rgba(88,166,255,.15);}
 .ib-yellow{background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.15);}
 .ib-green{background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.15);}
+.ib-red{background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.2);}
 .iblabel{font-family:var(--mono);display:block;margin-bottom:4px;}
 .lrow{display:flex;align-items:center;gap:8px;padding:8px 0;color:var(--muted);font-family:var(--mono);font-size:11px;}
 .spinner{width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--bull);border-radius:50%;animation:spin .8s linear infinite;display:inline-block;}
@@ -177,10 +177,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .key-status{font-family:var(--mono);font-size:10px;margin-top:5px;padding:6px 10px;border-radius:5px;}
 .key-ok{background:rgba(0,255,136,.08);color:var(--bull);border:1px solid rgba(0,255,136,.2);}
 .key-missing{background:rgba(240,180,41,.08);color:var(--neutral);border:1px solid rgba(240,180,41,.2);}
+.key-error{background:rgba(255,59,92,.08);color:var(--bear);border:1px solid rgba(255,59,92,.2);}
 .econ-loading{display:flex;align-items:center;gap:8px;padding:30px;color:var(--muted);font-family:var(--mono);font-size:11px;justify-content:center;}
 .tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:var(--mono);font-size:11px;color:var(--text);pointer-events:none;z-index:999;display:none;}
-
-/* ── ECONOMIC SURPRISE METER ── */
 .eco-sub-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;}
 .eco-sub-tab{font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;}
 .eco-sub-tab.active{background:var(--accent);color:#000;border-color:var(--accent);}
@@ -194,9 +193,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .global-gauge-info{flex:1;min-width:200px;}
 .global-gauge-title{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:8px;}
 .global-gauge-desc{font-size:12px;color:var(--muted);line-height:1.6;}
-
-
-/* ── SEASONALITY ── */
 .season-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
 @media(min-width:700px){.season-grid{grid-template-columns:repeat(3,1fr);}}
 .season-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
@@ -260,7 +256,6 @@ let activeTab="setups";
 let sentSubTab="retail";
 let ecoSubTab="meter";
 
-// ── FALLBACK SENTIMENT DATA ───────────────────────────────────────────────────
 const FALLBACK_SENTIMENT=[
   {name:"EURUSD",longPercentage:38,shortPercentage:62,longVolume:12450,shortVolume:20300,longPositions:1240,shortPositions:2030},
   {name:"GBPUSD",longPercentage:61,shortPercentage:39,longVolume:8900,shortVolume:5700,longPositions:890,shortPositions:570},
@@ -283,7 +278,6 @@ const FALLBACK_SENTIMENT=[
   {name:"ETHUSD",longPercentage:28,shortPercentage:72,longVolume:7100,shortVolume:18200,longPositions:710,shortPositions:1820},
 ];
 
-// Smart Money divergence (COT-based)
 const SMART_MONEY=[
   {id:"EURUSD",retailLong:38,institutionalLong:67},{id:"GBPUSD",retailLong:61,institutionalLong:70},
   {id:"USDJPY",retailLong:72,institutionalLong:31},{id:"AUDUSD",retailLong:44,institutionalLong:54},
@@ -317,7 +311,6 @@ const EXTREMES=[
   {id:"USDCAD", direction:"EXTREME SHORT",retailPct:29,historicalAvg:45,deviation:-16,signal:"CONTRARIAN BUY",  strength:"Moderate"},
 ];
 
-// ── COT DATA ──────────────────────────────────────────────────────────────────
 const COT_DATA=[
   {id:"AUD",     longC:101462,shortC:86934, dLong:19538, dShort:-6238, longPct:53.86,shortPct:46.14,netChg:7.07, netPos:14528,  oi:201000, dOI:24590},
   {id:"PLATINUM",longC:46316, shortC:18184, dLong:213,   dShort:-3518, longPct:71.81,shortPct:28.19,netChg:3.81, netPos:28132,  oi:73000,  dOI:-2535},
@@ -413,13 +406,13 @@ function buildFallbackFG(){
 let state={
   rates:null,prevRates:null,cdata:null,
   fredKey:loadKey('fred'),
-  avKey:loadKey('av'),
+  fredError:null,  // FIX B: track FRED errors to show in UI
   mfxEmail:loadKey('mfx_email'),
   mfxPassword:loadKey('mfx_password'),
   mfxSession:loadKey('mfx_session'),
+  mfxError:null,   // FIX C: track Myfxbook errors to show in UI
   econData:null,econLive:false,econLoading:false,
   fgData:buildFallbackFG(),fgLive:false,
-  // Sentiment data — starts with fallback, replaced by live Myfxbook data
   sentimentData:FALLBACK_SENTIMENT,
   sentimentLive:false,
   sentimentLoading:false,
@@ -428,9 +421,11 @@ let state={
   seasonFilter:"All",
   seasonAsset:"XAUUSD",
   seasonView:"monthly",
-  // COT live data from CFTC
   cotData:null,cotLive:false,cotLoading:false,cotLastUpdate:null,
-  seasonLastFetch:0,seasonFetching:false,
+  // FIX A: seasonFetching is now per-asset object, not a single bool
+  seasonFetching:{},
+  // FIX E: track season errors per asset for display
+  seasonError:{},
   putCallData:null,putCallLive:false,
   aaiiData:null,aaiiLive:false,
 };
@@ -443,184 +438,93 @@ function fgColor(v){if(v>=75)return"var(--bull)";if(v>=55)return"#7effc4";if(v>=
 function fgLabel(v){if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";if(v>=45)return"NEUTRAL";if(v>=25)return"FEAR";return"EXTREME FEAR";}
 function fmtK(n){if(Math.abs(n)>=1000000)return(n/1000000).toFixed(2)+"M";if(Math.abs(n)>=1000)return(n/1000).toFixed(0)+"K";return String(n);}
 
-// ── CFTC COT LIVE FETCH ────────────────────────────────────────────────────────
-// CFTC publishes FinFutWk.txt every Friday ~3:30 PM EST
-// Contains non-commercial (speculative/smart money) positions for all futures
+// ── CFTC COT ──────────────────────────────────────────────────────────────────
 const CFTC_URL="https://www.cftc.gov/files/dea/newcot/FinFutWk.txt";
-
-// Map CFTC market names → our asset IDs
 const CFTC_MAP={
-  "EURO FX":                        {id:"EUR",  name:"Euro"},
-  "BRITISH POUND STERLING":         {id:"GBP",  name:"British Pound"},
-  "JAPANESE YEN":                   {id:"JPY",  name:"Japanese Yen"},
-  "AUSTRALIAN DOLLAR":              {id:"AUD",  name:"Australian Dollar"},
-  "CANADIAN DOLLAR":                {id:"CAD",  name:"Canadian Dollar"},
-  "SWISS FRANC":                    {id:"CHF",  name:"Swiss Franc"},
-  "NEW ZEALAND DOLLAR":             {id:"NZD",  name:"New Zealand Dollar"},
-  "U.S. DOLLAR INDEX":              {id:"USD",  name:"US Dollar Index"},
-  "GOLD":                           {id:"Gold", name:"Gold"},
-  "SILVER":                         {id:"SILVER",name:"Silver"},
-  "CRUDE OIL, LIGHT SWEET":         {id:"USOIL",name:"Crude Oil"},
-  "BITCOIN":                        {id:"BTC",  name:"Bitcoin"},
-  "NASDAQ-100 MINI":                {id:"NASDAQ",name:"NASDAQ-100"},
-  "S&P 500 MINI":                   {id:"SPX",  name:"S&P 500"},
-  "DOW JONES INDUSTRIAL AVG":       {id:"DOW",  name:"Dow Jones"},
-  "10-YEAR U.S. TREASURY NOTES":    {id:"US10T",name:"US 10Y T-Note"},
-  "COPPER-GRADE #1":                {id:"COPPER",name:"Copper"},
-  "PLATINUM":                       {id:"PLATINUM",name:"Platinum"},
+  "EURO FX":{id:"EUR",name:"Euro"},"BRITISH POUND STERLING":{id:"GBP",name:"British Pound"},
+  "JAPANESE YEN":{id:"JPY",name:"Japanese Yen"},"AUSTRALIAN DOLLAR":{id:"AUD",name:"Australian Dollar"},
+  "CANADIAN DOLLAR":{id:"CAD",name:"Canadian Dollar"},"SWISS FRANC":{id:"CHF",name:"Swiss Franc"},
+  "NEW ZEALAND DOLLAR":{id:"NZD",name:"New Zealand Dollar"},"U.S. DOLLAR INDEX":{id:"USD",name:"US Dollar Index"},
+  "GOLD":{id:"Gold",name:"Gold"},"SILVER":{id:"SILVER",name:"Silver"},
+  "CRUDE OIL, LIGHT SWEET":{id:"USOIL",name:"Crude Oil"},"BITCOIN":{id:"BTC",name:"Bitcoin"},
+  "NASDAQ-100 MINI":{id:"NASDAQ",name:"NASDAQ-100"},"S&P 500 MINI":{id:"SPX",name:"S&P 500"},
+  "DOW JONES INDUSTRIAL AVG":{id:"DOW",name:"Dow Jones"},"10-YEAR U.S. TREASURY NOTES":{id:"US10T",name:"US 10Y T-Note"},
+  "COPPER-GRADE #1":{id:"COPPER",name:"Copper"},"PLATINUM":{id:"PLATINUM",name:"Platinum"},
 };
-
 function parseCFTCcsv(csvText){
   const lines=csvText.trim().split("\n");
   const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
-  // Column indices
-  const iName   = header.findIndex(h=>h.includes("Market_and_Exchange"));
-  const iDate   = header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
-  const iOI     = header.findIndex(h=>h==="Open_Interest_All");
-  const iLong   = header.findIndex(h=>h==="NonComm_Positions_Long_All");
-  const iShort  = header.findIndex(h=>h==="NonComm_Positions_Short_All");
-  const iLongOld= header.findIndex(h=>h==="NonComm_Positions_Long_Old")||iLong;
-  const iShortOld=header.findIndex(h=>h==="NonComm_Positions_Short_Old")||iShort;
-
-  const results=[];
-  // We need previous week too — grab last 2 entries per market
+  const iName=header.findIndex(h=>h.includes("Market_and_Exchange"));
+  const iDate=header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
+  const iOI=header.findIndex(h=>h==="Open_Interest_All");
+  const iLong=header.findIndex(h=>h==="NonComm_Positions_Long_All");
+  const iShort=header.findIndex(h=>h==="NonComm_Positions_Short_All");
   const seen={};
-
   for(let i=1;i<lines.length;i++){
-    // Parse CSV line handling quoted fields
     const cols=[];let cur="",inQ=false;
-    for(const ch of lines[i]){
-      if(ch==='"'){inQ=!inQ;}
-      else if(ch===","&&!inQ){cols.push(cur.trim());cur="";}
-      else cur+=ch;
-    }
+    for(const ch of lines[i]){if(ch==='"'){inQ=!inQ;}else if(ch===","&&!inQ){cols.push(cur.trim());cur="";}else cur+=ch;}
     cols.push(cur.trim());
     if(cols.length<10)continue;
-
     const rawName=(cols[iName]||"").replace(/"/g,"").trim();
-    // Find matching CFTC_MAP key
     let matched=null;
-    for(const key of Object.keys(CFTC_MAP)){
-      if(rawName.toUpperCase().includes(key.toUpperCase())){matched=key;break;}
-    }
+    for(const key of Object.keys(CFTC_MAP)){if(rawName.toUpperCase().includes(key.toUpperCase())){matched=key;break;}}
     if(!matched)continue;
-
     const id=CFTC_MAP[matched].id;
     const longC=parseInt(cols[iLong])||0;
     const shortC=parseInt(cols[iShort])||0;
     const oi=parseInt(cols[iOI])||0;
     const date=(cols[iDate]||"").replace(/"/g,"");
-
-    if(!seen[id]){
-      // First occurrence = latest week
-      seen[id]={first:{longC,shortC,oi,date}};
-    }else if(!seen[id].second){
-      // Second occurrence = previous week
-      seen[id].second={longC,shortC};
-    }
+    if(!seen[id])seen[id]={first:{longC,shortC,oi,date}};
+    else if(!seen[id].second)seen[id].second={longC,shortC};
   }
-
-  // Build final COT rows
   const rows=[];
-  for(const [key,info] of Object.entries(CFTC_MAP)){
-    const s=seen[info.id];
-    if(!s||!s.first)continue;
-    const {longC,shortC,oi,date}=s.first;
-    const total=longC+shortC;
-    if(total===0)continue;
+  for(const[key,info]of Object.entries(CFTC_MAP)){
+    const s=seen[info.id];if(!s||!s.first)continue;
+    const{longC,shortC,oi,date}=s.first;
+    const total=longC+shortC;if(total===0)continue;
     const longPct=parseFloat(((longC/total)*100).toFixed(2));
     const shortPct=parseFloat(((shortC/total)*100).toFixed(2));
     const netPos=longC-shortC;
-    // Change vs previous week
     let dLong=0,dShort=0,netChg=0;
     if(s.second){
-      dLong=longC-s.second.longC;
-      dShort=shortC-s.second.shortC;
+      dLong=longC-s.second.longC;dShort=shortC-s.second.shortC;
       const prevTotal=s.second.longC+s.second.shortC;
       const prevLongPct=prevTotal>0?(s.second.longC/prevTotal)*100:50;
       netChg=parseFloat((longPct-prevLongPct).toFixed(2));
     }
-    rows.push({
-      id:info.id, name:info.name,
-      longC,shortC,dLong,dShort,
-      longPct,shortPct,netChg,
-      netPos,oi,dOI:0,date,
-    });
+    rows.push({id:info.id,name:info.name,longC,shortC,dLong,dShort,longPct,shortPct,netChg,netPos,oi,dOI:0,date});
   }
-  // Sort by netChg desc (same as default)
   return rows.sort((a,b)=>b.netChg-a.netChg);
 }
-
 async function fetchCFTCData(){
-  const proxies=[
-    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u=>`https://thingproxy.freeboard.io/fetch/${u}`,
-  ];
+  const proxies=[u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://thingproxy.freeboard.io/fetch/${u}`];
   for(const makeProxy of proxies){
     try{
-      const r=await fetch(makeProxy(CFTC_URL));
-      if(!r.ok)continue;
-      const text=await r.text();
-      // allorigins wraps in {contents:"..."}
-      let csv=text;
+      const r=await fetch(makeProxy(CFTC_URL));if(!r.ok)continue;
+      const text=await r.text();let csv=text;
       try{const j=JSON.parse(text);if(j.contents)csv=j.contents;}catch(e){}
       if(!csv||csv.length<1000)continue;
-      const rows=parseCFTCcsv(csv);
-      if(rows.length>0)return rows;
+      const rows=parseCFTCcsv(csv);if(rows.length>0)return rows;
     }catch(e){continue;}
   }
   throw new Error("CFTC fetch failed");
 }
-
 function loadCOTData(){
   if(state.cotLoading)return;
-  // Only re-fetch if we don't have data or data is older than 12 hours
-  if(state.cotData&&state.cotLastUpdate){
-    const age=(Date.now()-state.cotLastUpdate)/1000/60/60;
-    if(age<12)return; // Fresh enough
-  }
+  if(state.cotData&&state.cotLastUpdate){const age=(Date.now()-state.cotLastUpdate)/1000/60/60;if(age<12)return;}
   state.cotLoading=true;
-  fetchCFTCData().then(rows=>{
-    state.cotData=rows;
-    state.cotLive=true;
-    state.cotLoading=false;
-    state.cotLastUpdate=Date.now();
-    if(activeTab==="cot")renderCOT();
-  }).catch(e=>{
-    console.log("CFTC COT fetch failed:",e.message);
-    state.cotLoading=false;
-    state.cotLive=false;
-    // Keep using hardcoded fallback
-  });
+  fetchCFTCData().then(rows=>{state.cotData=rows;state.cotLive=true;state.cotLoading=false;state.cotLastUpdate=Date.now();if(activeTab==="cot")renderCOT();}).catch(e=>{console.log("CFTC COT fetch failed:",e.message);state.cotLoading=false;state.cotLive=false;});
 }
 
-function sentSignal(lp){
-  if(lp>=75)return{label:"STRONG SELL",cls:"sig-strong-sell"};
-  if(lp>=65)return{label:"SELL",cls:"sig-sell"};
-  if(lp<=25)return{label:"STRONG BUY",cls:"sig-strong-buy"};
-  if(lp<=35)return{label:"BUY",cls:"sig-buy"};
-  return{label:"NEUTRAL",cls:"sig-neutral"};
-}
-function pcSignal(pc){
-  if(pc>=1.5)return{label:"EXTREME FEAR",col:"var(--bear)"};
-  if(pc>=1.2)return{label:"FEAR",col:"var(--bear)"};
-  if(pc>=0.9)return{label:"NEUTRAL",col:"var(--neutral)"};
-  if(pc>=0.7)return{label:"GREED",col:"var(--bull)"};
-  return{label:"EXTREME GREED",col:"var(--bull)"};
-}
+function sentSignal(lp){if(lp>=75)return{label:"STRONG SELL",cls:"sig-strong-sell"};if(lp>=65)return{label:"SELL",cls:"sig-sell"};if(lp<=25)return{label:"STRONG BUY",cls:"sig-strong-buy"};if(lp<=35)return{label:"BUY",cls:"sig-buy"};return{label:"NEUTRAL",cls:"sig-neutral"};}
+function pcSignal(pc){if(pc>=1.5)return{label:"EXTREME FEAR",col:"var(--bear)"};if(pc>=1.2)return{label:"FEAR",col:"var(--bear)"};if(pc>=0.9)return{label:"NEUTRAL",col:"var(--neutral)"};if(pc>=0.7)return{label:"GREED",col:"var(--bull)"};return{label:"EXTREME GREED",col:"var(--bull)"};}
 
-// ── MYFXBOOK API — multi-proxy fallback ──────────────────────────────────────
-const PROXIES=[
-  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
-  u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-  u=>`https://thingproxy.freeboard.io/fetch/${u}`,
-];
+// ── MYFXBOOK ──────────────────────────────────────────────────────────────────
+const PROXIES=[u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,u=>`https://thingproxy.freeboard.io/fetch/${u}`];
 async function proxyFetch(targetUrl){
   for(const makeProxy of PROXIES){
     try{
-      const r=await fetch(makeProxy(targetUrl));
-      if(!r.ok)continue;
+      const r=await fetch(makeProxy(targetUrl));if(!r.ok)continue;
       const text=await r.text();
       try{const outer=JSON.parse(text);if(outer.contents)return JSON.parse(outer.contents);return outer;}
       catch(e){return JSON.parse(text);}
@@ -630,7 +534,7 @@ async function proxyFetch(targetUrl){
 }
 async function myfxLogin(email,password){
   const d=await proxyFetch(`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
-  if(d.error)throw new Error(d.message||"Login error");
+  if(d.error)throw new Error(d.message||"Login failed — check your email/password");
   return d.session;
 }
 async function myfxGetOutlook(session){
@@ -646,38 +550,29 @@ async function fetchMyfxbookSentiment(){
   state.mfxSession=session;saveKey("mfx_session",session);
   return await myfxGetOutlook(session);
 }
-
 function loadMyfxbookData(){
   if(!state.mfxEmail||!state.mfxPassword||state.sentimentLoading)return;
-  state.sentimentLoading=true;
-  // ✅ Always show demo data immediately while fetching — never blank
+  state.sentimentLoading=true;state.mfxError=null;
   if(activeTab==="sentiment")renderSentiment();
-  // Set a hard 15s timeout — if all proxies fail, show demo data
   const timeout=setTimeout(()=>{
-    state.sentimentLoading=false;
-    state.sentimentLive=false;
+    state.sentimentLoading=false;state.sentimentLive=false;
+    state.mfxError="Request timed out — check your network or credentials";
     if(activeTab==="sentiment")renderSentiment();
   },15000);
   fetchMyfxbookSentiment().then(symbols=>{
     clearTimeout(timeout);
     state.sentimentData=symbols.map(s=>({
-      name:s.name,
-      longPercentage:parseFloat(s.longPercentage),
-      shortPercentage:parseFloat(s.shortPercentage),
-      longVolume:parseInt(s.longVolume)||0,
-      shortVolume:parseInt(s.shortVolume)||0,
-      longPositions:parseInt(s.longPositions)||0,
-      shortPositions:parseInt(s.shortPositions)||0,
+      name:s.name,longPercentage:parseFloat(s.longPercentage),shortPercentage:parseFloat(s.shortPercentage),
+      longVolume:parseInt(s.longVolume)||0,shortVolume:parseInt(s.shortVolume)||0,
+      longPositions:parseInt(s.longPositions)||0,shortPositions:parseInt(s.shortPositions)||0,
     }));
-    state.sentimentLive=true;
-    state.sentimentLoading=false;
+    state.sentimentLive=true;state.sentimentLoading=false;state.mfxError=null;
     if(activeTab==="sentiment")renderSentiment();
   }).catch(e=>{
     clearTimeout(timeout);
-    console.log("Myfxbook error:",e.message);
-    state.sentimentLoading=false;
-    state.sentimentLive=false;
-    // Show demo data — no blank screen
+    // FIX C: store error message for display instead of only console.log
+    state.mfxError=e.message;
+    state.sentimentLoading=false;state.sentimentLive=false;
     if(activeTab==="sentiment")renderSentiment();
   });
 }
@@ -687,9 +582,22 @@ async function fetchRates(){const r=await fetch("https://api.frankfurter.app/lat
 async function fetchPrev(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
 async function fetchFearGreed(){const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json");if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}
 function buildStrength(rates){if(!rates)return null;const all={...rates,USD:1};const st={};CURRS.forEach(c=>{st[c.code]=0;});CURRS.forEach(b=>CURRS.forEach(q=>{if(b.code===q.code||!all[b.code])return;st[b.code]+=Math.log(1/all[b.code])*.1;}));const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);}
-async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error();const d=await r.json();const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error();return v;}
+async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error("HTTP "+r.status);const d=await r.json();if(d.error_message)throw new Error(d.error_message);const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error("No data");return v;}
 async function fetchFREDEcon(key){const res={};for(const[cur,series]of Object.entries(FRED_SERIES)){res[cur]=[];for(const s of series){try{const obs=await fredFetch(s.id,key,13);let val=parseFloat(obs[0].value);const date=obs[0].date;let surprise=0;if(s.yoy&&obs.length>=13){const pv=parseFloat(obs[12].value);if(!isNaN(pv)&&pv!==0)val=((val-pv)/pv)*100;}if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}res[cur].push({l:s.label,v:isNaN(val)?"N/A":s.fmt(val),s:surprise,d:date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):""})}catch(e){const fb=(FALLBACK_ECON[cur]||[]).find(f=>f.l===s.label);res[cur].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});}await new Promise(r=>setTimeout(r,150));}}return res;}
-function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLoading=true;fetchFREDEcon(state.fredKey).then(d=>{state.econData=d;state.econLive=true;state.econLoading=false;if(activeTab==="econ")renderEcon();}).catch(()=>{state.econLoading=false;});}
+
+// FIX B: FRED errors now stored in state.fredError and shown in UI
+function loadFREDData(){
+  if(!state.fredKey||state.econLoading)return;
+  state.econLoading=true;state.fredError=null;
+  fetchFREDEcon(state.fredKey).then(d=>{
+    state.econData=d;state.econLive=true;state.econLoading=false;state.fredError=null;
+    if(activeTab==="econ")renderEcon();
+  }).catch(e=>{
+    state.econLoading=false;state.econLive=false;
+    state.fredError=e.message||"FRED API key invalid or rate limited";
+    if(activeTab==="econ")renderEcon();
+  });
+}
 
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
@@ -699,7 +607,6 @@ async function refreshAll(){
   if(r2.status==="fulfilled")state.prevRates=r2.value;
   if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
   state.cdata=buildStrength(state.rates);
-  // Load live sentiment from Myfxbook
   loadCOTData();
   loadMyfxbookData();
   loadSeasonalityLive();
@@ -739,66 +646,34 @@ function setFilter(cat){state.filterCat=cat;renderSetups();}
 
 // ── COT ───────────────────────────────────────────────────────────────────────
 function renderCOT(){
-  // ✅ Use live CFTC data if available, fall back to hardcoded
-  const data = state.cotData && state.cotData.length ? state.cotData : COT_DATA;
-  const isLive = state.cotLive;
-  const isLoading = state.cotLoading;
-
-  // Work out last update label
-  let lastUpdateLabel = "Mar 14, 2026";
-  if(isLive && data[0] && data[0].date){
-    try{
-      const d = new Date(data[0].date.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"));
-      lastUpdateLabel = d.toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"});
-    }catch(e){}
-  }
-
-  const badge = isLive
-    ? `<span class="cbadge-live">● LIVE · CFTC</span>`
-    : isLoading
-      ? `<span class="cbadge" style="color:var(--accent)"><span class="spinning">↻</span> Fetching CFTC...</span>`
-      : `<span class="cbadge-demo">FALLBACK DATA</span>`;
-
+  const data=state.cotData&&state.cotData.length?state.cotData:COT_DATA;
+  const isLive=state.cotLive,isLoading=state.cotLoading;
+  let lastUpdateLabel="Mar 14, 2026";
+  if(isLive&&data[0]&&data[0].date){try{const d=new Date(data[0].date.replace(/(\d{4})(\d{2})(\d{2})/,"$1-$2-$3"));lastUpdateLabel=d.toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"});}catch(e){}}
+  const badge=isLive?`<span class="cbadge-live">● LIVE · CFTC</span>`:isLoading?`<span class="cbadge" style="color:var(--accent)"><span class="spinning">↻</span> Fetching CFTC...</span>`:`<span class="cbadge-demo">FALLBACK DATA</span>`;
   const sorted=[...data].sort((a,b)=>{if(state.cotSort.col==="id")return a.id.localeCompare(b.id)*state.cotSort.dir;return(b[state.cotSort.col]-a[state.cotSort.col])*state.cotSort.dir;});
-
   const chartHtml=`<div class="cot-chart-wrap">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-      <div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px">COT Net Positioning</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">
-          Last Update: <strong style="color:var(--accent)">${lastUpdateLabel}</strong> · Weekly · CFTC
-        </div>
-        <div style="display:flex;gap:16px;margin-top:6px">
-          <div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div>
-          <div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div>
-        </div>
-      </div>
+      <div><div style="font-family:var(--mono);font-size:12px;color:var(--text);font-weight:bold;margin-bottom:4px">COT Net Positioning</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Update: <strong style="color:var(--accent)">${lastUpdateLabel}</strong> · Weekly · CFTC</div>
+      <div style="display:flex;gap:16px;margin-top:6px"><div class="cot-legend"><div class="cot-legend-dot" style="background:#4a90d9"></div><span style="color:var(--muted)">Long</span></div><div class="cot-legend"><div class="cot-legend-dot" style="background:#e05c6a"></div><span style="color:var(--muted)">Short</span></div></div></div>
       ${badge}
     </div>
     <div class="cot-bars-scroll"><div class="cot-bars">
       ${data.map(row=>{const lh=Math.round(row.longPct*1.5);const sh=Math.round(row.shortPct*1.5);return`<div class="cot-bar-wrap" onmouseenter="showTip(event,'${row.id}',${row.longPct},${row.shortPct})" onmouseleave="hideTip()"><div class="cot-bar-stacked" style="height:${lh+sh}px"><div class="cot-bar-short" style="height:${sh}px;display:flex;align-items:center;justify-content:center">${row.shortPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.shortPct.toFixed(0)}%</span>`:""}</div><div class="cot-bar-long" style="height:${lh}px;display:flex;align-items:center;justify-content:center">${row.longPct>15?`<span style="font-family:var(--mono);font-size:8px;color:#fff">${row.longPct.toFixed(0)}%</span>`:""}</div></div><div class="cot-bar-label">${row.id}</div></div>`;}).join("")}
-    </div></div>
-  </div>`;
-
+    </div></div></div>`;
   const cols=[{key:"id",label:"Asset"},{key:"longC",label:"Long C"},{key:"shortC",label:"Short C"},{key:"dLong",label:"Δ Long C"},{key:"dShort",label:"Δ Short C"},{key:"longPct",label:"Long %"},{key:"shortPct",label:"Short %"},{key:"netChg",label:"Net % Chg"},{key:"netPos",label:"Net Position"},{key:"oi",label:"Open Interest"},{key:"dOI",label:"Δ Open Int"}];
   let tbl=`<div class="cot-tbl-wrap"><table class="cot-tbl"><thead><tr>${cols.map(c=>`<th onclick="sortCOT('${c.key}')">${c.label}${state.cotSort.col===c.key?(state.cotSort.dir===-1?" ▼":" ▲"):""}</th>`).join("")}</tr></thead><tbody>`;
   sorted.forEach(row=>{
     const lc=row.longPct>55?"pct-bull":row.longPct<45?"pct-bear":"pct-neutral";
     const sc2=row.shortPct>55?"pct-bull":row.shortPct<45?"pct-bear":"pct-neutral";
-    const nc=row.netChg>0?"delta-bull":"delta-bear";
-    const dlc=row.dLong>0?"delta-bull":"delta-bear";
-    const dsc=row.dShort<0?"delta-bull":"delta-bear";
-    const doic=row.dOI>0?"delta-bull":"delta-bear";
+    const nc=row.netChg>0?"delta-bull":"delta-bear";const dlc=row.dLong>0?"delta-bull":"delta-bear";
+    const dsc=row.dShort<0?"delta-bull":"delta-bear";const doic=row.dOI>0?"delta-bull":"delta-bear";
     const npc=row.netPos>0?"pos-bull":"pos-bear";
     tbl+=`<tr><td>${row.id}</td><td>${row.longC.toLocaleString()}</td><td>${row.shortC.toLocaleString()}</td><td class="${dlc}">${row.dLong>0?"+":""}${row.dLong.toLocaleString()}</td><td class="${dsc}">${row.dShort>0?"+":""}${row.dShort.toLocaleString()}</td><td class="${lc}">${row.longPct.toFixed(2)}%</td><td class="${sc2}">${row.shortPct.toFixed(2)}%</td><td class="${nc}">${row.netChg>0?"+":""}${row.netChg.toFixed(2)}%</td><td><span class="pos-highlight ${npc}">${row.netPos>0?"+":""}${fmtK(row.netPos)}</span></td><td>${fmtK(row.oi)}</td><td class="${doic}">${row.dOI>0?"+":""}${fmtK(row.dOI)}</td></tr>`;
   });
   tbl+=`</tbody></table></div>`;
-  document.getElementById("page-cot").innerHTML=chartHtml+tbl+`<div class="infobox ib-blue">
-    <span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA — ${isLive?"● LIVE · Auto-fetched from CFTC.gov":"Using fallback data — live fetch on next refresh"}</span>
-    Published every Friday 3:30 PM EST. Reflects positions as of prior Tuesday.
-    Tap column headers to sort. Net Position in <span style="color:#4a90d9">blue = net long</span> · <span style="color:#e05c6a">red = net short</span>.
-    Data refreshes automatically every 12 hours.
-  </div>`;
+  document.getElementById("page-cot").innerHTML=chartHtml+tbl+`<div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CFTC COT DATA — ${isLive?"● LIVE · Auto-fetched from CFTC.gov":"Using fallback data — live fetch on next refresh"}</span>Published every Friday 3:30 PM EST. Reflects positions as of prior Tuesday. Tap column headers to sort.</div>`;
 }
 function sortCOT(col){if(state.cotSort.col===col)state.cotSort.dir*=-1;else{state.cotSort.col=col;state.cotSort.dir=-1;}renderCOT();}
 function showTip(e,id,lp,sp){const t=document.getElementById("tooltip");t.innerHTML=`<strong style="color:var(--text)">${id}</strong><br><span style="color:#4a90d9">Long: ${lp.toFixed(2)}%</span><br><span style="color:#e05c6a">Short: ${sp.toFixed(2)}%</span>`;t.style.display="block";t.style.left=(e.clientX+14)+"px";t.style.top=(e.clientY-10)+"px";}
@@ -806,150 +681,65 @@ function hideTip(){document.getElementById("tooltip").style.display="none";}
 
 // ── SENTIMENT ─────────────────────────────────────────────────────────────────
 function renderSentiment(){
-  const subTabs=[
-    {id:"retail",     label:"📊 Retail Long/Short"},
-    {id:"smartmoney", label:"🏦 Smart Money vs Retail"},
-    {id:"putcall",    label:"📉 Put/Call Ratio"},
-    {id:"aaii",       label:"📋 AAII Survey"},
-    {id:"extremes",   label:"⚡ Sentiment Extremes"},
-  ];
+  const subTabs=[{id:"retail",label:"📊 Retail Long/Short"},{id:"smartmoney",label:"🏦 Smart Money vs Retail"},{id:"putcall",label:"📉 Put/Call Ratio"},{id:"aaii",label:"📋 AAII Survey"},{id:"extremes",label:"⚡ Sentiment Extremes"}];
   let html=`<div class="sent-sub-tabs">${subTabs.map(t=>`<button class="sent-sub-tab${sentSubTab===t.id?" active":""}" onclick="setSentTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
-
-  // ── RETAIL LONG/SHORT (LIVE Myfxbook) ──
   if(sentSubTab==="retail"){
     const data=state.sentimentData;
     const cats=["All","Forex","Commodity","Index","Crypto"];
-    // Determine category from name
-    function getCat(name){
-      if(["XAUUSD","XAGUSD","USOIL","UKOIL","COPPER"].includes(name))return"Commodity";
-      if(["US500","NAS100","US30","GER40","UK100"].includes(name))return"Index";
-      if(["BTCUSD","ETHUSD","LTCUSD"].includes(name))return"Crypto";
-      return"Forex";
-    }
+    function getCat(name){if(["XAUUSD","XAGUSD","USOIL","UKOIL","COPPER"].includes(name))return"Commodity";if(["US500","NAS100","US30","GER40","UK100"].includes(name))return"Index";if(["BTCUSD","ETHUSD","LTCUSD"].includes(name))return"Crypto";return"Forex";}
     const filtered=state.sentFilter==="All"?data:data.filter(r=>getCat(r.name)===state.sentFilter);
     const strongSells=data.filter(r=>r.longPercentage>=75).length;
     const sells=data.filter(r=>r.longPercentage>=65&&r.longPercentage<75).length;
     const buys=data.filter(r=>r.longPercentage>25&&r.longPercentage<=35).length;
     const strongBuys=data.filter(r=>r.longPercentage<=25).length;
-    const badge=state.sentimentLive?`<span class="cbadge-live">● LIVE · Myfxbook</span>`:`<span class="cbadge-demo">DEMO DATA — Add Myfxbook in Settings</span>`;
-
-    html+=`
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
-      <div style="background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.2);border-radius:10px;padding:12px;text-align:center">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Strong Sell</div>
-        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:var(--bear);margin:4px 0">${strongSells}</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">75%+ retail long</div>
-      </div>
-      <div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.12);border-radius:10px;padding:12px;text-align:center">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Sell Signal</div>
-        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:#ff8fa0;margin:4px 0">${sells}</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">65-75% retail long</div>
-      </div>
-      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.12);border-radius:10px;padding:12px;text-align:center">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Buy Signal</div>
-        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:#7effc4;margin:4px 0">${buys}</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">25-35% retail long</div>
-      </div>
-      <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:12px;text-align:center">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Strong Buy</div>
-        <div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:var(--bull);margin:4px 0">${strongBuys}</div>
-        <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">Below 25% retail long</div>
-      </div>
+    // FIX C: Show error message in badge if connection failed
+    const badge=state.sentimentLive
+      ?`<span class="cbadge-live">● LIVE · Myfxbook</span>`
+      :state.mfxError
+        ?`<span class="cbadge-demo" style="color:var(--bear);border-color:rgba(255,59,92,.3)">⚠ ${state.mfxError}</span>`
+        :`<span class="cbadge-demo">DEMO DATA — Add Myfxbook in Settings</span>`;
+    html+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.2);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Strong Sell</div><div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:var(--bear);margin:4px 0">${strongSells}</div><div style="font-family:var(--mono);font-size:9px;color:var(--muted)">75%+ retail long</div></div>
+      <div style="background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.12);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Sell Signal</div><div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:#ff8fa0;margin:4px 0">${sells}</div><div style="font-family:var(--mono);font-size:9px;color:var(--muted)">65-75% retail long</div></div>
+      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.12);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Buy Signal</div><div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:#7effc4;margin:4px 0">${buys}</div><div style="font-family:var(--mono);font-size:9px;color:var(--muted)">25-35% retail long</div></div>
+      <div style="background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2);border-radius:10px;padding:12px;text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase">Strong Buy</div><div style="font-family:var(--mono);font-size:24px;font-weight:bold;color:var(--bull);margin:4px 0">${strongBuys}</div><div style="font-family:var(--mono);font-size:9px;color:var(--muted)">Below 25% retail long</div></div>
     </div>
     <div class="filter-bar"><span class="filter-label">Filter:</span>${cats.map(c=>`<button class="filter-btn${state.sentFilter===c?" active":""}" onclick="setSentFilter('${c}')">${c}</button>`).join("")}</div>
     <div class="card"><div class="chd"><span class="ctitle">Retail Positioning — ${filtered.length} Instruments</span>${badge}</div><div class="cbody">`;
-
-    if(state.sentimentLoading&&!state.sentimentLive){
-      // Show demo data with loading indicator — not a blank spinner
-      html+=`<div class="lrow" style="margin-bottom:10px"><div class="spinner"></div><span style="color:var(--accent)">Connecting to Myfxbook... showing demo data meanwhile</span></div>`;
-    }
-    if(true){
-      filtered.forEach(row=>{
-        const lp=row.longPercentage;
-        const sp=row.shortPercentage;
-        const sig=sentSignal(lp);
-        const totalVol=row.longVolume+row.shortVolume;
-        const volLabel=totalVol>50000?"Very High":totalVol>20000?"High":totalVol>5000?"Medium":"Low";
-        const volCol=totalVol>50000?"var(--bull)":totalVol>20000?"#7effc4":totalVol>5000?"var(--text)":"var(--muted)";
-        html+=`<div class="sent-row-big">
-          <div class="sent-pair-big">${row.name}</div>
-          <span class="sent-signal ${sig.cls}">${sig.label}</span>
-          <div class="sent-bar-big">
-            <div class="sent-track-big"><div class="sent-long-big" style="width:${lp}%"></div><div class="sent-short-big" style="width:${sp}%"></div></div>
-            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px">
-              <span style="color:var(--bull)">▲ ${lp.toFixed(1)}% Long (${fmtK(row.longPositions)} pos)</span>
-              <span style="color:var(--bear)">${sp.toFixed(1)}% Short (${fmtK(row.shortPositions)} pos) ▼</span>
-            </div>
-          </div>
-          <div class="sent-vol" style="color:${volCol}">${volLabel}</div>
-        </div>`;
-      });
-    }
-    html+=`</div></div>
-    <div class="infobox ib-yellow">
-      <span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC — SOURCE: Myfxbook Community Outlook</span>
-      When retail is 65%+ long → smart money likely short → <strong style="color:var(--bear)">SELL signal</strong>.<br>
-      When retail is 35% or less long → smart money likely long → <strong style="color:var(--bull)">BUY signal</strong>.<br>
-      70-80% of retail traders lose money. Trading against them gives a statistical edge.<br>
-      ${!state.sentimentLive?`<br><strong style="color:var(--neutral)">👆 Add Myfxbook credentials in ⚙ Settings to get live data updating every few hours.</strong>`:""}
-    </div>`;
-  }
-
-  // ── SMART MONEY vs RETAIL ──
-  else if(sentSubTab==="smartmoney"){
-    html+=`<div class="sectitle">Smart Money vs Retail — Divergence Analysis</div>
-    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: COT (Smart Money) vs Myfxbook (Retail)</span>
-    When Smart Money and Retail diverge by 20%+ it creates high probability contrarian trades.<br>
-    <strong style="color:var(--bull)">Green = Smart Money Bullish, Retail Bearish → BUY.</strong>
-    <strong style="color:var(--bear)">Red = Smart Money Bearish, Retail Bullish → SELL.</strong></div>
-    <div style="overflow-x:auto"><table class="smart-tbl">
-      <thead><tr><th>Asset</th><th>Retail Long %</th><th>Smart Money Long %</th><th>Gap</th><th>Signal</th></tr></thead><tbody>`;
+    if(state.sentimentLoading&&!state.sentimentLive)html+=`<div class="lrow" style="margin-bottom:10px"><div class="spinner"></div><span style="color:var(--accent)">Connecting to Myfxbook... showing demo data meanwhile</span></div>`;
+    filtered.forEach(row=>{
+      const lp=row.longPercentage,sp=row.shortPercentage,sig=sentSignal(lp);
+      const totalVol=row.longVolume+row.shortVolume;
+      const volLabel=totalVol>50000?"Very High":totalVol>20000?"High":totalVol>5000?"Medium":"Low";
+      const volCol=totalVol>50000?"var(--bull)":totalVol>20000?"#7effc4":totalVol>5000?"var(--text)":"var(--muted)";
+      html+=`<div class="sent-row-big"><div class="sent-pair-big">${row.name}</div><span class="sent-signal ${sig.cls}">${sig.label}</span><div class="sent-bar-big"><div class="sent-track-big"><div class="sent-long-big" style="width:${lp}%"></div><div class="sent-short-big" style="width:${sp}%"></div></div><div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px"><span style="color:var(--bull)">▲ ${lp.toFixed(1)}% Long (${fmtK(row.longPositions)} pos)</span><span style="color:var(--bear)">${sp.toFixed(1)}% Short (${fmtK(row.shortPositions)} pos) ▼</span></div></div><div class="sent-vol" style="color:${volCol}">${volLabel}</div></div>`;
+    });
+    html+=`</div></div><div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC — SOURCE: Myfxbook Community Outlook</span>When retail is 65%+ long → smart money likely short → <strong style="color:var(--bear)">SELL signal</strong>.<br>When retail is 35% or less long → smart money likely long → <strong style="color:var(--bull)">BUY signal</strong>.<br>${!state.sentimentLive?`<br><strong style="color:var(--neutral)">👆 Add Myfxbook credentials in ⚙ Settings to get live data.</strong>`:""}`;
+    if(state.mfxError&&!state.sentimentLive)html+=`<br><strong style="color:var(--bear)">Last error: ${state.mfxError}</strong>`;
+    html+=`</div>`;
+  }else if(sentSubTab==="smartmoney"){
+    html+=`<div class="sectitle">Smart Money vs Retail — Divergence Analysis</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: COT (Smart Money) vs Myfxbook (Retail)</span>When Smart Money and Retail diverge by 20%+ it creates high probability contrarian trades.</div><div style="overflow-x:auto"><table class="smart-tbl"><thead><tr><th>Asset</th><th>Retail Long %</th><th>Smart Money Long %</th><th>Gap</th><th>Signal</th></tr></thead><tbody>`;
     SMART_MONEY.forEach(row=>{
-      const gap=row.institutionalLong-row.retailLong;
-      const gapCol=gap>0?"var(--bull)":gap<0?"var(--bear)":"var(--muted)";
+      const gap=row.institutionalLong-row.retailLong;const gapCol=gap>0?"var(--bull)":gap<0?"var(--bear)":"var(--muted)";
       const signal=gap>20?"⬆ STRONG BUY":gap>10?"⬆ BUY":gap<-20?"⬇ STRONG SELL":gap<-10?"⬇ SELL":"→ NEUTRAL";
       const sigCol=gap>10?"var(--bull)":gap<-10?"var(--bear)":"var(--muted)";
-      const divLabel=Math.abs(gap)>20?"STRONG"+(gap>0?" BULL":" BEAR"):Math.abs(gap)>10?(gap>0?"BULL":"BEAR"):"NEUTRAL";
-      const divCls=Math.abs(gap)>10?(gap>0?"diverge-bull":"diverge-bear"):"diverge-neutral";
       const rBar=`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="width:${row.retailLong}%;height:100%;background:var(--bear);border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--bear)">${row.retailLong}%</span></div>`;
       const sBar=`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="width:${row.institutionalLong}%;height:100%;background:var(--bull);border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--bull)">${row.institutionalLong}%</span></div>`;
       html+=`<tr><td>${row.id}</td><td>${rBar}</td><td>${sBar}</td><td style="color:${gapCol};font-family:var(--mono);font-weight:bold">${gap>0?"+":""}${gap}%</td><td style="color:${sigCol};font-family:var(--mono);font-weight:bold">${signal}</td></tr>`;
     });
     html+=`</tbody></table></div>`;
-  }
-
-  // ── PUT/CALL RATIO ──
-  else if(sentSubTab==="putcall"){
-    html+=`<div class="sectitle">Put/Call Ratio — Options Market Sentiment</div>
-    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: CBOE Options Data</span>
-    <strong style="color:var(--text)">Put</strong> = bearish bet. <strong style="color:var(--text)">Call</strong> = bullish bet.<br>
-    <strong style="color:var(--bull)">Below 0.7</strong> = extreme greed (contrarian sell). <strong style="color:var(--bear)">Above 1.2</strong> = extreme fear (contrarian buy).</div>
-    <div class="card"><div class="chd"><span class="ctitle">Put/Call Ratio — Options Market</span><span class="cbadge">DAILY · CBOE</span></div><div class="cbody">`;
-    const pcData = state.putCallData || PUT_CALL;
-    const pcBadge = state.putCallLive
-      ? `<span class="cbadge-live">● LIVE · CBOE</span>`
-      : `<span class="cbadge-demo">DEMO DATA</span>`;
-    pcData.forEach(row=>{
-      const sig=pcSignal(row.pc);
-      const barPct=Math.min(100,row.pc*50);
-      const barCol=row.pc>=1.2?"var(--bear)":row.pc<=0.7?"var(--bull)":"var(--neutral)";
-      html+=`<div class="pc-row"><div class="pc-asset">${row.id}</div><div class="pc-ratio" style="color:${sig.col}">${row.pc.toFixed(2)}</div><div class="pc-bar-wrap"><div class="pc-bar-track"><div class="pc-bar-fill" style="width:${barPct}%;background:${barCol}"></div></div><div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px">${row.meaning}</div></div><div class="pc-signal" style="color:${sig.col}">${sig.label}</div></div>`;
-    });
+  }else if(sentSubTab==="putcall"){
+    html+=`<div class="sectitle">Put/Call Ratio — Options Market Sentiment</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: CBOE Options Data</span><strong style="color:var(--bull)">Below 0.7</strong> = extreme greed. <strong style="color:var(--bear)">Above 1.2</strong> = extreme fear.</div><div class="card"><div class="chd"><span class="ctitle">Put/Call Ratio</span><span class="cbadge">DAILY · CBOE</span></div><div class="cbody">`;
+    const pcData=state.putCallData||PUT_CALL;
+    pcData.forEach(row=>{const sig=pcSignal(row.pc);const barPct=Math.min(100,row.pc*50);const barCol=row.pc>=1.2?"var(--bear)":row.pc<=0.7?"var(--bull)":"var(--neutral)";html+=`<div class="pc-row"><div class="pc-asset">${row.id}</div><div class="pc-ratio" style="color:${sig.col}">${row.pc.toFixed(2)}</div><div class="pc-bar-wrap"><div class="pc-bar-track"><div class="pc-bar-fill" style="width:${barPct}%;background:${barCol}"></div></div><div style="font-family:var(--mono);font-size:8px;color:var(--muted);margin-top:2px">${row.meaning}</div></div><div class="pc-signal" style="color:${sig.col}">${sig.label}</div></div>`;});
     html+=`</div></div>`;
-  }
-
-  // ── AAII SURVEY ──
-  else if(sentSubTab==="aaii"){
-    const aaiiCurrent = state.aaiiData || AAII;
-    const aaiiIsLive = state.aaiiLive;
-    const spreadCol=aaiiCurrent.spread>10?"var(--bull)":AAII.spread<-10?"var(--bear)":"var(--neutral)";
-    html+=`<div class="sectitle">AAII Investor Sentiment Survey</div>
-    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: AAII.com — Published Every Thursday</span>
-    American Association of Individual Investors surveys members weekly on 6-month market outlook.<br>
-    Historical avg: <strong style="color:var(--bull)">38% Bullish</strong> · <strong style="color:var(--neutral)">31% Neutral</strong> · <strong style="color:var(--bear)">31% Bearish</strong>. Extreme readings = contrarian signal.</div>
+  }else if(sentSubTab==="aaii"){
+    const aaiiCurrent=state.aaiiData||AAII;const aaiiIsLive=state.aaiiLive;
+    const spreadCol=aaiiCurrent.spread>10?"var(--bull)":aaiiCurrent.spread<-10?"var(--bear)":"var(--neutral)";
+    html+=`<div class="sectitle">AAII Investor Sentiment Survey</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: AAII.com — Published Every Thursday</span>Historical avg: <strong style="color:var(--bull)">38% Bullish</strong> · <strong style="color:var(--neutral)">31% Neutral</strong> · <strong style="color:var(--bear)">31% Bearish</strong>.</div>
     <div class="aaii-wrap">
       <div class="aaii-box" style="border-color:rgba(0,255,136,.3)"><div class="aaii-label">Bullish</div><div class="aaii-val" style="color:var(--bull)">${aaiiCurrent.bullish.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.bullish.hist}%</div><div class="aaii-hist" style="color:${aaiiCurrent.bullish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${aaiiCurrent.bullish.change>0?"+":""}${aaiiCurrent.bullish.change}%</div><div class="aaii-bar" style="background:var(--bull);width:${aaiiCurrent.bullish.val}%"></div></div>
-      <div class="aaii-box" style="border-color:rgba(240,180,41,.3)"><div class="aaii-label">Neutral</div><div class="aaii-val" style="color:var(--neutral)">${aaiiCurrent.neutral.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.neutral.hist}%</div><div class="aaii-hist" style="color:var(--muted);margin-top:2px">Week: ${aaiiCurrent.neutral.change>0?"+":""}${aaiiCurrent.neutral.change}%</div><div class="aaii-bar" style="background:var(--neutral);width:${aaiiCurrent.neutral.val}%"></div></div>
+      <div class="aaii-box" style="border-color:rgba(240,180,41,.3)"><div class="aaii-label">Neutral</div><div class="aaii-val" style="color:var(--neutral)">${aaiiCurrent.neutral.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.neutral.hist}%</div><div class="aaii-bar" style="background:var(--neutral);width:${aaiiCurrent.neutral.val}%"></div></div>
       <div class="aaii-box" style="border-color:rgba(255,59,92,.3)"><div class="aaii-label">Bearish</div><div class="aaii-val" style="color:var(--bear)">${aaiiCurrent.bearish.val.toFixed(1)}%</div><div class="aaii-hist">Historical avg: ${aaiiCurrent.bearish.hist}%</div><div class="aaii-hist" style="color:${aaiiCurrent.bearish.change>0?"var(--bear)":"var(--bull)"};margin-top:2px">Week: ${aaiiCurrent.bearish.change>0?"+":""}${aaiiCurrent.bearish.change}%</div><div class="aaii-bar" style="background:var(--bear);width:${aaiiCurrent.bearish.val}%"></div></div>
     </div>
     <div class="card"><div class="chd"><span class="ctitle">Bull-Bear Spread</span><span class="cbadge${aaiiIsLive?"-live":""}">${aaiiIsLive?"● LIVE · AAII":"Week of "+aaiiCurrent.week}</span></div><div class="cbody">
@@ -958,136 +748,45 @@ function renderSentiment(){
         <div style="font-family:var(--mono);font-size:12px;color:var(--muted)">Bull - Bear Spread</div>
         <div style="font-family:var(--mono);font-size:11px;margin-top:6px;color:${spreadCol}">${aaiiCurrent.spread<-10?"EXCESSIVE BEARISH — Contrarian Bullish Signal":aaiiCurrent.spread>10?"EXCESSIVE BULLISH — Contrarian Bearish Signal":"NEAR HISTORICAL AVERAGE"}</div>
       </div>
-      <div style="height:8px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));border-radius:4px;margin:10px 0;position:relative">
-        <div style="position:absolute;width:4px;height:14px;background:white;border-radius:2px;top:-3px;transform:translateX(-50%);left:${Math.min(95,Math.max(5,50+AAII.spread))}%"></div>
-      </div>
+      <div style="height:8px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));border-radius:4px;margin:10px 0;position:relative"><div style="position:absolute;width:4px;height:14px;background:white;border-radius:2px;top:-3px;transform:translateX(-50%);left:${Math.min(95,Math.max(5,50+aaiiCurrent.spread))}%"></div></div>
       <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted)"><span style="color:var(--bear)">Bearish (-50%)</span><span>Neutral (0%)</span><span style="color:var(--bull)">Bullish (+50%)</span></div>
     </div></div>`;
-  }
-
-  // ── SENTIMENT EXTREMES ──
-  else if(sentSubTab==="extremes"){
-    html+=`<div class="sectitle">Sentiment Extremes — Highest Probability Setups</div>
-    <div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ ASSETS AT HISTORICAL EXTREMES</span>
-    The further from historical average, the stronger the contrarian signal. Always confirm with COT data.</div>
-    <div style="overflow-x:auto"><table class="extremes-tbl">
-      <thead><tr><th>Asset</th><th>Direction</th><th>Retail %</th><th>Hist Avg</th><th>Deviation</th><th>Signal</th><th>Strength</th></tr></thead><tbody>`;
+  }else if(sentSubTab==="extremes"){
+    html+=`<div class="sectitle">Sentiment Extremes — Highest Probability Setups</div><div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ ASSETS AT HISTORICAL EXTREMES</span>The further from historical average, the stronger the contrarian signal.</div><div style="overflow-x:auto"><table class="extremes-tbl"><thead><tr><th>Asset</th><th>Direction</th><th>Retail %</th><th>Hist Avg</th><th>Deviation</th><th>Signal</th><th>Strength</th></tr></thead><tbody>`;
     EXTREMES.forEach(row=>{
-      const isBull=row.signal.includes("BUY");
-      const sigCol=isBull?"var(--bull)":"var(--bear)";
-      const devCol=row.deviation>0?"var(--bear)":"var(--bull)";
-      const strCol=row.strength==="Strong"?"var(--bull)":"var(--neutral)";
-      html+=`<tr>
-        <td style="font-weight:bold;color:${sigCol}">${row.id}</td>
-        <td><span style="font-family:var(--mono);font-size:10px;color:${row.direction.includes("LONG")?"var(--bear)":"var(--bull)"}">${row.direction}</span></td>
-        <td style="font-family:var(--mono);color:${row.retailPct>50?"var(--bear)":"var(--bull)"}">${row.retailPct}%</td>
-        <td style="font-family:var(--mono);color:var(--muted)">${row.historicalAvg}%</td>
-        <td style="font-family:var(--mono);color:${devCol}">${row.deviation>0?"+":""}${row.deviation}%</td>
-        <td style="font-family:var(--mono);font-weight:bold;color:${sigCol}">${row.signal}</td>
-        <td style="font-family:var(--mono);color:${strCol}">${row.strength}</td>
-      </tr>`;
+      const isBull=row.signal.includes("BUY");const sigCol=isBull?"var(--bull)":"var(--bear)";
+      const devCol=row.deviation>0?"var(--bear)":"var(--bull)";const strCol=row.strength==="Strong"?"var(--bull)":"var(--neutral)";
+      html+=`<tr><td style="font-weight:bold;color:${sigCol}">${row.id}</td><td><span style="font-family:var(--mono);font-size:10px;color:${row.direction.includes("LONG")?"var(--bear)":"var(--bull)"}">${row.direction}</span></td><td style="font-family:var(--mono);color:${row.retailPct>50?"var(--bear)":"var(--bull)"}">${row.retailPct}%</td><td style="font-family:var(--mono);color:var(--muted)">${row.historicalAvg}%</td><td style="font-family:var(--mono);color:${devCol}">${row.deviation>0?"+":""}${row.deviation}%</td><td style="font-family:var(--mono);font-weight:bold;color:${sigCol}">${row.signal}</td><td style="font-family:var(--mono);color:${strCol}">${row.strength}</td></tr>`;
     });
-    html+=`</tbody></table></div>
-    <div class="infobox ib-green" style="margin-top:12px">
-      <span class="iblabel" style="color:var(--bull)">✅ HIGHEST PROBABILITY SETUP</span>
-      Best trades = ALL THREE align: <strong style="color:var(--text)">1.</strong> Retail at extreme (this tab) + <strong style="color:var(--text)">2.</strong> Smart Money opposite (Smart Money tab) + <strong style="color:var(--text)">3.</strong> COT confirms (COT tab).
-    </div>`;
+    html+=`</tbody></table></div><div class="infobox ib-green" style="margin-top:12px"><span class="iblabel" style="color:var(--bull)">✅ HIGHEST PROBABILITY SETUP</span>Best trades = ALL THREE align: Retail at extreme + Smart Money opposite + COT confirms.</div>`;
   }
-
   document.getElementById("page-sentiment").innerHTML=html;
 }
 function setSentTab(id){sentSubTab=id;renderSentiment();}
 function setSentFilter(f){state.sentFilter=f;renderSentiment();}
 
-
-// ── PUT/CALL LIVE FETCH — CBOE via proxy ─────────────────────────────────────
+// ── PUT/CALL LIVE FETCH ────────────────────────────────────────────────────────
 async function fetchPutCall(){
-  // CBOE publishes daily options stats — parse their public JSON
   const url="https://www.cboe.com/us/options/market_statistics/daily/";
-  try{
-    const d=await proxyFetch(url);
-    // Try to extract P/C ratio from HTML/JSON response
-    const text=typeof d==="string"?d:JSON.stringify(d);
-    // Look for equity P/C ratio pattern
-    const m=text.match(/equity[^0-9]*?([01]\.\d{2})/i);
-    if(m){
-      const eqPc=parseFloat(m[1]);
-      return[
-        {id:"SPX500",pc:eqPc+0.05,meaning:"S&P 500 options activity"},
-        {id:"NAS100",pc:eqPc-0.08,meaning:"Nasdaq options activity"},
-        {id:"TOTAL", pc:eqPc,     meaning:"All equity options"},
-        {id:"VIX",   pc:eqPc+0.45,meaning:"VIX options (fear hedge)"},
-        {id:"GOLD",  pc:eqPc-0.15,meaning:"Gold options activity"},
-        {id:"USOIL", pc:eqPc+0.08,meaning:"Oil options activity"},
-      ];
-    }
-  }catch(e){}
+  try{const d=await proxyFetch(url);const text=typeof d==="string"?d:JSON.stringify(d);const m=text.match(/equity[^0-9]*?([01]\.\d{2})/i);if(m){const eqPc=parseFloat(m[1]);return[{id:"SPX500",pc:eqPc+0.05,meaning:"S&P 500 options activity"},{id:"NAS100",pc:eqPc-0.08,meaning:"Nasdaq options activity"},{id:"TOTAL",pc:eqPc,meaning:"All equity options"},{id:"VIX",pc:eqPc+0.45,meaning:"VIX options (fear hedge)"},{id:"GOLD",pc:eqPc-0.15,meaning:"Gold options activity"},{id:"USOIL",pc:eqPc+0.08,meaning:"Oil options activity"}];}}catch(e){}
   throw new Error("P/C fetch failed");
 }
+function loadPutCallData(){fetchPutCall().then(data=>{state.putCallData=data;state.putCallLive=true;if(activeTab==="sentiment")renderSentiment();}).catch(()=>{state.putCallLive=false;});}
 
-function loadPutCallData(){
-  fetchPutCall().then(data=>{
-    state.putCallData=data;state.putCallLive=true;
-    if(activeTab==="sentiment")renderSentiment();
-  }).catch(()=>{state.putCallLive=false;});
-}
-
-// ── AAII LIVE FETCH — via proxy ───────────────────────────────────────────────
+// ── AAII LIVE FETCH ────────────────────────────────────────────────────────────
 async function fetchAAII(){
   const url="https://www.aaii.com/sentimentsurvey/sent_results.js";
-  try{
-    const d=await proxyFetch(url);
-    const text=typeof d==="string"?d:(d.contents||JSON.stringify(d));
-    // AAII returns JS object — extract bullish/neutral/bearish
-    const bull=text.match(/bullish['"\s]*:['"\s]*([\d.]+)/i);
-    const neut=text.match(/neutral['"\s]*:['"\s]*([\d.]+)/i);
-    const bear=text.match(/bearish['"\s]*:['"\s]*([\d.]+)/i);
-    if(bull&&neut&&bear){
-      const b=parseFloat(bull[1]),n=parseFloat(neut[1]),be=parseFloat(bear[1]);
-      return{
-        bullish:{val:b>1?b:b*100,hist:37.5,change:0},
-        neutral:{val:n>1?n:n*100,hist:31.5,change:0},
-        bearish:{val:be>1?be:be*100,hist:31.0,change:0},
-        spread:parseFloat(((b>1?b:b*100)-(be>1?be:be*100)).toFixed(1)),
-        week:new Date().toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"}),
-        live:true,
-      };
-    }
-  }catch(e){}
+  try{const d=await proxyFetch(url);const text=typeof d==="string"?d:(d.contents||JSON.stringify(d));const bull=text.match(/bullish['"\s]*:['"\s]*([\d.]+)/i);const neut=text.match(/neutral['"\s]*:['"\s]*([\d.]+)/i);const bear=text.match(/bearish['"\s]*:['"\s]*([\d.]+)/i);if(bull&&neut&&bear){const b=parseFloat(bull[1]),n=parseFloat(neut[1]),be=parseFloat(bear[1]);return{bullish:{val:b>1?b:b*100,hist:37.5,change:0},neutral:{val:n>1?n:n*100,hist:31.5,change:0},bearish:{val:be>1?be:be*100,hist:31.0,change:0},spread:parseFloat(((b>1?b:b*100)-(be>1?be:be*100)).toFixed(1)),week:new Date().toLocaleDateString([],{month:"short",day:"numeric",year:"numeric"}),live:true};}}catch(e){}
   throw new Error("AAII fetch failed");
 }
+function loadAAIIData(){fetchAAII().then(data=>{state.aaiiData=data;state.aaiiLive=true;if(activeTab==="sentiment")renderSentiment();}).catch(()=>{state.aaiiLive=false;});}
 
-function loadAAIIData(){
-  fetchAAII().then(data=>{
-    state.aaiiData=data;state.aaiiLive=true;
-    if(activeTab==="sentiment")renderSentiment();
-  }).catch(()=>{state.aaiiLive=false;});
-}
-
-// ── SURPRISE METER — dynamically calculated from FRED data ───────────────────
-// Compare latest value vs 12-month average for each series
-// This gives a real "is this better or worse than normal?" score
+// ── ECONOMIC SURPRISE ─────────────────────────────────────────────────────────
 function calcSurpriseFromFRED(econData){
-  // econData = {USD:[{l,v,s,d}...], EUR:...}
-  // Each item has s = surprise score (-0.5 to +0.5) from FRED fetch
-  const result={};
-  const currencies=["USD","EUR","GBP","JPY"];
-  for(const cur of currencies){
-    const items=econData[cur]||[];
-    if(!items.length)continue;
-    // Average surprise across all indicators
-    const avg=items.reduce((a,i)=>a+i.s,0)/items.length;
-    // Convert -0.5..+0.5 range to 0..100 score (0.0 = 50%)
-    const score=Math.round(Math.max(0,Math.min(100,50+avg*100)));
-    result[cur]={
-      score,
-      indicators:items.map(i=>({n:i.l.replace(" YoY","").replace("Unemploy","Unemp"),s:i.s})),
-    };
-  }
+  const result={};const currencies=["USD","EUR","GBP","JPY"];
+  for(const cur of currencies){const items=econData[cur]||[];if(!items.length)continue;const avg=items.reduce((a,i)=>a+i.s,0)/items.length;const score=Math.round(Math.max(0,Math.min(100,50+avg*100)));result[cur]={score,indicators:items.map(i=>({n:i.l.replace(" YoY","").replace("Unemploy","Unemp"),s:i.s}))};}
   return result;
 }
-
-// Static fallback surprise data (used until FRED loads)
 const ECO_SURPRISE_FALLBACK={
   USD:{score:62,indicators:[{n:"GDP",s:.3},{n:"CPI",s:-.1},{n:"Unemp",s:.2},{n:"Rate",s:0}]},
   GBP:{score:55,indicators:[{n:"GDP",s:.2},{n:"CPI",s:-.3},{n:"Unemp",s:-.1},{n:"Rate",s:0}]},
@@ -1099,202 +798,96 @@ const ECO_SURPRISE_FALLBACK={
   CHF:{score:48,indicators:[{n:"GDP",s:0},{n:"CPI",s:-.2},{n:"Employ",s:.1},{n:"Rate",s:0}]},
 };
 
-// ── SEASONALITY DATA — 10-year historical monthly averages ───────────────────
-// Each value = avg % return for that month (Jan=0 .. Dec=11)
-// Based on 2014-2024 historical data for major forex pairs
-// 3 data series per asset matching Nick's EdgeFinder chart:
-// m10 = 10-year avg (blue bars), m5 = 5-year avg (red bars), mCur = current year (white line, null = future)
-// ── SEASON FALLBACK (used until Yahoo Finance data loads) ────────────────────
+// ── SEASONALITY DATA ──────────────────────────────────────────────────────────
 const SEASON_DATA_FALLBACK=[
-  {id:"EURUSD",name:"EUR/USD",  cat:"Forex",
-   m10: [-0.38, 0.12, 0.81, 0.33,-0.58, 0.21, 0.14,-0.52, 0.68, 0.31,-0.29,-0.18],
-   m5:  [-0.52, 0.08, 0.64, 0.21,-0.71, 0.18, 0.22,-0.63, 0.74, 0.41,-0.35,-0.09],
-   mCur:[-0.61,-0.34, 0.92, null,null,null,null,null,null,null,null,null]},
-  {id:"GBPUSD",name:"GBP/USD",  cat:"Forex",
-   m10: [-0.31, 0.42, 0.53, 0.18,-0.67, 0.14, 0.28,-0.61, 0.82, 0.47,-0.38,-0.12],
-   m5:  [-0.44, 0.31, 0.41, 0.09,-0.84, 0.11, 0.34,-0.72, 0.91, 0.55,-0.42,-0.06],
-   mCur:[-0.78,-0.21, 0.44, null,null,null,null,null,null,null,null,null]},
-  {id:"USDJPY",name:"USD/JPY",  cat:"Forex",
-   m10: [ 0.28,-0.22, 0.61,-0.31, 0.38, 0.09,-0.48, 0.82,-0.41, 0.19, 0.58,-0.14],
-   m5:  [ 0.41,-0.18, 0.52,-0.24, 0.45, 0.12,-0.55, 0.91,-0.38, 0.25, 0.63,-0.08],
-   mCur:[ 0.51,-0.62,-0.88, null,null,null,null,null,null,null,null,null]},
-  {id:"AUDUSD",name:"AUD/USD",  cat:"Forex",
-   m10: [-0.58, 0.31, 0.44, 0.12,-0.82, 0.18, 0.08,-0.71, 0.63, 0.38,-0.24,-0.09],
-   m5:  [-0.71, 0.22, 0.35, 0.06,-0.94, 0.14, 0.11,-0.81, 0.69, 0.44,-0.29,-0.04],
-   mCur:[-0.44,-0.31,-0.92, null,null,null,null,null,null,null,null,null]},
-  {id:"USDCAD",name:"USD/CAD",  cat:"Forex",
-   m10: [ 0.22,-0.28,-0.41, 0.09, 0.51,-0.18, 0.14, 0.32,-0.48,-0.21, 0.38, 0.11],
-   m5:  [ 0.31,-0.21,-0.35, 0.04, 0.62,-0.14, 0.18, 0.41,-0.52,-0.26, 0.44, 0.08],
-   mCur:[ 0.38, 0.19,-0.28, null,null,null,null,null,null,null,null,null]},
-  {id:"NZDUSD",name:"NZD/USD",  cat:"Forex",
-   m10: [-0.51, 0.22, 0.32, 0.08,-0.69, 0.18, 0.09,-0.58, 0.54, 0.31,-0.21,-0.08],
-   m5:  [-0.63, 0.15, 0.24, 0.03,-0.81, 0.14, 0.13,-0.68, 0.61, 0.38,-0.26,-0.04],
-   mCur:[-0.34,-0.18,-0.54, null,null,null,null,null,null,null,null,null]},
-  {id:"GBPJPY",name:"GBP/JPY",  cat:"Forex",
-   m10: [ 0.08, 0.21, 1.14,-0.08,-0.28, 0.31,-0.22, 0.18, 0.42, 0.68, 0.24,-0.31],
-   m5:  [ 0.11, 0.18, 0.98,-0.04,-0.35, 0.28,-0.28, 0.22, 0.51, 0.74, 0.31,-0.24],
-   mCur:[-0.24,-0.84,-1.34, null,null,null,null,null,null,null,null,null]},
-  {id:"XAUUSD",name:"XAU/USD",  cat:"Commodity",
-   m10: [ 4.10,-0.33, 1.33, 4.39,-0.67,-1.22,-1.22, 0.24, 1.44,-0.83,-1.60,-0.91],
-   m5:  [ 5.20,-1.40, 0.82, 5.60,-1.20,-0.80,-1.80, 0.44, 1.80,-0.60,-2.10,-0.50],
-   mCur:[ 4.20, 2.10, 3.80, null,null,null,null,null,null,null,null,null]},
-  {id:"USOIL", name:"USOIL",    cat:"Commodity",
-   m10: [ 0.81, 0.52, 1.24, 0.88, 0.28,-0.82,-0.54, 0.18, 0.41, 0.31,-1.22,-0.58],
-   m5:  [ 1.10, 0.38, 0.94, 0.64, 0.18,-1.10,-0.78, 0.08, 0.28, 0.24,-1.54,-0.42],
-   mCur:[-2.40,-0.80,-4.20, null,null,null,null,null,null,null,null,null]},
-  {id:"BTCUSD",name:"BTC/USD",  cat:"Crypto",
-   m10: [ 8.20,-2.10, 5.40, 3.80,-12.1, 2.30, 3.10,-8.40, 4.60,11.20, 8.30, 4.90],
-   m5:  [ 12.4,-4.20, 8.60, 5.10,-15.2, 3.40, 4.80,-11.2, 6.30,14.50,11.20, 6.40],
-   mCur:[ 3.20,-8.10,-5.20, null,null,null,null,null,null,null,null,null]},
-  {id:"US500", name:"S&P 500",  cat:"Index",
-   m10: [-0.12,-0.18, 1.24, 1.08,-0.28, 0.82, 0.58,-0.31, 0.42, 1.18, 0.81, 1.42],
-   m5:  [-0.22,-0.28, 1.44, 1.28,-0.38, 0.92, 0.68,-0.41, 0.52, 1.38, 0.91, 1.62],
-   mCur:[ 2.40,-1.20,-5.60, null,null,null,null,null,null,null,null,null]},
-  {id:"NAS100",name:"NASDAQ",   cat:"Index",
-   m10: [ 0.18,-0.31, 1.52, 1.28,-0.48, 1.08, 0.78,-0.48, 0.58, 1.38, 0.88, 1.58],
-   m5:  [ 0.28,-0.44, 1.72, 1.48,-0.62, 1.22, 0.92,-0.62, 0.68, 1.58, 1.02, 1.78],
-   mCur:[ 3.10,-1.80,-7.20, null,null,null,null,null,null,null,null,null]},
+  {id:"EURUSD",name:"EUR/USD",cat:"Forex",m10:[-0.38,0.12,0.81,0.33,-0.58,0.21,0.14,-0.52,0.68,0.31,-0.29,-0.18],m5:[-0.52,0.08,0.64,0.21,-0.71,0.18,0.22,-0.63,0.74,0.41,-0.35,-0.09],mCur:[-0.61,-0.34,0.92,null,null,null,null,null,null,null,null,null]},
+  {id:"GBPUSD",name:"GBP/USD",cat:"Forex",m10:[-0.31,0.42,0.53,0.18,-0.67,0.14,0.28,-0.61,0.82,0.47,-0.38,-0.12],m5:[-0.44,0.31,0.41,0.09,-0.84,0.11,0.34,-0.72,0.91,0.55,-0.42,-0.06],mCur:[-0.78,-0.21,0.44,null,null,null,null,null,null,null,null,null]},
+  {id:"USDJPY",name:"USD/JPY",cat:"Forex",m10:[0.28,-0.22,0.61,-0.31,0.38,0.09,-0.48,0.82,-0.41,0.19,0.58,-0.14],m5:[0.41,-0.18,0.52,-0.24,0.45,0.12,-0.55,0.91,-0.38,0.25,0.63,-0.08],mCur:[0.51,-0.62,-0.88,null,null,null,null,null,null,null,null,null]},
+  {id:"AUDUSD",name:"AUD/USD",cat:"Forex",m10:[-0.58,0.31,0.44,0.12,-0.82,0.18,0.08,-0.71,0.63,0.38,-0.24,-0.09],m5:[-0.71,0.22,0.35,0.06,-0.94,0.14,0.11,-0.81,0.69,0.44,-0.29,-0.04],mCur:[-0.44,-0.31,-0.92,null,null,null,null,null,null,null,null,null]},
+  {id:"USDCAD",name:"USD/CAD",cat:"Forex",m10:[0.22,-0.28,-0.41,0.09,0.51,-0.18,0.14,0.32,-0.48,-0.21,0.38,0.11],m5:[0.31,-0.21,-0.35,0.04,0.62,-0.14,0.18,0.41,-0.52,-0.26,0.44,0.08],mCur:[0.38,0.19,-0.28,null,null,null,null,null,null,null,null,null]},
+  {id:"NZDUSD",name:"NZD/USD",cat:"Forex",m10:[-0.51,0.22,0.32,0.08,-0.69,0.18,0.09,-0.58,0.54,0.31,-0.21,-0.08],m5:[-0.63,0.15,0.24,0.03,-0.81,0.14,0.13,-0.68,0.61,0.38,-0.26,-0.04],mCur:[-0.34,-0.18,-0.54,null,null,null,null,null,null,null,null,null]},
+  {id:"GBPJPY",name:"GBP/JPY",cat:"Forex",m10:[0.08,0.21,1.14,-0.08,-0.28,0.31,-0.22,0.18,0.42,0.68,0.24,-0.31],m5:[0.11,0.18,0.98,-0.04,-0.35,0.28,-0.28,0.22,0.51,0.74,0.31,-0.24],mCur:[-0.24,-0.84,-1.34,null,null,null,null,null,null,null,null,null]},
+  {id:"XAUUSD",name:"XAU/USD",cat:"Commodity",m10:[4.10,-0.33,1.33,4.39,-0.67,-1.22,-1.22,0.24,1.44,-0.83,-1.60,-0.91],m5:[5.20,-1.40,0.82,5.60,-1.20,-0.80,-1.80,0.44,1.80,-0.60,-2.10,-0.50],mCur:[4.20,2.10,3.80,null,null,null,null,null,null,null,null,null]},
+  {id:"USOIL",name:"USOIL",cat:"Commodity",m10:[0.81,0.52,1.24,0.88,0.28,-0.82,-0.54,0.18,0.41,0.31,-1.22,-0.58],m5:[1.10,0.38,0.94,0.64,0.18,-1.10,-0.78,0.08,0.28,0.24,-1.54,-0.42],mCur:[-2.40,-0.80,-4.20,null,null,null,null,null,null,null,null,null]},
+  {id:"BTCUSD",name:"BTC/USD",cat:"Crypto",m10:[8.20,-2.10,5.40,3.80,-12.1,2.30,3.10,-8.40,4.60,11.20,8.30,4.90],m5:[12.4,-4.20,8.60,5.10,-15.2,3.40,4.80,-11.2,6.30,14.50,11.20,6.40],mCur:[3.20,-8.10,-5.20,null,null,null,null,null,null,null,null,null]},
+  {id:"US500",name:"S&P 500",cat:"Index",m10:[-0.12,-0.18,1.24,1.08,-0.28,0.82,0.58,-0.31,0.42,1.18,0.81,1.42],m5:[-0.22,-0.28,1.44,1.28,-0.38,0.92,0.68,-0.41,0.52,1.38,0.91,1.62],mCur:[2.40,-1.20,-5.60,null,null,null,null,null,null,null,null,null]},
+  {id:"NAS100",name:"NASDAQ",cat:"Index",m10:[0.18,-0.31,1.52,1.28,-0.48,1.08,0.78,-0.48,0.58,1.38,0.88,1.58],m5:[0.28,-0.44,1.72,1.48,-0.62,1.22,0.92,-0.62,0.68,1.58,1.02,1.78],mCur:[3.10,-1.80,-7.20,null,null,null,null,null,null,null,null,null]},
 ];
+let SEASON_DATA=SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
 
-// Live SEASON_DATA — starts as fallback, replaced by Yahoo Finance data
-let SEASON_DATA = SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
-
-// ── YAHOO FINANCE SEASONALITY FETCHER ────────────────────────────────────────
-// Yahoo Finance symbols for each asset
-// ── ALPHA VANTAGE SEASONALITY FETCHER ────────────────────────────────────────
-// Uses user's existing AV key — monthly adjusted data, 20+ years history
-// AV symbols for each asset
-const AV_SYMBOLS={
-  EURUSD:{sym:"EURUSD",fn:"FX_MONTHLY",type:"fx",from:"EUR",to:"USD"},
-  GBPUSD:{sym:"GBPUSD",fn:"FX_MONTHLY",type:"fx",from:"GBP",to:"USD"},
-  USDJPY:{sym:"USDJPY",fn:"FX_MONTHLY",type:"fx",from:"USD",to:"JPY"},
-  AUDUSD:{sym:"AUDUSD",fn:"FX_MONTHLY",type:"fx",from:"AUD",to:"USD"},
-  USDCAD:{sym:"USDCAD",fn:"FX_MONTHLY",type:"fx",from:"USD",to:"CAD"},
-  NZDUSD:{sym:"NZDUSD",fn:"FX_MONTHLY",type:"fx",from:"NZD",to:"USD"},
-  GBPJPY:{sym:"GBPJPY",fn:"FX_MONTHLY",type:"fx",from:"GBP",to:"JPY"},
-  XAUUSD:{sym:"XAUUSD",fn:"FX_MONTHLY",type:"fx",from:"XAU",to:"USD"},
-  USOIL: {sym:"USOIL", fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"USO"},
-  BTCUSD:{sym:"BTCUSD",fn:"DIGITAL_CURRENCY_MONTHLY",type:"crypto",sym2:"BTC",market:"USD"},
-  US500: {sym:"US500", fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"SPY"},
-  NAS100:{sym:"NAS100",fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"QQQ"},
+// ── YAHOO FINANCE SEASONALITY ─────────────────────────────────────────────────
+const YAHOO_SYMBOLS={
+  EURUSD:"EURUSD=X",GBPUSD:"GBPUSD=X",USDJPY:"USDJPY=X",AUDUSD:"AUDUSD=X",
+  USDCAD:"USDCAD=X",NZDUSD:"NZDUSD=X",GBPJPY:"GBPJPY=X",XAUUSD:"GC=F",
+  USOIL:"CL=F",BTCUSD:"BTC-USD",US500:"^GSPC",NAS100:"^NDX",
 };
-
-async function fetchAVMonthly(assetId, avKey){
-  const cfg=AV_SYMBOLS[assetId];
-  if(!cfg||!avKey)throw new Error("No config or key");
-  let url;
-  if(cfg.type==="fx"){
-    url=`https://www.alphavantage.co/query?function=FX_MONTHLY&from_symbol=${cfg.from}&to_symbol=${cfg.to}&apikey=${avKey}&outputsize=full`;
-  }else if(cfg.type==="crypto"){
-    url=`https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_MONTHLY&symbol=${cfg.sym2}&market=${cfg.market}&apikey=${avKey}`;
-  }else{
-    url=`https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${cfg.sym2}&apikey=${avKey}&outputsize=full`;
+async function fetchYahooMonthly(symbol){
+  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=11y&includePrePost=false`;
+  let data=null;
+  for(const makeUrl of[u=>u,u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`]){
+    try{
+      const r=await fetch(makeUrl(url));if(!r.ok)continue;
+      const text=await r.text();
+      try{const outer=JSON.parse(text);data=outer.contents?JSON.parse(outer.contents):outer;if(data?.chart?.result?.[0]?.indicators)break;data=null;}catch(e){continue;}
+    }catch(e){continue;}
   }
-  const r=await fetch(url);
-  if(!r.ok)throw new Error("AV HTTP "+r.status);
-  const d=await r.json();
-  if(d.Note||d.Information)throw new Error("AV rate limit");
-
-  // Parse different response formats into unified {year,month,close} array
-  const entries=[];
-  if(cfg.type==="fx"){
-    const ts=d["Time Series FX (Monthly)"]||{};
-    Object.entries(ts).forEach(([date,v])=>{
-      const dt=new Date(date);
-      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["4. close"])});
-    });
-  }else if(cfg.type==="crypto"){
-    const ts=d["Time Series (Digital Currency Monthly)"]||{};
-    Object.entries(ts).forEach(([date,v])=>{
-      const dt=new Date(date);
-      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["4a. close (USD)"]||v["4. close"])});
-    });
-  }else{
-    const ts=d["Monthly Adjusted Time Series"]||{};
-    Object.entries(ts).forEach(([date,v])=>{
-      const dt=new Date(date);
-      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["5. adjusted close"])});
-    });
-  }
-  if(!entries.length)throw new Error("No data parsed");
-  // Sort ascending
-  entries.sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month);
-  // Convert to % monthly returns
+  if(!data)throw new Error("Yahoo fetch failed for "+symbol);
+  const result=data.chart.result[0];
+  const timestamps=result.timestamp,closes=result.indicators.quote[0].close;
+  if(!timestamps||!closes)throw new Error("No data for "+symbol);
   const returns=[];
-  for(let i=1;i<entries.length;i++){
-    const prev=entries[i-1],cur=entries[i];
-    if(!prev.close||!cur.close)continue;
-    const pct=parseFloat(((cur.close-prev.close)/prev.close*100).toFixed(4));
-    returns.push({year:cur.year,month:cur.month,pct});
+  for(let i=1;i<timestamps.length;i++){
+    if(closes[i]==null||closes[i-1]==null)continue;
+    const d=new Date(timestamps[i]*1000);
+    const pct=parseFloat(((closes[i]-closes[i-1])/closes[i-1]*100).toFixed(4));
+    returns.push({year:d.getFullYear(),month:d.getMonth(),pct});
   }
   return returns;
 }
-
 function calcSeasonality(returns,years){
-  const cutoff=new Date().getFullYear()-years;
+  const now=new Date(),cutoff=now.getFullYear()-years;
   const byMonth=Array(12).fill(null).map(()=>[]);
   returns.forEach(r=>{if(r.year>cutoff)byMonth[r.month].push(r.pct);});
   return byMonth.map(arr=>arr.length?parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2)):0);
 }
-
 function calcCurrentYear(returns){
-  const yr=new Date().getFullYear();
-  const curMonth=new Date().getMonth();
+  const yr=new Date().getFullYear(),curMonth=new Date().getMonth();
   const result=Array(12).fill(null);
   returns.forEach(r=>{if(r.year===yr&&r.month<=curMonth)result[r.month]=parseFloat(r.pct.toFixed(2));});
   return result;
 }
-
 async function fetchSeasonalityForAsset(assetId){
-  const avKey=state.avKey;
-  if(!avKey)throw new Error("No AV key — add in Settings");
-  const returns=await fetchAVMonthly(assetId,avKey);
-  return{
-    m10:calcSeasonality(returns,10),
-    m5: calcSeasonality(returns,5),
-    mCur:calcCurrentYear(returns),
-    live:true,
-  };
+  const symbol=YAHOO_SYMBOLS[assetId];if(!symbol)return null;
+  const returns=await fetchYahooMonthly(symbol);
+  return{m10:calcSeasonality(returns,10),m5:calcSeasonality(returns,5),mCur:calcCurrentYear(returns),live:true};
 }
 
-// Load seasonality — only fetches if: no key ever used before, or data >24h old
-// ✅ Never resets existing live data — keeps showing last good data on refresh
+// FIX A+D: loadSeasonalityLive fully rewritten with per-asset fetching flag,
+// finally block to always reset, and no global lock that blocks re-fetches
 async function loadSeasonalityLive(){
-  if(!state.avKey)return;
-  if(state.seasonFetching)return; // already running
-
-  // ✅ Skip if all data is already live and fetched within 24 hours
-  const allLive = SEASON_DATA.every(d=>d.live);
-  const age = (Date.now() - state.seasonLastFetch) / 3600000; // hours
-  if(allLive && age < 24){
-    if(activeTab==="seasonality")renderSeasonality();
-    return;
-  }
-
-  state.seasonFetching = true;
-  const selId = state.seasonAsset || "XAUUSD";
-  const ids = SEASON_DATA.map(d=>d.id);
-  // Selected asset first, then only non-live ones to save API calls
-  const notLive = ids.filter(id=>!SEASON_DATA.find(d=>d.id===id)?.live);
-  const ordered = [selId, ...notLive.filter(id=>id!==selId)];
+  const selId=state.seasonAsset||"XAUUSD";
+  const ids=SEASON_DATA.map(d=>d.id);
+  const ordered=[selId,...ids.filter(id=>id!==selId)];
 
   for(const id of ordered){
-    if(!state.avKey)break; // stop if key removed mid-fetch
+    // FIX A: per-asset fetching flag — one stuck asset won't block others
+    if(state.seasonFetching[id])continue;
+    state.seasonFetching[id]=true;
     try{
-      const live = await fetchSeasonalityForAsset(id);
+      const live=await fetchSeasonalityForAsset(id);
       if(!live)continue;
-      // ✅ Merge live data into existing — never wipe good data
-      SEASON_DATA = SEASON_DATA.map(d=>d.id===id ? {...d,...live} : d);
-      if(id===state.seasonAsset && activeTab==="seasonality")renderSeasonality();
+      SEASON_DATA=SEASON_DATA.map(d=>d.id===id?{...d,...live}:d);
+      delete state.seasonError[id];  // FIX E: clear error on success
+      if(id===state.seasonAsset&&activeTab==="seasonality")renderSeasonality();
     }catch(e){
+      state.seasonError[id]=e.message;  // FIX E: store error per asset
       console.log("Season fetch failed for "+id+":",e.message);
-      if(e.message.includes("rate limit"))await new Promise(r=>setTimeout(r,65000));
+    }finally{
+      // FIX A: ALWAYS reset the flag, even on error — prevents infinite spinner
+      state.seasonFetching[id]=false;
     }
-    await new Promise(r=>setTimeout(r,12500)); // 12.5s = safe within 5/min
+    await new Promise(r=>setTimeout(r,300));
   }
-
-  state.seasonLastFetch = Date.now();
-  state.seasonFetching = false;
   if(activeTab==="seasonality")renderSeasonality();
 }
 
@@ -1302,456 +895,194 @@ const MONTH_NAMES=["January","February","March","April","May","June","July","Aug
 const MONTH_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function renderSeasonality(){
-  const selAsset = state.seasonAsset || "XAUUSD";
-  const seasonView = state.seasonView || "monthly"; // "annual" | "monthly"
-  const pair = SEASON_DATA.find(d=>d.id===selAsset) || SEASON_DATA[0];
-  const curMonth = new Date().getMonth();
+  const selAsset=state.seasonAsset||"XAUUSD";
+  const seasonView=state.seasonView||"monthly";
+  const pair=SEASON_DATA.find(d=>d.id===selAsset)||SEASON_DATA[0];
+  const curMonth=new Date().getMonth();
+  // FIX A: isFetching per-asset, not global
+  const isFetching=!!state.seasonFetching[selAsset];
+  const hasError=state.seasonError[selAsset];
 
-  const assetOpts = SEASON_DATA.map(d=>`<option value="${d.id}" ${d.id===selAsset?"selected":""}>${d.name}</option>`).join("");
+  const assetOpts=SEASON_DATA.map(d=>`<option value="${d.id}" ${d.id===selAsset?"selected":""}>${d.name}</option>`).join("");
 
-  // ── HEADER (shared) ──
-  const viewBtns = `
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+  // FIX E: show error badge if fetch failed, spinner only while actively fetching
+  let statusBadge;
+  if(pair.live){
+    statusBadge=`<span class="cbadge-live">● LIVE · Yahoo Finance</span>`;
+  }else if(isFetching){
+    statusBadge=`<span class="cbadge" style="color:var(--accent)"><span class="spinning">↻</span> Fetching...</span>`;
+  }else if(hasError){
+    // FIX E: show actual error + retry button instead of infinite spinner
+    statusBadge=`<span class="cbadge-demo" style="color:var(--bear);border-color:rgba(255,59,92,.3);cursor:pointer" onclick="retrySeasonality('${selAsset}')">⚠ Failed — tap to retry</span>`;
+  }else{
+    statusBadge=`<span class="cbadge-demo" style="cursor:pointer" onclick="retrySeasonality('${selAsset}')">⟳ Load live data</span>`;
+  }
+
+  const viewBtns=`<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
     <div style="display:flex;gap:6px">
-      <button onclick="state.seasonView='annual';renderSeasonality()"
-        style="font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid ${seasonView==='annual'?'var(--accent)':'var(--border)'};background:${seasonView==='annual'?'var(--accent)':'var(--bg3)'};color:${seasonView==='annual'?'#000':'var(--muted)'};cursor:pointer">
-        📈 Annual Seasonality
-      </button>
-      <button onclick="state.seasonView='monthly';renderSeasonality()"
-        style="font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid ${seasonView==='monthly'?'var(--accent)':'var(--border)'};background:${seasonView==='monthly'?'var(--accent)':'var(--bg3)'};color:${seasonView==='monthly'?'#000':'var(--muted)'};cursor:pointer">
-        📊 Monthly Seasonality
-      </button>
+      <button onclick="state.seasonView='annual';renderSeasonality()" style="font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid ${seasonView==='annual'?'var(--accent)':'var(--border)'};background:${seasonView==='annual'?'var(--accent)':'var(--bg3)'};color:${seasonView==='annual'?'#000':'var(--muted)'};cursor:pointer">📈 Annual Seasonality</button>
+      <button onclick="state.seasonView='monthly';renderSeasonality()" style="font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:20px;border:1px solid ${seasonView==='monthly'?'var(--accent)':'var(--border)'};background:${seasonView==='monthly'?'var(--accent)':'var(--bg3)'};color:${seasonView==='monthly'?'#000':'var(--muted)'};cursor:pointer">📊 Monthly Seasonality</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Asset:</span>
-      <select onchange="state.seasonAsset=this.value;renderSeasonality()"
-        style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
-        ${assetOpts}
-      </select>
-      ${!state.avKey
-        ? `<span class="cbadge-demo" style="cursor:pointer" onclick="switchTab('settings')">⚠ Add Alpha Vantage key → live data</span>`
-        : pair.live
-          ? `<span class="cbadge-live">● LIVE · Alpha Vantage</span>`
-          : `<span class="cbadge-demo">⟳ Fetching from Alpha Vantage...</span>`}
+      <select onchange="switchSeasonAsset(this.value)" style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">${assetOpts}</select>
+      ${statusBadge}
     </div>
   </div>`;
 
-  let html = viewBtns;
+  let html=viewBtns;
 
-  // ════════════════════════════════════════════════════════
-  // ANNUAL VIEW — cumulative weekly line chart (like Image 1)
-  // ════════════════════════════════════════════════════════
-  if(seasonView === "annual"){
-    // Build 52 weekly datapoints from monthly data by interpolating
-    // 10yr avg cumulative % (white dashed), YTD cumulative % (red solid)
-    const m10 = pair.m10, mCur = pair.mCur;
-    // weeks per month approx
-    const weeksPerMonth = [4,4,5,4,4,4,5,4,4,5,4,5];
-    const wk10 = [], wkCur = [];
-    let cum10 = 0, cumCur = 0;
-
-    weeksPerMonth.forEach((wks, mi) => {
-      const wkReturn10 = m10[mi] / wks;
-      const wkReturnCur = mCur[mi] != null ? mCur[mi] / wks : null;
-      for(let w = 0; w < wks; w++){
-        cum10 += wkReturn10;
-        if(wkReturnCur != null) cumCur += wkReturnCur;
-        wk10.push(parseFloat(cum10.toFixed(3)));
-        wkCur.push(wkReturnCur != null ? parseFloat(cumCur.toFixed(3)) : null);
-      }
+  if(seasonView==="annual"){
+    const m10=pair.m10,mCur=pair.mCur;
+    const weeksPerMonth=[4,4,5,4,4,4,5,4,4,5,4,5];
+    const wk10=[],wkCur=[];let cum10=0,cumCur=0;
+    weeksPerMonth.forEach((wks,mi)=>{
+      const wkReturn10=m10[mi]/wks,wkReturnCur=mCur[mi]!=null?mCur[mi]/wks:null;
+      for(let w=0;w<wks;w++){cum10+=wkReturn10;if(wkReturnCur!=null)cumCur+=wkReturnCur;wk10.push(parseFloat(cum10.toFixed(3)));wkCur.push(wkReturnCur!=null?parseFloat(cumCur.toFixed(3)):null);}
     });
-
-    const W=700, H=280, padL=52, padR=50, padT=24, padB=50;
-    const chartW = W - padL - padR;
-    const chartH = H - padT - padB;
-    const n = wk10.length; // 52
-
-    const all10 = wk10, allCur = wkCur.filter(v=>v!=null);
-    const allVals = [...all10, ...allCur, 0];
-    const yMax = Math.max(...allVals) + 1.5;
-    const yMin = Math.min(...allVals) - 1.5;
-
-    function xPx(i){ return padL + (i/(n-1))*chartW; }
-    function yPx(v){ return padT + chartH*(1-(v-yMin)/(yMax-yMin)); }
-
-    // Y ticks (% labels right side)
-    const yRange = yMax - yMin;
-    const yStep = yRange > 20 ? 4 : yRange > 10 ? 2 : 1;
-    let grid="", yLbl="";
-    for(let t = Math.ceil(yMin/yStep)*yStep; t <= yMax+0.01; t += yStep){
-      const y = yPx(t).toFixed(1);
-      const zero = Math.abs(t) < 0.01;
-      grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${zero?'rgba(255,255,255,.2)':'rgba(255,255,255,.05)'}" stroke-width="${zero?1:0.5}"/>`;
-      yLbl += `<text x="${W-padR+6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" font-family="monospace">${t>0?"+":""}${t.toFixed(0)}%</text>`;
-    }
-
-    // Month dividers + labels
-    let mDividers = "", mLabels = "";
-    let wkIdx = 0;
-    weeksPerMonth.forEach((wks, mi) => {
-      const x = xPx(wkIdx).toFixed(1);
-      mDividers += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${H-padB}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;
-      const midX = xPx(wkIdx + wks/2).toFixed(1);
-      mLabels += `<text x="${midX}" y="${H-padB+14}" fill="${mi===curMonth?'#58a6ff':'#8b949e'}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${mi===curMonth?'bold':'normal'}">${MONTH_SHORT[mi]}</text>`;
-      wkIdx += wks;
-    });
-
-    // Week number labels every 4th
-    let wkLabels = "";
-    for(let w=0; w<n; w+=4){
-      const x = xPx(w).toFixed(1);
-      wkLabels += `<text x="${x}" y="${H-padB+28}" fill="rgba(255,255,255,.25)" font-size="7" text-anchor="middle" font-family="monospace">${w+1}</text>`;
-    }
-
-    // 10yr dashed line
-    const pts10 = wk10.map((v,i)=>`${xPx(i).toFixed(1)},${yPx(v).toFixed(1)}`).join(" ");
-    const line10 = `<polyline points="${pts10}" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-dasharray="5,4" stroke-linejoin="round"/>`;
-
-    // YTD solid red line
-    const curPts = wkCur.map((v,i)=>v!=null?`${xPx(i).toFixed(1)},${yPx(v).toFixed(1)}`:null).filter(Boolean);
-    const lineCur = curPts.length > 1
-      ? `<polyline points="${curPts.join(" ")}" fill="none" stroke="#e05c6a" stroke-width="2.5" stroke-linejoin="round"/>`
-      : "";
-
-    // Zero baseline
-    const zeroY = yPx(0).toFixed(1);
-    const baseline = `<line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>`;
-
-    const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${grid}${mDividers}${baseline}
-      ${line10}${lineCur}
-      ${mLabels}${wkLabels}
-      ${yLbl}
-    </svg>`;
-
-    // Current month signal
-    const avg10cur = m10[curMonth];
-    const sigCol = avg10cur >= 0.5 ? "var(--bull)" : avg10cur <= -0.5 ? "var(--bear)" : "var(--neutral)";
-
-    html += `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+    const W=700,H=280,padL=52,padR=50,padT=24,padB=50;
+    const chartW=W-padL-padR,chartH=H-padT-padB,n=wk10.length;
+    const allVals=[...wk10,...wkCur.filter(v=>v!=null),0];
+    const yMax=Math.max(...allVals)+1.5,yMin=Math.min(...allVals)-1.5;
+    function xPx(i){return padL+(i/(n-1))*chartW;}
+    function yPx(v){return padT+chartH*(1-(v-yMin)/(yMax-yMin));}
+    const yRange=yMax-yMin,yStep=yRange>20?4:yRange>10?2:1;
+    let grid="",yLbl="";
+    for(let t=Math.ceil(yMin/yStep)*yStep;t<=yMax+0.01;t+=yStep){const y=yPx(t).toFixed(1);const zero=Math.abs(t)<0.01;grid+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${zero?'rgba(255,255,255,.2)':'rgba(255,255,255,.05)'}" stroke-width="${zero?1:0.5}"/>`;yLbl+=`<text x="${W-padR+6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" font-family="monospace">${t>0?"+":""}${t.toFixed(0)}%</text>`;}
+    let mDividers="",mLabels="";let wkIdx=0;
+    weeksPerMonth.forEach((wks,mi)=>{const x=xPx(wkIdx).toFixed(1);mDividers+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${H-padB}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;const midX=xPx(wkIdx+wks/2).toFixed(1);mLabels+=`<text x="${midX}" y="${H-padB+14}" fill="${mi===curMonth?'#58a6ff':'#8b949e'}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${mi===curMonth?'bold':'normal'}">${MONTH_SHORT[mi]}</text>`;wkIdx+=wks;});
+    const pts10=wk10.map((v,i)=>`${xPx(i).toFixed(1)},${yPx(v).toFixed(1)}`).join(" ");
+    const line10=`<polyline points="${pts10}" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-dasharray="5,4" stroke-linejoin="round"/>`;
+    const curPts=wkCur.map((v,i)=>v!=null?`${xPx(i).toFixed(1)},${yPx(v).toFixed(1)}`:null).filter(Boolean);
+    const lineCur=curPts.length>1?`<polyline points="${curPts.join(" ")}" fill="none" stroke="#e05c6a" stroke-width="2.5" stroke-linejoin="round"/>`:"";
+    const zeroY=yPx(0).toFixed(1);
+    const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${grid}${mDividers}<line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>${line10}${lineCur}${mLabels}${yLbl}</svg>`;
+    const avg10cur=m10[curMonth];const sigCol=avg10cur>=0.5?"var(--bull)":avg10cur<=-0.5?"var(--bear)":"var(--neutral)";
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text)">Full Year Seasonality — ${pair.name}</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-dasharray="5,3"/></svg>10 Year Avg Performance
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <div style="width:24px;height:3px;background:#e05c6a;border-radius:2px"></div>YTD Performance
-          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)"><svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-dasharray="5,3"/></svg>10 Year Avg</div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)"><div style="width:24px;height:3px;background:#e05c6a;border-radius:2px"></div>YTD Performance</div>
         </div>
       </div>
       <div style="overflow-x:auto">${svg}</div>
     </div>
-    <div class="infobox ib-blue">
-      <span class="iblabel" style="color:var(--accent)">ℹ FULL YEAR SEASONALITY — ${pair.name}</span>
-      <strong style="color:rgba(255,255,255,.8)">White dashed</strong> = 10-year cumulative % avg by week.
-      <strong style="color:#e05c6a">Red line</strong> = current year YTD.
-      Current month (<strong style="color:var(--accent)">${MONTH_NAMES[curMonth]}</strong>): 10yr avg return <strong style="color:${sigCol}">${avg10cur>0?"+":""}${avg10cur.toFixed(2)}%</strong>
-    </div>`;
-  }
-
-  // ════════════════════════════════════════════════════════
-  // MONTHLY VIEW — bar chart per month (like Image 2)
-  // ════════════════════════════════════════════════════════
-  else {
-    const m10 = pair.m10, m5 = pair.m5, mCur = pair.mCur;
-    const W=700, H=270, padL=52, padR=16, padT=28, padB=50;
-    const chartW = W - padL - padR;
-    const chartH = H - padT - padB;
-    const n = 12;
-    const slotW = chartW / n;
-    // 3 bars per slot: m10 (blue), m5 (red), gap
-    const barW = slotW * 0.36;
-    const gap = slotW * 0.04;
-
-    const allVals = [...m10, ...m5, ...mCur.filter(v=>v!=null), 0];
-    const yMax = Math.max(...allVals) * 1.25 + 0.2;
-    const yMin = Math.min(...allVals) * 1.25 - 0.2;
-
-    function xCenter(i){ return padL + i*slotW + slotW/2; }
-    function yPx(v){ return padT + chartH*(1-(v-yMin)/(yMax-yMin)); }
-    const zero = yPx(0);
-
-    // Grid + labels
-    const yRange = yMax - yMin;
-    const yStep = yRange > 8 ? 2 : yRange > 4 ? 1 : 0.5;
-    let grid="", yLbl="";
-    for(let t = Math.ceil(yMin/yStep)*yStep; t <= yMax+0.01; t = parseFloat((t+yStep).toFixed(4))){
-      const y = yPx(t).toFixed(1);
-      const isZ = Math.abs(t)<0.001;
-      grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZ?'rgba(255,255,255,.22)':'rgba(255,255,255,.06)'}" stroke-width="${isZ?1:0.5}"/>`;
-      yLbl += `<text x="${padL-6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${t>0?"+":""}${t.toFixed(2)}%</text>`;
-    }
-
-    // Bars: blue (m10) left, red (m5) right + dots for current year
-    let bars10="", bars5="", barLabels="", curDots="", curHighlight="";
-    for(let i=0;i<12;i++){
-      const v10 = m10[i], v5 = m5[i], cv = mCur[i];
-      const cx = xCenter(i);
-      const isCur = i === curMonth;
-
-      // Current month column highlight
-      if(isCur) curHighlight = `<rect x="${(padL+i*slotW+1).toFixed(1)}" y="${padT}" width="${(slotW-2).toFixed(1)}" height="${chartH}" fill="rgba(88,166,255,.06)" rx="2"/>`;
-
-      // Blue bar (10yr) — left of center
-      const x10 = cx - gap/2 - barW;
-      const y10 = v10>=0 ? yPx(v10) : zero;
-      const h10 = Math.max(2, Math.abs(yPx(v10)-zero));
-      const col10 = isCur ? "#4a90d9" : i<curMonth ? "rgba(74,144,217,.92)" : "rgba(74,144,217,.45)";
-      bars10 += `<rect x="${x10.toFixed(1)}" y="${y10.toFixed(1)}" width="${barW.toFixed(1)}" height="${h10.toFixed(1)}" fill="${col10}" rx="1.5"/>`;
-
-      // Red bar (5yr) — right of center
-      const x5 = cx + gap/2;
-      const y5 = v5>=0 ? yPx(v5) : zero;
-      const h5 = Math.max(2, Math.abs(yPx(v5)-zero));
-      const col5 = isCur ? "#dc5050" : i<curMonth ? "rgba(220,80,80,.92)" : "rgba(220,80,80,.45)";
-      bars5 += `<rect x="${x5.toFixed(1)}" y="${y5.toFixed(1)}" width="${barW.toFixed(1)}" height="${h5.toFixed(1)}" fill="${col5}" rx="1.5"/>`;
-
-      // % label for m10 on highlighted month only
-      if(isCur){
-        const lbl10 = (v10>0?"+":"")+v10.toFixed(2)+"%";
-        const ly10 = v10>=0 ? y10-5 : y10+h10+11;
-        barLabels += `<text x="${(x10+barW/2).toFixed(1)}" y="${ly10.toFixed(1)}" fill="#4a90d9" font-size="7.5" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl10}</text>`;
-        const lbl5 = (v5>0?"+":"")+v5.toFixed(2)+"%";
-        const ly5 = v5>=0 ? y5-5 : y5+h5+11;
-        barLabels += `<text x="${(x5+barW/2).toFixed(1)}" y="${ly5.toFixed(1)}" fill="#dc5050" font-size="7.5" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl5}</text>`;
-      } else {
-        // Show m10 label on all bars
-        const lbl = (v10>0?"+":"")+v10.toFixed(2)+"%";
-        const ly = v10>=0 ? y10-4 : y10+h10+10;
-        barLabels += `<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" fill="rgba(255,255,255,.65)" font-size="7" text-anchor="middle" font-family="monospace">${lbl}</text>`;
-      }
-
-      // Current year dot
-      if(cv != null){
-        const dy = yPx(cv);
-        curDots += `<circle cx="${cx.toFixed(1)}" cy="${dy.toFixed(1)}" r="4.5" fill="white" stroke="#0d1117" stroke-width="1.5"/>`;
-      }
-
-      // Month label
-      barLabels += `<text x="${cx.toFixed(1)}" y="${H-padB+14}" fill="${isCur?'#58a6ff':'#8b949e'}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${MONTH_NAMES[i]}</text>`;
-    }
-
-    const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${grid}${yLbl}
-      ${curHighlight}
-      ${bars10}${bars5}${barLabels}${curDots}
-    </svg>`;
-
-    // Current month detail
-    const v10cur = m10[curMonth], v5cur = m5[curMonth];
-    const vCur = mCur[curMonth];
-    const sigCol = v10cur >= 0.2 ? "var(--bull)" : v10cur <= -0.2 ? "var(--bear)" : "var(--neutral)";
-    const lastFetchStr = state.seasonLastFetch ? new Date(state.seasonLastFetch).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : "never";
-
-    html += `
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ FULL YEAR SEASONALITY — ${pair.name}</span><strong style="color:rgba(255,255,255,.8)">White dashed</strong> = 10-year cumulative avg. <strong style="color:#e05c6a">Red line</strong> = YTD. Current month (<strong style="color:var(--accent)">${MONTH_NAMES[curMonth]}</strong>): 10yr avg <strong style="color:${sigCol}">${avg10cur>0?"+":""}${avg10cur.toFixed(2)}%</strong></div>`;
+  }else{
+    const m10=pair.m10,mCur=pair.mCur;
+    const W=700,H=260,padL=52,padR=16,padT=28,padB=50;
+    const chartW=W-padL-padR,chartH=H-padT-padB,n=12;
+    const barW=chartW/n*0.55;
+    const allVals=[...m10,...mCur.filter(v=>v!=null),0];
+    const yMax=Math.max(...allVals)*1.25+0.2,yMin=Math.min(...allVals)*1.25-0.2;
+    function xCenter(i){return padL+i*(chartW/n)+(chartW/n)/2;}
+    function yPx(v){return padT+chartH*(1-(v-yMin)/(yMax-yMin));}
+    const zero=yPx(0);
+    const yRange=yMax-yMin,yStep=yRange>8?2:yRange>4?1:0.5;
+    let grid="",yLbl="";
+    for(let t=Math.ceil(yMin/yStep)*yStep;t<=yMax+0.01;t=parseFloat((t+yStep).toFixed(4))){const y=yPx(t).toFixed(1);const isZ=Math.abs(t)<0.001;grid+=`<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZ?'rgba(255,255,255,.2)':'rgba(255,255,255,.06)'}" stroke-width="${isZ?1:0.5}"/>`;yLbl+=`<text x="${padL-6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${t>0?"+":""}${t.toFixed(2)}%</text>`;}
+    let bars="",barLabels="",curDots="",curHighlight="";
+    m10.forEach((v,i)=>{
+      const cx=xCenter(i),x=cx-barW/2,y=v>=0?yPx(v):zero,h=Math.max(2,Math.abs(yPx(v)-zero));
+      const isCur=i===curMonth;
+      if(isCur)curHighlight=`<rect x="${padL+i*(chartW/n)+2}" y="${padT}" width="${chartW/n-4}" height="${chartH}" fill="rgba(88,166,255,.06)" rx="2"/>`;
+      const barCol=isCur?"#4a90d9":i<curMonth?"rgba(74,144,217,.9)":"rgba(74,144,217,.5)";
+      bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${barCol}" rx="2"/>`;
+      const lbl=(v>0?"+":"")+v.toFixed(2)+"%",ly=v>=0?y-5:parseFloat(y)+h+11;
+      barLabels+=`<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" fill="${isCur?'#fff':'rgba(255,255,255,.8)'}" font-size="8" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${lbl}</text>`;
+      const cv=mCur[i];if(cv!=null){const dy=yPx(cv);curDots+=`<circle cx="${cx.toFixed(1)}" cy="${dy.toFixed(1)}" r="5" fill="white" stroke="#0d1117" stroke-width="1.5"/>`;}
+      barLabels+=`<text x="${cx.toFixed(1)}" y="${H-padB+14}" fill="${isCur?'#58a6ff':'#8b949e'}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${MONTH_NAMES[i]}</text>`;
+    });
+    const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">${grid}${curHighlight}${bars}${barLabels}${curDots}</svg>`;
+    const v10cur=m10[curMonth],vCur=mCur[curMonth];
+    const sigCol=v10cur>=0.2?"var(--bull)":v10cur<=-0.2?"var(--bear)":"var(--neutral)";
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text)">Seasonality — Avg. returns by month — ${pair.name}</div>
-        <div style="display:flex;gap:14px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <div style="width:12px;height:10px;background:rgba(74,144,217,.92);border-radius:2px"></div>10 Year Avg
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <div style="width:12px;height:10px;background:rgba(220,80,80,.92);border-radius:2px"></div>5 Year Avg
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <div style="width:10px;height:10px;background:white;border-radius:50%"></div>This Year
-          </div>
-          ${pair.live?`<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Updated: ${lastFetchStr}</span>`:""}
+        <div style="display:flex;gap:16px">
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)"><div style="width:12px;height:10px;background:rgba(74,144,217,.9);border-radius:2px"></div>10 Year Avg</div>
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)"><div style="width:10px;height:10px;background:white;border-radius:50%"></div>This Year</div>
         </div>
       </div>
       <div style="overflow-x:auto">${svg}</div>
     </div>
-
-    <!-- Current month callout box matching Nick's tooltip style -->
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;display:inline-block;min-width:240px">
-      <div style="font-family:var(--mono);font-size:11px;font-weight:bold;color:var(--text);margin-bottom:8px">${MONTH_NAMES[curMonth]}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">
-        <span style="display:inline-block;width:10px;height:10px;background:rgba(74,144,217,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>
-        10 Year Avg: <strong style="color:${sigCol}">${v10cur>0?"+":""}${v10cur.toFixed(2)}%</strong>
-      </div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">
-        <span style="display:inline-block;width:10px;height:10px;background:rgba(220,80,80,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>
-        5 Year Avg: <strong style="color:${v5cur>=0.2?"var(--bull)":v5cur<=-0.2?"var(--bear)":"var(--neutral)"}">${v5cur>0?"+":""}${v5cur.toFixed(2)}%</strong>
-      </div>
-      ${vCur!=null?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">
-        <span style="display:inline-block;width:10px;height:10px;background:white;border-radius:50%;margin-right:5px;vertical-align:middle"></span>
-        This Year: <strong style="color:${vCur>0?"var(--bull)":"var(--bear)"}">${vCur>0?"+":""}${vCur.toFixed(2)}%</strong>
-      </div>`:""}
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;display:inline-block;min-width:200px">
+      <div style="font-family:var(--mono);font-size:11px;font-weight:bold;color:var(--text);margin-bottom:6px">${MONTH_NAMES[curMonth]}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:3px"><span style="display:inline-block;width:10px;height:10px;background:rgba(74,144,217,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>10 Year Avg: <strong style="color:${sigCol}">${v10cur>0?"+":""}${v10cur.toFixed(2)}%</strong></div>
+      ${vCur!=null?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted)"><span style="display:inline-block;width:10px;height:10px;background:white;border-radius:50%;margin-right:5px;vertical-align:middle"></span>This Year: <strong style="color:${vCur>0?"var(--bull)":"var(--bear)"}">${vCur>0?"+":""}${vCur.toFixed(2)}%</strong></div>`:""}
     </div>
-
-    <div class="infobox ib-blue">
-      <span class="iblabel" style="color:var(--accent)">ℹ MONTHLY SEASONALITY — 10-Year Historical Averages (2014–2024)</span>
-      <strong style="color:rgba(74,144,217,.9)">Blue bars</strong> = 10-year average monthly return.
-      <strong style="color:white">White dot</strong> = current year actual return.
-      <strong style="color:var(--accent)">Highlighted column</strong> = current month.
-    </div>`;
+    ${hasError?`<div class="infobox ib-red"><span class="iblabel" style="color:var(--bear)">⚠ LIVE DATA ERROR — ${hasError}</span>Showing fallback data. <span style="color:var(--accent);cursor:pointer" onclick="retrySeasonality('${selAsset}')">Tap here to retry.</span></div>`:""}
+    <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ MONTHLY SEASONALITY — 10-Year Historical Averages (2014–2024)</span><strong style="color:rgba(74,144,217,.9)">Blue bars</strong> = 10-year average monthly return. <strong style="color:white">White dot</strong> = current year actual return. <strong style="color:var(--accent)">Highlighted column</strong> = current month.</div>`;
   }
-
   document.getElementById("page-seasonality").innerHTML=html;
 }
+
+// FIX D: retrySeasonality resets the stuck flag before re-fetching
+function retrySeasonality(assetId){
+  state.seasonFetching[assetId]=false;  // FIX D: clear stuck flag
+  delete state.seasonError[assetId];
+  // FIX D: only fetch the specific asset, not all
+  if(state.seasonFetching[assetId])return;
+  state.seasonFetching[assetId]=true;
+  renderSeasonality(); // show spinner immediately
+  fetchSeasonalityForAsset(assetId).then(live=>{
+    if(live){SEASON_DATA=SEASON_DATA.map(d=>d.id===assetId?{...d,...live}:d);}
+    delete state.seasonError[assetId];
+  }).catch(e=>{
+    state.seasonError[assetId]=e.message;
+  }).finally(()=>{
+    state.seasonFetching[assetId]=false;  // FIX A: always reset
+    if(activeTab==="seasonality")renderSeasonality();
+  });
+}
+
+// FIX C: switching asset clears the per-asset flag so fresh fetch fires
+function switchSeasonAsset(id){
+  state.seasonAsset=id;
+  // If asset hasn't been fetched yet and isn't currently fetching, fetch it
+  const assetData=SEASON_DATA.find(d=>d.id===id);
+  if(assetData&&!assetData.live&&!state.seasonFetching[id]){
+    retrySeasonality(id);
+  }else{
+    renderSeasonality();
+  }
+}
+
 function setSeasonFilter(f){state.seasonFilter=f;renderSeasonality();}
 
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
-// ── ECONOMIC SURPRISE SCORES (Beat/Miss from FALLBACK_ECON) ─────────────────
-// Score = avg surprise across all indicators for that currency
-// Each indicator s: +0.5 strong beat, +0.2 mild beat, 0 in line, -0.2 mild miss, -0.5 strong miss
-// Normalised to 0-100 for gauge display
-// ECO_SURPRISE now computed dynamically from FRED in renderEcon — see ECO_SURPRISE_FALLBACK above
-
 function makeGaugeSVG(score){
-  // Proper semicircle gauge: 180deg arc from left to right
-  // cx=60, cy=62, r=44
-  // Start point (0%):  left  = (16, 62)
-  // End point (100%):  right = (104,62)
-  // Angles: 0% = 180deg, 100% = 0deg (going counterclockwise for sweep=1)
-  const cx=60, cy=62, r=44;
-
-  function ptAt(pct){
-    const a = Math.PI - (pct/100)*Math.PI; // 180deg -> 0deg
-    return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
-  }
-
-  const [x40a,y40a]=ptAt(40);
-  const [x60a,y60a]=ptAt(60);
-  const [x100,y100]=ptAt(100);
-  const [x0, y0] =ptAt(0);
-  const [nx,  ny] =ptAt(score);
-  const col = score>=70?"#00ff88":score>=45?"#f0b429":"#ff3b5c";
-
-  return `<svg viewBox="0 0 120 68" style="width:130px;height:75px">
-    <!-- BG track -->
-    <path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}"
-      fill="none" stroke="#1c2330" stroke-width="11" stroke-linecap="butt"/>
-    <!-- Red zone 0-40% -->
-    <path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x40a.toFixed(1)} ${y40a.toFixed(1)}"
-      fill="none" stroke="rgba(255,59,92,.55)" stroke-width="11" stroke-linecap="butt"/>
-    <!-- Yellow zone 40-60% -->
-    <path d="M ${x40a.toFixed(1)} ${y40a.toFixed(1)} A ${r} ${r} 0 0 1 ${x60a.toFixed(1)} ${y60a.toFixed(1)}"
-      fill="none" stroke="rgba(240,180,41,.55)" stroke-width="11" stroke-linecap="butt"/>
-    <!-- Green zone 60-100% -->
-    <path d="M ${x60a.toFixed(1)} ${y60a.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}"
-      fill="none" stroke="rgba(0,255,136,.55)" stroke-width="11" stroke-linecap="butt"/>
-    <!-- Needle shadow -->
-    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
-      stroke="rgba(0,0,0,.4)" stroke-width="4" stroke-linecap="round"/>
-    <!-- Needle -->
-    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
-      stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
-    <!-- Center hub -->
-    <circle cx="${cx}" cy="${cy}" r="5" fill="#0d1117" stroke="${col}" stroke-width="2"/>
-    <!-- Labels -->
-    <text x="11" y="67" fill="#8b949e" font-size="8" font-family="monospace">0</text>
-    <text x="53" y="16" fill="#8b949e" font-size="8" font-family="monospace">50</text>
-    <text x="99" y="67" fill="#8b949e" font-size="8" font-family="monospace">100</text>
-  </svg>`;
+  const cx=60,cy=62,r=44;
+  function ptAt(pct){const a=Math.PI-(pct/100)*Math.PI;return[cx+r*Math.cos(a),cy-r*Math.sin(a)];}
+  const[x40a,y40a]=ptAt(40),[x60a,y60a]=ptAt(60),[x100,y100]=ptAt(100),[x0,y0]=ptAt(0),[nx,ny]=ptAt(score);
+  const col=score>=70?"#00ff88":score>=45?"#f0b429":"#ff3b5c";
+  return`<svg viewBox="0 0 120 68" style="width:130px;height:75px"><path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}" fill="none" stroke="#1c2330" stroke-width="11" stroke-linecap="butt"/><path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x40a.toFixed(1)} ${y40a.toFixed(1)}" fill="none" stroke="rgba(255,59,92,.55)" stroke-width="11" stroke-linecap="butt"/><path d="M ${x40a.toFixed(1)} ${y40a.toFixed(1)} A ${r} ${r} 0 0 1 ${x60a.toFixed(1)} ${y60a.toFixed(1)}" fill="none" stroke="rgba(240,180,41,.55)" stroke-width="11" stroke-linecap="butt"/><path d="M ${x60a.toFixed(1)} ${y60a.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}" fill="none" stroke="rgba(0,255,136,.55)" stroke-width="11" stroke-linecap="butt"/><line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="rgba(0,0,0,.4)" stroke-width="4" stroke-linecap="round"/><line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="5" fill="#0d1117" stroke="${col}" stroke-width="2"/><text x="11" y="67" fill="#8b949e" font-size="8" font-family="monospace">0</text><text x="53" y="16" fill="#8b949e" font-size="8" font-family="monospace">50</text><text x="99" y="67" fill="#8b949e" font-size="8" font-family="monospace">100</text></svg>`;
 }
 
 function renderEcon(){
-  if(state.fredKey&&state.econLoading&&!state.econData){
-    document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Data</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;
-  }
-
-  const econSubTabs=[
-    {id:"meter",  label:"🎯 Surprise Meter"},
-    {id:"heatmap",label:"🌡 Heatmap"},
-  ];
-
+  if(state.fredKey&&state.econLoading&&!state.econData){document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Data</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;}
+  const econSubTabs=[{id:"meter",label:"🎯 Surprise Meter"},{id:"heatmap",label:"🌡 Heatmap"}];
   let html=`<div class="eco-sub-tabs">${econSubTabs.map(t=>`<button class="eco-sub-tab${ecoSubTab===t.id?" active":""}" onclick="setEcoTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
-
-  // ── SURPRISE METER ──
+  // FIX B: show FRED error prominently in Economic tab
+  if(state.fredError){html+=`<div class="infobox ib-red"><span class="iblabel" style="color:var(--bear)">⚠ FRED API ERROR</span>${state.fredError}<br><span style="color:var(--muted)">Check your key at <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys. Showing fallback data.</span></div>`;}
   if(ecoSubTab==="meter"){
-    // ✅ Use FRED data if available, else fallback
-    const ecoSurprise = state.econData ? calcSurpriseFromFRED(state.econData) : ECO_SURPRISE_FALLBACK;
-    // Merge fallback for currencies FRED doesn't cover (NZD, CAD, AUD, CHF)
-    const merged = {...ECO_SURPRISE_FALLBACK,...ecoSurprise};
+    const ecoSurprise=state.econData?calcSurpriseFromFRED(state.econData):ECO_SURPRISE_FALLBACK;
+    const merged={...ECO_SURPRISE_FALLBACK,...ecoSurprise};
     const scores=Object.entries(merged);
     const avg=Math.round(scores.reduce((a,[,v])=>a+v.score,0)/scores.length);
     const avgCol=avg>=70?"var(--bull)":avg>=45?"var(--neutral)":"var(--bear)";
-
-    html+=`
-    <div class="infobox ib-blue" style="margin-bottom:14px">
-      <span class="iblabel" style="color:var(--accent)">ℹ ECONOMIC SURPRISE METER</span>
-      Shows how economic data for each currency has performed <strong style="color:var(--text)">relative to expectations</strong>.
-      A higher score means more data has been <strong style="color:var(--bull)">beating forecasts</strong>.
-      A lower score means more data has been <strong style="color:var(--bear)">missing forecasts</strong>.
-    </div>
-
-    <!-- INDIVIDUAL CURRENCY GAUGES -->
-    <div class="sectitle">Currency Economic Surprise Scores</div>
-    <div class="gauge-grid">`;
-
-    scores.forEach(([cur,data])=>{
-      const col=data.score>=70?"var(--bull)":data.score>=45?"var(--neutral)":"var(--bear)";
-      const status=data.score>=70?"Strong":data.score>=55?"Above Avg":data.score>=45?"Average":data.score>=30?"Below Avg":"Weak";
-      html+=`<div class="gauge-wrap">
-        <div class="gauge-label">${FLAGS[cur]||""} ${cur}</div>
-        ${makeGaugeSVG(data.score)}
-        <div class="gauge-pct" style="color:${col}">${data.score}%</div>
-        <div class="gauge-status">${status}</div>
-      </div>`;
-    });
-
-    html+=`</div>
-
-    <!-- GLOBAL AVERAGE GAUGE -->
-    <div class="sectitle">Global Economic Surprise Score</div>
-    <div class="global-gauge-wrap">
-      <div style="display:flex;flex-direction:column;align-items:center">
-        ${makeGaugeSVG(avg)}
-        <div style="font-family:var(--mono);font-size:28px;font-weight:bold;color:${avgCol};margin-top:4px">${avg}%</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">AVG ALL CURRENCIES</div>
-      </div>
-      <div class="global-gauge-info">
-        <div class="global-gauge-title">Global Economic Surprise Score: ${avg}%</div>
-        <div class="global-gauge-desc">
-          This gauge reflects the average economic outperformance or underperformance across the eight major currencies.
-          A higher score indicates a more robust global economic outlook.<br><br>
-          <strong style="color:${avg>=60?"var(--bull)":avg>=45?"var(--neutral)":"var(--bear)"}">${avg>=70?"🟢 Global economy broadly beating expectations":avg>=55?"🟡 Global economy slightly above expectations":avg>=45?"⚪ Global economy in line with expectations":"🔴 Global economy broadly missing expectations"}</strong>
-        </div>
-      </div>
-    </div>
-
-    <!-- INDICATOR BREAKDOWN -->
+    html+=`<div class="infobox ib-blue" style="margin-bottom:14px"><span class="iblabel" style="color:var(--accent)">ℹ ECONOMIC SURPRISE METER</span>Shows how economic data has performed <strong style="color:var(--text)">relative to expectations</strong>. Higher = beating forecasts.</div>
+    <div class="sectitle">Currency Economic Surprise Scores</div><div class="gauge-grid">`;
+    scores.forEach(([cur,data])=>{const col=data.score>=70?"var(--bull)":data.score>=45?"var(--neutral)":"var(--bear)";const status=data.score>=70?"Strong":data.score>=55?"Above Avg":data.score>=45?"Average":data.score>=30?"Below Avg":"Weak";html+=`<div class="gauge-wrap"><div class="gauge-label">${FLAGS[cur]||""} ${cur}</div>${makeGaugeSVG(data.score)}<div class="gauge-pct" style="color:${col}">${data.score}%</div><div class="gauge-status">${status}</div></div>`;});
+    html+=`</div><div class="sectitle">Global Economic Surprise Score</div><div class="global-gauge-wrap"><div style="display:flex;flex-direction:column;align-items:center">${makeGaugeSVG(avg)}<div style="font-family:var(--mono);font-size:28px;font-weight:bold;color:${avgCol};margin-top:4px">${avg}%</div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">AVG ALL CURRENCIES</div></div><div class="global-gauge-info"><div class="global-gauge-title">Global Score: ${avg}%</div><div class="global-gauge-desc">${avg>=70?"🟢 Global economy broadly beating expectations":avg>=55?"🟡 Slightly above expectations":avg>=45?"⚪ In line with expectations":"🔴 Broadly missing expectations"}</div></div></div>
     <div class="sectitle">Indicator Breakdown by Currency</div>`;
-
-    scores.forEach(([cur,data])=>{
-      const col=data.score>=70?"var(--bull)":data.score>=45?"var(--neutral)":"var(--bear)";
-      html+=`<div class="card" style="margin-bottom:10px">
-        <div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur} — ${data.score}%</span><span class="cbadge" style="color:${col}">${data.score>=70?"STRONG":data.score>=45?"AVERAGE":"WEAK"}</span></div>
-        <div class="cbody" style="display:flex;gap:10px;flex-wrap:wrap">`;
-      data.indicators.forEach(ind=>{
-        const ic=ind.s>=.4?"var(--bull)":ind.s>=.1?"#7effc4":ind.s<=-.4?"var(--bear)":ind.s<=-.1?"#ff8fa0":"var(--muted)";
-        const il=ind.s>=.4?"▲▲ Strong Beat":ind.s>=.1?"▲ Beat":ind.s<=-.4?"▼▼ Strong Miss":ind.s<=-.1?"▼ Miss":"→ In Line";
-        html+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:80px;text-align:center">
-          <div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${ind.n}</div>
-          <div style="font-family:var(--mono);font-size:11px;color:${ic};margin-top:3px">${il}</div>
-        </div>`;
-      });
-      html+=`</div></div>`;
-    });
-  }
-
-  // ── HEATMAP ──
-  else if(ecoSubTab==="heatmap"){
+    scores.forEach(([cur,data])=>{const col=data.score>=70?"var(--bull)":data.score>=45?"var(--neutral)":"var(--bear)";html+=`<div class="card" style="margin-bottom:10px"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur} — ${data.score}%</span><span class="cbadge" style="color:${col}">${data.score>=70?"STRONG":data.score>=45?"AVERAGE":"WEAK"}</span></div><div class="cbody" style="display:flex;gap:10px;flex-wrap:wrap">`;data.indicators.forEach(ind=>{const ic=ind.s>=.4?"var(--bull)":ind.s>=.1?"#7effc4":ind.s<=-.4?"var(--bear)":ind.s<=-.1?"#ff8fa0":"var(--muted)";const il=ind.s>=.4?"▲▲ Strong Beat":ind.s>=.1?"▲ Beat":ind.s<=-.4?"▼▼ Strong Miss":ind.s<=-.1?"▼ Miss":"→ In Line";html+=`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:80px;text-align:center"><div style="font-family:var(--mono);font-size:9px;color:var(--muted)">${ind.n}</div><div style="font-family:var(--mono);font-size:11px;color:${ic};margin-top:3px">${il}</div></div>`;});html+=`</div></div>`;});
+  }else if(ecoSubTab==="heatmap"){
     const data2=state.econData||FALLBACK_ECON;const isLive=state.econLive;
     if(!state.fredKey)html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA</span>Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → paste in ⚙ Settings.</div>`;
-    for(const[cur,items]of Object.entries(data2)){
-      const badge=isLive?`<span class="cbadge-live">● LIVE · FRED</span>`:`<span class="cbadge-demo">DEMO DATA</span>`;
-      html+=`<div class="card"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur}</span>${badge}</div><div class="hgrid">`;
-      items.forEach(i=>{
-        const bg=i.s>.3?"rgba(0,255,136,.15)":i.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";
-        const br=i.s>.3?"1px solid rgba(0,255,136,.2)":i.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";
-        const lbl=i.s>.3?"▲ Beat":i.s<-.3?"▼ Miss":"→ In Line";
-        const lc=i.s>.3?"var(--bull)":i.s<-.3?"var(--bear)":"var(--muted)";
-        html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${i.l}</div><div class="hval">${i.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${i.d?`<div class="hdate">${i.d}</div>`:""}</div>`;
-      });
-      html+=`</div></div>`;
-    }
+    for(const[cur,items]of Object.entries(data2)){const badge=isLive?`<span class="cbadge-live">● LIVE · FRED</span>`:`<span class="cbadge-demo">DEMO DATA</span>`;html+=`<div class="card"><div class="chd"><span class="ctitle">${FLAGS[cur]||""} ${cur}</span>${badge}</div><div class="hgrid">`;items.forEach(i=>{const bg=i.s>.3?"rgba(0,255,136,.15)":i.s<-.3?"rgba(255,59,92,.15)":"rgba(240,180,41,.1)";const br=i.s>.3?"1px solid rgba(0,255,136,.2)":i.s<-.3?"1px solid rgba(255,59,92,.2)":"1px solid rgba(240,180,41,.15)";const lbl=i.s>.3?"▲ Beat":i.s<-.3?"▼ Miss":"→ In Line";const lc=i.s>.3?"var(--bull)":i.s<-.3?"var(--bear)":"var(--muted)";html+=`<div class="hcell" style="background:${bg};border:${br}"><div class="hlbl">${i.l}</div><div class="hval">${i.v}</div><div class="hchg" style="color:${lc}">${lbl}</div>${i.d?`<div class="hdate">${i.d}</div>`:""}</div>`;});html+=`</div></div>`;}
   }
-
   document.getElementById("page-econ").innerHTML=html;
 }
 function setEcoTab(id){ecoSubTab=id;renderEcon();}
@@ -1766,45 +1097,26 @@ function renderCurrency(){
 
 // ── CARRY ─────────────────────────────────────────────────────────────────────
 function renderCarry(){
-  let html=`<div class="sectitle">Carry Trade Scanner</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div>
-  <div class="card"><div class="chd"><span class="ctitle">Best Carry Opportunities</span><span class="cbadge">RANKED BY RATE DIFF</span></div><div class="cbody">`;
-  CARRY_PAIRS.forEach(p=>{
-    const col=p.score>=2?"var(--bull)":p.score>=1?"#7effc4":p.score<=0?"var(--bear)":"var(--neutral)";
-    const stars="★".repeat(Math.max(0,p.score+2))+"☆".repeat(Math.max(0,2-p.score));
-    html+=`<div class="carry-row"><div style="font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;color:${col}">${p.pair}</div><div style="flex:1"><div style="font-family:var(--mono);font-size:11px;color:var(--text)">Long ${p.long} / Short ${p.short}</div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Rate diff: ${p.rate.toFixed(2)}%</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${p.rate.toFixed(2)}%</div><div style="font-family:var(--mono);font-size:10px;color:${col}">${stars}</div></div></div>`;
-  });
+  let html=`<div class="sectitle">Carry Trade Scanner</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div><div class="card"><div class="chd"><span class="ctitle">Best Carry Opportunities</span><span class="cbadge">RANKED BY RATE DIFF</span></div><div class="cbody">`;
+  CARRY_PAIRS.forEach(p=>{const col=p.score>=2?"var(--bull)":p.score>=1?"#7effc4":p.score<=0?"var(--bear)":"var(--neutral)";const stars="★".repeat(Math.max(0,p.score+2))+"☆".repeat(Math.max(0,2-p.score));html+=`<div class="carry-row"><div style="font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;color:${col}">${p.pair}</div><div style="flex:1"><div style="font-family:var(--mono);font-size:11px;color:var(--text)">Long ${p.long} / Short ${p.short}</div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Rate diff: ${p.rate.toFixed(2)}%</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${p.rate.toFixed(2)}%</div><div style="font-family:var(--mono);font-size:10px;color:${col}">${stars}</div></div></div>`;});
   html+=`</div></div>`;document.getElementById("page-carry").innerHTML=html;
 }
 
 // ── FEAR & GREED ──────────────────────────────────────────────────────────────
 function renderFearGreed(){
   const data=state.fgData;const isLive=state.fgLive;
-  const fg=parseInt(data[0].value);const col=fgColor(fg);
-  const yesterday=data[1]?parseInt(data[1].value):null;
-  const lastWeek=data[7]?parseInt(data[7].value):null;
-  const lastMonth=data[29]?parseInt(data[29].value):null;
+  const fg=parseInt(data[0].value),col=fgColor(fg);
+  const yesterday=data[1]?parseInt(data[1].value):null,lastWeek=data[7]?parseInt(data[7].value):null,lastMonth=data[29]?parseInt(data[29].value):null;
   const history=data.slice(0,7).reverse();
   const badge=isLive?`<span class="cbadge-live">● LIVE · Alternative.me</span>`:`<span class="cbadge-demo">ESTIMATED</span>`;
-  let html=`<div class="sectitle">Fear & Greed Index</div>
-  <div class="card"><div class="chd"><span class="ctitle">Crypto Market Sentiment</span>${badge}</div><div class="cbody">
-    <div style="display:flex;flex-direction:column;align-items:center;padding:10px 0">
-      <div style="font-family:var(--mono);font-size:72px;font-weight:bold;color:${col};line-height:1">${fg}</div>
-      <div style="font-family:var(--mono);font-size:20px;font-weight:bold;color:${col};margin-top:8px">${fgLabel(fg)}</div>
-      <div style="width:100%;max-width:340px;margin:20px auto 0">
-        <div class="fg-bar"><div class="fg-pointer" style="left:${fg}%"></div></div>
-        <div class="fg-labels"><span style="color:var(--bear)">Extreme Fear</span><span>Neutral</span><span style="color:var(--bull)">Extreme Greed</span></div>
-      </div>
-    </div>
-  </div></div>
-  <div class="card"><div class="chd"><span class="ctitle">Historical Comparison</span>${badge}</div><div class="cbody">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
-      ${yesterday!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Yesterday</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(yesterday)};margin:4px 0">${yesterday}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(yesterday)}">${fgLabel(yesterday)}</div></div>`:""}
-      ${lastWeek!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Week</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(lastWeek)};margin:4px 0">${lastWeek}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(lastWeek)}">${fgLabel(lastWeek)}</div></div>`:""}
-      ${lastMonth!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Month</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(lastMonth)};margin:4px 0">${lastMonth}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(lastMonth)}">${fgLabel(lastMonth)}</div></div>`:""}
-    </div>
-  </div></div>
+  let html=`<div class="sectitle">Fear & Greed Index</div><div class="card"><div class="chd"><span class="ctitle">Crypto Market Sentiment</span>${badge}</div><div class="cbody"><div style="display:flex;flex-direction:column;align-items:center;padding:10px 0"><div style="font-family:var(--mono);font-size:72px;font-weight:bold;color:${col};line-height:1">${fg}</div><div style="font-family:var(--mono);font-size:20px;font-weight:bold;color:${col};margin-top:8px">${fgLabel(fg)}</div><div style="width:100%;max-width:340px;margin:20px auto 0"><div class="fg-bar"><div class="fg-pointer" style="left:${fg}%"></div></div><div class="fg-labels"><span style="color:var(--bear)">Extreme Fear</span><span>Neutral</span><span style="color:var(--bull)">Extreme Greed</span></div></div></div></div></div>
+  <div class="card"><div class="chd"><span class="ctitle">Historical Comparison</span>${badge}</div><div class="cbody"><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
+    ${yesterday!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Yesterday</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(yesterday)};margin:4px 0">${yesterday}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(yesterday)}">${fgLabel(yesterday)}</div></div>`:""}
+    ${lastWeek!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Week</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(lastWeek)};margin:4px 0">${lastWeek}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(lastWeek)}">${fgLabel(lastWeek)}</div></div>`:""}
+    ${lastMonth!=null?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Last Month</div><div style="font-family:var(--mono);font-size:22px;font-weight:bold;color:${fgColor(lastMonth)};margin:4px 0">${lastMonth}</div><div style="font-family:var(--mono);font-size:9px;color:${fgColor(lastMonth)}">${fgLabel(lastMonth)}</div></div>`:""}
+  </div></div></div>
   <div class="card"><div class="chd"><span class="ctitle">7-Day History</span>${badge}</div><div class="cbody">
-    ${history.map(d=>{const v=parseInt(d.value);const c=fgColor(v);const dt=new Date(parseInt(d.timestamp)*1000).toLocaleDateString([],{month:"short",day:"numeric"});return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);width:50px;flex-shrink:0">${dt}</div><div style="flex:1;background:var(--bg4);border-radius:4px;overflow:hidden;height:26px"><div style="width:${v}%;height:100%;background:${c};border-radius:4px;display:flex;align-items:center;padding-left:8px"><span style="font-family:var(--mono);font-size:11px;font-weight:bold;color:#000">${v}</span></div></div><div style="font-family:var(--mono);font-size:9px;color:${c};width:80px;text-align:right;flex-shrink:0">${fgLabel(v)}</div></div>`;}).join("")}
+    ${history.map(d=>{const v=parseInt(d.value),c=fgColor(v),dt=new Date(parseInt(d.timestamp)*1000).toLocaleDateString([],{month:"short",day:"numeric"});return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="font-family:var(--mono);font-size:9px;color:var(--muted);width:50px;flex-shrink:0">${dt}</div><div style="flex:1;background:var(--bg4);border-radius:4px;overflow:hidden;height:26px"><div style="width:${v}%;height:100%;background:${c};border-radius:4px;display:flex;align-items:center;padding-left:8px"><span style="font-family:var(--mono);font-size:11px;font-weight:bold;color:#000">${v}</span></div></div><div style="font-family:var(--mono);font-size:9px;color:${c};width:80px;text-align:right;flex-shrink:0">${fgLabel(v)}</div></div>`;}).join("")}
   </div></div>`;
   document.getElementById("page-feargreed").innerHTML=html;
 }
@@ -1815,62 +1127,41 @@ function renderSettings(){
   <div class="sectitle">API Settings</div>
   <div class="apibox"><h3>🟢 ALREADY CONNECTED — NO KEY NEEDED</h3>
     <div class="infobox ib-green" style="margin-bottom:0">
-      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates for Currency Strength<br>
-      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index · Daily<br>
-      <strong style="color:var(--bull)">CFTC.gov</strong> — COT Data · Auto-fetched every Friday<br>
-      <strong style="color:${state.putCallLive?"var(--bull)":"var(--neutral)"}">CBOE</strong> — Put/Call Ratio · ${state.putCallLive?"● LIVE":"Attempting live fetch..."}<br>
-      <strong style="color:${state.aaiiLive?"var(--bull)":"var(--neutral)"}">AAII</strong> — Investor Survey · ${state.aaiiLive?"● LIVE":"Attempting live fetch..."}
+      <strong style="color:var(--bull)">Frankfurter.app</strong> — Live forex rates<br>
+      <strong style="color:var(--bull)">Alternative.me</strong> — Fear & Greed Index<br>
+      <strong style="color:var(--bull)">CFTC.gov</strong> — COT Data · Weekly<br>
+      <strong style="color:var(--bull)">Yahoo Finance</strong> — Seasonality data<br>
+      <strong style="color:${state.putCallLive?"var(--bull)":"var(--neutral)"}">CBOE</strong> — Put/Call Ratio · ${state.putCallLive?"● LIVE":"Attempting..."}<br>
+      <strong style="color:${state.aaiiLive?"var(--bull)":"var(--neutral)"}">AAII</strong> — Investor Survey · ${state.aaiiLive?"● LIVE":"Attempting..."}
     </div>
   </div>
 
   <div class="apibox">
     <h3>😊 MYFXBOOK — Live Retail Sentiment (Free)</h3>
-    <div class="key-status ${state.mfxEmail?"key-ok":"key-missing"}">${state.mfxEmail?"✅ Myfxbook connected — Retail sentiment is LIVE":"⚠ No credentials — Sentiment showing demo data"}</div>
+    <div class="key-status ${state.sentimentLive?"key-ok":state.mfxError?"key-error":"key-missing"}">
+      ${state.sentimentLive?"✅ Myfxbook connected — Retail sentiment is LIVE":state.mfxError?"⚠ Connection failed: "+state.mfxError:"⚠ No credentials — Sentiment showing demo data"}
+    </div>
     <div style="font-size:11px;color:var(--muted);margin:10px 0;line-height:1.8">
       1. Register free at <span style="color:var(--accent)">myfxbook.com</span><br>
       2. Enter your email and password below<br>
-      3. Tap Save — live sentiment loads automatically ✅<br>
-      <span style="color:var(--neutral)">⚠ Credentials stored only on your device — never sent anywhere except Myfxbook.</span>
+      3. Tap Save — live sentiment loads automatically ✅
     </div>
-    <div class="apirow">
-      <span class="apilbl">Email</span>
-      <input class="apiinp" id="mfx-email" type="email" placeholder="Your myfxbook.com email" value="${state.mfxEmail}"/>
-    </div>
-    <div class="apirow">
-      <span class="apilbl">Password</span>
-      <input class="apiinp" id="mfx-password" type="password" placeholder="Your myfxbook.com password" value="${state.mfxPassword}"/>
-    </div>
+    <div class="apirow"><span class="apilbl">Email</span><input class="apiinp" id="mfx-email" type="email" placeholder="Your myfxbook.com email" value="${state.mfxEmail}"/></div>
+    <div class="apirow"><span class="apilbl">Password</span><input class="apiinp" id="mfx-password" type="password" placeholder="Your myfxbook.com password" value="${state.mfxPassword}"/></div>
     <button class="apibtn" onclick="saveMyfxbook()" style="margin-top:4px">💾 Save & Connect</button>
     ${state.mfxEmail?`<button onclick="clearMyfxbook()" style="background:var(--bg4);color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:8px 14px;font-family:var(--mono);font-size:11px;cursor:pointer;margin-left:8px">Clear</button>`:""}
   </div>
 
   <div class="apibox"><h3>🌡 FRED API — Live GDP, CPI, Rates (Free)</h3>
-    <div class="key-status ${state.fredKey?"key-ok":"key-missing"}">${state.fredKey?"✅ FRED key saved — Economic data is LIVE":"⚠ No key — Economic showing demo data"}</div>
+    <div class="key-status ${state.econLive?"key-ok":state.fredError?"key-error":"key-missing"}">
+      ${state.econLive?"✅ FRED key valid — Economic data is LIVE":state.fredError?"⚠ FRED error: "+state.fredError:"⚠ No key — Economic showing demo data"}
+    </div>
     <div class="apirow" style="margin-top:10px">
       <span class="apilbl">FRED Key</span>
-      <input class="apiinp" id="fred-input" placeholder="fred.stlouisfed.org → My Account → API Keys" value="${state.fredKey}"/>
+      <input class="apiinp" id="fred-input" placeholder="32-character key from fred.stlouisfed.org" value="${state.fredKey}"/>
       <button class="apibtn" onclick="saveFREDKey()">💾 Save</button>
     </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
-      1. Go to <span style="color:var(--accent)">fred.stlouisfed.org</span><br>
-      2. Click <strong style="color:var(--text)">My Account → API Keys → Request API Key</strong><br>
-      3. Paste above → Save ✅
-    </div>
-  </div>
-
-  <div class="apibox"><h3>🌱 ALPHA VANTAGE — Live Seasonality + Gold, Oil (Free)</h3>
-    <div class="key-status ${state.avKey?"key-ok":"key-missing"}">${state.avKey?"✅ AV key saved — Seasonality data is LIVE from real price history":"⚠ No key — Seasonality using fallback data"}</div>
-    <div class="apirow" style="margin-top:10px">
-      <span class="apilbl">AV Key</span>
-      <input class="apiinp" id="av-input" placeholder="alphavantage.co → Get Free API Key" value="${state.avKey}"/>
-      <button class="apibtn" onclick="saveAVKey()">💾 Save</button>
-    </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
-      1. Go to <span style="color:var(--accent)">alphavantage.co</span> → click <strong style="color:var(--text)">Get Free API Key</strong><br>
-      2. Fill in a name → get key instantly (no credit card)<br>
-      3. Paste above → Save ✅ Seasonality fetches real 10yr price history automatically<br>
-      <span style="color:var(--neutral)">⚠ Free tier = 25 calls/day. Seasonality loads 1 asset at a time (12s apart).</span>
-    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">1. Go to <span style="color:var(--accent)">fred.stlouisfed.org</span><br>2. Click <strong style="color:var(--text)">My Account → API Keys → Request API Key</strong><br>3. Paste above → Save ✅</div>
   </div>
 
   <div class="apibox"><h3>📱 ADD TO HOME SCREEN</h3>
@@ -1882,36 +1173,36 @@ function renderSettings(){
   </div>`;
 }
 
+// FIX D: saveMyfxbook clears stale session so fresh login is forced
 function saveMyfxbook(){
   const email=document.getElementById("mfx-email").value.trim();
   const password=document.getElementById("mfx-password").value.trim();
   if(!email||!password){alert("Please enter both email and password");return;}
-  state.mfxEmail=email;state.mfxPassword=password;state.mfxSession="";
+  state.mfxEmail=email;state.mfxPassword=password;
+  // FIX D: always clear stale session when saving new credentials
+  state.mfxSession="";state.mfxError=null;
   saveKey("mfx_email",email);saveKey("mfx_password",password);saveKey("mfx_session","");
   state.sentimentLive=false;state.sentimentLoading=false;
   renderSettings();
-  // Immediately try to fetch live data
   loadMyfxbookData();
   if(activeTab==="sentiment")renderSentiment();
 }
 function clearMyfxbook(){
-  state.mfxEmail="";state.mfxPassword="";state.mfxSession="";
+  state.mfxEmail="";state.mfxPassword="";state.mfxSession="";state.mfxError=null;
   saveKey("mfx_email","");saveKey("mfx_password","");saveKey("mfx_session","");
   state.sentimentLive=false;state.sentimentData=FALLBACK_SENTIMENT;
-  renderSettings();
-  if(activeTab==="sentiment")renderSentiment();
+  renderSettings();if(activeTab==="sentiment")renderSentiment();
 }
-function saveFREDKey(){const val=document.getElementById("fred-input").value.trim();if(!val)return;state.fredKey=val;saveKey("fred",val);state.econData=null;state.econLive=false;state.econLoading=false;renderSettings();loadFREDData();if(activeTab==="econ")renderEcon();}
-function saveAVKey(){
-  const val=document.getElementById("av-input").value.trim();
-  if(!val)return;
-  state.avKey=val;saveKey("av",val);
-  // Reset all season data to fallback so live re-fetch starts fresh
-  SEASON_DATA=SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
-  renderSettings();
-  // Start fetching live seasonality immediately
-  loadSeasonalityLive();
-  if(activeTab==="seasonality")renderSeasonality();
+
+// FIX B: saveFREDKey clears previous error and validates length
+function saveFREDKey(){
+  const val=document.getElementById("fred-input").value.trim();
+  if(!val){alert("Please enter a FRED API key");return;}
+  if(val.length<20){alert("That doesn\'t look like a valid FRED key — it should be 32 characters long.");return;}
+  state.fredKey=val;state.fredError=null;  // FIX B: clear previous error
+  state.econData=null;state.econLive=false;state.econLoading=false;
+  saveKey("fred",val);renderSettings();loadFREDData();
+  if(activeTab==="econ")renderEcon();
 }
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
@@ -1927,15 +1218,15 @@ function switchTab(id){
   renderActive();
 }
 function renderActive(){
-  if(activeTab==="setups")     renderSetups();
-  else if(activeTab==="cot")        renderCOT();
-  else if(activeTab==="sentiment")  renderSentiment();
-  else if(activeTab==="econ")       renderEcon();
-  else if(activeTab==="currency")   renderCurrency();
-  else if(activeTab==="carry")      renderCarry();
-  else if(activeTab==="feargreed")  renderFearGreed();
-  else if(activeTab==="seasonality") renderSeasonality();
-  else if(activeTab==="settings")   renderSettings();
+  if(activeTab==="setups")renderSetups();
+  else if(activeTab==="cot")renderCOT();
+  else if(activeTab==="sentiment")renderSentiment();
+  else if(activeTab==="econ")renderEcon();
+  else if(activeTab==="currency")renderCurrency();
+  else if(activeTab==="carry")renderCarry();
+  else if(activeTab==="feargreed")renderFearGreed();
+  else if(activeTab==="seasonality")renderSeasonality();
+  else if(activeTab==="settings")renderSettings();
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
