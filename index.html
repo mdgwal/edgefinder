@@ -1159,52 +1159,77 @@ let SEASON_DATA = SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
 
 // ── YAHOO FINANCE SEASONALITY FETCHER ────────────────────────────────────────
 // Yahoo Finance symbols for each asset
-const YAHOO_SYMBOLS={
-  EURUSD:"EURUSD=X", GBPUSD:"GBPUSD=X", USDJPY:"USDJPY=X",
-  AUDUSD:"AUDUSD=X", USDCAD:"USDCAD=X", NZDUSD:"NZDUSD=X",
-  GBPJPY:"GBPJPY=X", XAUUSD:"GC=F",     USOIL:"CL=F",
-  BTCUSD:"BTC-USD",  US500:"^GSPC",      NAS100:"^NDX",
+// ── ALPHA VANTAGE SEASONALITY FETCHER ────────────────────────────────────────
+// Uses user's existing AV key — monthly adjusted data, 20+ years history
+// AV symbols for each asset
+const AV_SYMBOLS={
+  EURUSD:{sym:"EURUSD",fn:"FX_MONTHLY",type:"fx",from:"EUR",to:"USD"},
+  GBPUSD:{sym:"GBPUSD",fn:"FX_MONTHLY",type:"fx",from:"GBP",to:"USD"},
+  USDJPY:{sym:"USDJPY",fn:"FX_MONTHLY",type:"fx",from:"USD",to:"JPY"},
+  AUDUSD:{sym:"AUDUSD",fn:"FX_MONTHLY",type:"fx",from:"AUD",to:"USD"},
+  USDCAD:{sym:"USDCAD",fn:"FX_MONTHLY",type:"fx",from:"USD",to:"CAD"},
+  NZDUSD:{sym:"NZDUSD",fn:"FX_MONTHLY",type:"fx",from:"NZD",to:"USD"},
+  GBPJPY:{sym:"GBPJPY",fn:"FX_MONTHLY",type:"fx",from:"GBP",to:"JPY"},
+  XAUUSD:{sym:"XAUUSD",fn:"FX_MONTHLY",type:"fx",from:"XAU",to:"USD"},
+  USOIL: {sym:"USOIL", fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"USO"},
+  BTCUSD:{sym:"BTCUSD",fn:"DIGITAL_CURRENCY_MONTHLY",type:"crypto",sym2:"BTC",market:"USD"},
+  US500: {sym:"US500", fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"SPY"},
+  NAS100:{sym:"NAS100",fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"QQQ"},
 };
 
-async function fetchYahooMonthly(symbol){
-  // Yahoo Finance v8 chart API — 10 years monthly
-  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=11y&includePrePost=false`;
-  let data=null;
-  // Try direct first (may work from Vercel edge), then proxy
-  for(const makeUrl of [u=>u, u=>`https://corsproxy.io/?${encodeURIComponent(u)}`, u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`]){
-    try{
-      const r=await fetch(makeUrl(url));
-      if(!r.ok)continue;
-      const text=await r.text();
-      try{
-        const outer=JSON.parse(text);
-        // allorigins wraps in {contents}
-        data=outer.contents?JSON.parse(outer.contents):outer;
-        if(data?.chart?.result?.[0]?.indicators)break;
-        data=null;
-      }catch(e){continue;}
-    }catch(e){continue;}
+async function fetchAVMonthly(assetId, avKey){
+  const cfg=AV_SYMBOLS[assetId];
+  if(!cfg||!avKey)throw new Error("No config or key");
+  let url;
+  if(cfg.type==="fx"){
+    url=`https://www.alphavantage.co/query?function=FX_MONTHLY&from_symbol=${cfg.from}&to_symbol=${cfg.to}&apikey=${avKey}&outputsize=full`;
+  }else if(cfg.type==="crypto"){
+    url=`https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_MONTHLY&symbol=${cfg.sym2}&market=${cfg.market}&apikey=${avKey}`;
+  }else{
+    url=`https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${cfg.sym2}&apikey=${avKey}&outputsize=full`;
   }
-  if(!data)throw new Error("Yahoo fetch failed for "+symbol);
-  const result=data.chart.result[0];
-  const timestamps=result.timestamp;
-  const closes=result.indicators.quote[0].close;
-  if(!timestamps||!closes)throw new Error("No data for "+symbol);
-  // Build monthly returns: {year, month (0-11), pct}
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("AV HTTP "+r.status);
+  const d=await r.json();
+  if(d.Note||d.Information)throw new Error("AV rate limit");
+
+  // Parse different response formats into unified {year,month,close} array
+  const entries=[];
+  if(cfg.type==="fx"){
+    const ts=d["Time Series FX (Monthly)"]||{};
+    Object.entries(ts).forEach(([date,v])=>{
+      const dt=new Date(date);
+      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["4. close"])});
+    });
+  }else if(cfg.type==="crypto"){
+    const ts=d["Time Series (Digital Currency Monthly)"]||{};
+    Object.entries(ts).forEach(([date,v])=>{
+      const dt=new Date(date);
+      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["4a. close (USD)"]||v["4. close"])});
+    });
+  }else{
+    const ts=d["Monthly Adjusted Time Series"]||{};
+    Object.entries(ts).forEach(([date,v])=>{
+      const dt=new Date(date);
+      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["5. adjusted close"])});
+    });
+  }
+  if(!entries.length)throw new Error("No data parsed");
+  // Sort ascending
+  entries.sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month);
+  // Convert to % monthly returns
   const returns=[];
-  for(let i=1;i<timestamps.length;i++){
-    if(closes[i]==null||closes[i-1]==null)continue;
-    const d=new Date(timestamps[i]*1000);
-    const pct=parseFloat(((closes[i]-closes[i-1])/closes[i-1]*100).toFixed(4));
-    returns.push({year:d.getFullYear(), month:d.getMonth(), pct});
+  for(let i=1;i<entries.length;i++){
+    const prev=entries[i-1],cur=entries[i];
+    if(!prev.close||!cur.close)continue;
+    const pct=parseFloat(((cur.close-prev.close)/prev.close*100).toFixed(4));
+    returns.push({year:cur.year,month:cur.month,pct});
   }
   return returns;
 }
 
-function calcSeasonality(returns, years){
-  // Group by month, average over last N years
-  const now=new Date();
-  const cutoff=now.getFullYear()-years;
+function calcSeasonality(returns,years){
+  const cutoff=new Date().getFullYear()-years;
   const byMonth=Array(12).fill(null).map(()=>[]);
   returns.forEach(r=>{if(r.year>cutoff)byMonth[r.month].push(r.pct);});
   return byMonth.map(arr=>arr.length?parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2)):0);
@@ -1219,9 +1244,9 @@ function calcCurrentYear(returns){
 }
 
 async function fetchSeasonalityForAsset(assetId){
-  const symbol=YAHOO_SYMBOLS[assetId];
-  if(!symbol)return null;
-  const returns=await fetchYahooMonthly(symbol);
+  const avKey=state.avKey;
+  if(!avKey)throw new Error("No AV key — add in Settings");
+  const returns=await fetchAVMonthly(assetId,avKey);
   return{
     m10:calcSeasonality(returns,10),
     m5: calcSeasonality(returns,5),
@@ -1230,26 +1255,24 @@ async function fetchSeasonalityForAsset(assetId){
   };
 }
 
-// Load all assets — fetch one at a time to avoid rate limits
+// Load seasonality — selected asset first, then rest with 12s gaps (AV free = 5 calls/min)
 async function loadSeasonalityLive(){
-  // Fetch selected asset first for instant update
+  if(!state.avKey)return; // silently skip if no key
   const selId=state.seasonAsset||"XAUUSD";
   const ids=SEASON_DATA.map(d=>d.id);
-  // Put selected asset first
   const ordered=[selId,...ids.filter(id=>id!==selId)];
-
   for(const id of ordered){
     try{
       const live=await fetchSeasonalityForAsset(id);
       if(!live)continue;
       SEASON_DATA=SEASON_DATA.map(d=>d.id===id?{...d,...live}:d);
-      // Re-render as each asset loads if it's the selected one
       if(id===state.seasonAsset&&activeTab==="seasonality")renderSeasonality();
     }catch(e){
       console.log("Season fetch failed for "+id+":",e.message);
+      if(e.message.includes("rate limit"))await new Promise(r=>setTimeout(r,60000));
     }
-    // Small delay between requests to avoid rate limiting
-    await new Promise(r=>setTimeout(r,300));
+    // AV free tier = 5 calls/min → 12s gap
+    await new Promise(r=>setTimeout(r,12000));
   }
   if(activeTab==="seasonality")renderSeasonality();
 }
@@ -1284,9 +1307,11 @@ function renderSeasonality(){
         style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
         ${assetOpts}
       </select>
-      ${pair.live
-        ? `<span class="cbadge-live">● LIVE · Yahoo Finance</span>`
-        : `<span class="cbadge-demo" style="cursor:pointer" onclick="loadSeasonalityLive()">⟳ Loading live...</span>`}
+      ${!state.avKey
+        ? `<span class="cbadge-demo" style="cursor:pointer" onclick="switchTab('settings')">⚠ Add Alpha Vantage key → live data</span>`
+        : pair.live
+          ? `<span class="cbadge-live">● LIVE · Alpha Vantage</span>`
+          : `<span class="cbadge-demo">⟳ Fetching from Alpha Vantage...</span>`}
     </div>
   </div>`;
 
@@ -1776,6 +1801,22 @@ function renderSettings(){
       3. Paste above → Save ✅
     </div>
   </div>
+
+  <div class="apibox"><h3>🌱 ALPHA VANTAGE — Live Seasonality + Gold, Oil (Free)</h3>
+    <div class="key-status ${state.avKey?"key-ok":"key-missing"}">${state.avKey?"✅ AV key saved — Seasonality data is LIVE from real price history":"⚠ No key — Seasonality using fallback data"}</div>
+    <div class="apirow" style="margin-top:10px">
+      <span class="apilbl">AV Key</span>
+      <input class="apiinp" id="av-input" placeholder="alphavantage.co → Get Free API Key" value="${state.avKey}"/>
+      <button class="apibtn" onclick="saveAVKey()">💾 Save</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
+      1. Go to <span style="color:var(--accent)">alphavantage.co</span> → click <strong style="color:var(--text)">Get Free API Key</strong><br>
+      2. Fill in a name → get key instantly (no credit card)<br>
+      3. Paste above → Save ✅ Seasonality fetches real 10yr price history automatically<br>
+      <span style="color:var(--neutral)">⚠ Free tier = 25 calls/day. Seasonality loads 1 asset at a time (12s apart).</span>
+    </div>
+  </div>
+
   <div class="apibox"><h3>📱 ADD TO HOME SCREEN</h3>
     <div style="font-size:11px;color:var(--muted);line-height:2.1">
       <strong style="color:var(--text)">Android Chrome</strong> → Tap ⋮ → "Add to Home screen"<br>
@@ -1805,6 +1846,17 @@ function clearMyfxbook(){
   if(activeTab==="sentiment")renderSentiment();
 }
 function saveFREDKey(){const val=document.getElementById("fred-input").value.trim();if(!val)return;state.fredKey=val;saveKey("fred",val);state.econData=null;state.econLive=false;state.econLoading=false;renderSettings();loadFREDData();if(activeTab==="econ")renderEcon();}
+function saveAVKey(){
+  const val=document.getElementById("av-input").value.trim();
+  if(!val)return;
+  state.avKey=val;saveKey("av",val);
+  // Reset all season data to fallback so live re-fetch starts fresh
+  SEASON_DATA=SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
+  renderSettings();
+  // Start fetching live seasonality immediately
+  loadSeasonalityLive();
+  if(activeTab==="seasonality")renderSeasonality();
+}
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function initTabs(){
