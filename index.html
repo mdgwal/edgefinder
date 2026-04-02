@@ -195,6 +195,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .global-gauge-title{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:8px;}
 .global-gauge-desc{font-size:12px;color:var(--muted);line-height:1.6;}
 
+
 /* ── SEASONALITY ── */
 .season-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
 @media(min-width:700px){.season-grid{grid-template-columns:repeat(3,1fr);}}
@@ -412,11 +413,13 @@ function buildFallbackFG(){
 let state={
   rates:null,prevRates:null,cdata:null,
   fredKey:loadKey('fred'),
+  avKey:loadKey('av'),
   mfxEmail:loadKey('mfx_email'),
   mfxPassword:loadKey('mfx_password'),
   mfxSession:loadKey('mfx_session'),
   econData:null,econLive:false,econLoading:false,
   fgData:buildFallbackFG(),fgLive:false,
+  // Sentiment data — starts with fallback, replaced by live Myfxbook data
   sentimentData:FALLBACK_SENTIMENT,
   sentimentLive:false,
   sentimentLoading:false,
@@ -425,7 +428,9 @@ let state={
   seasonFilter:"All",
   seasonAsset:"XAUUSD",
   seasonView:"monthly",
+  // COT live data from CFTC
   cotData:null,cotLive:false,cotLoading:false,cotLastUpdate:null,
+  seasonLastFetch:0,seasonFetching:false,
   putCallData:null,putCallLive:false,
   aaiiData:null,aaiiLive:false,
 };
@@ -439,8 +444,11 @@ function fgLabel(v){if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";if(v>=
 function fmtK(n){if(Math.abs(n)>=1000000)return(n/1000000).toFixed(2)+"M";if(Math.abs(n)>=1000)return(n/1000).toFixed(0)+"K";return String(n);}
 
 // ── CFTC COT LIVE FETCH ────────────────────────────────────────────────────────
+// CFTC publishes FinFutWk.txt every Friday ~3:30 PM EST
+// Contains non-commercial (speculative/smart money) positions for all futures
 const CFTC_URL="https://www.cftc.gov/files/dea/newcot/FinFutWk.txt";
 
+// Map CFTC market names → our asset IDs
 const CFTC_MAP={
   "EURO FX":                        {id:"EUR",  name:"Euro"},
   "BRITISH POUND STERLING":         {id:"GBP",  name:"British Pound"},
@@ -465,20 +473,21 @@ const CFTC_MAP={
 function parseCFTCcsv(csvText){
   const lines=csvText.trim().split("\n");
   const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
+  // Column indices
+  const iName   = header.findIndex(h=>h.includes("Market_and_Exchange"));
+  const iDate   = header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
+  const iOI     = header.findIndex(h=>h==="Open_Interest_All");
+  const iLong   = header.findIndex(h=>h==="NonComm_Positions_Long_All");
+  const iShort  = header.findIndex(h=>h==="NonComm_Positions_Short_All");
+  const iLongOld= header.findIndex(h=>h==="NonComm_Positions_Long_Old")||iLong;
+  const iShortOld=header.findIndex(h=>h==="NonComm_Positions_Short_Old")||iShort;
 
-  // ── FIX B: use indexOf check instead of || for findIndex fallback ──────────
-  // findIndex returns -1 when not found, but also 0 when found at index 0.
-  // Using || treats 0 as falsy and incorrectly falls back. Use !== -1 instead.
-  const iName    = header.findIndex(h=>h.includes("Market_and_Exchange"));
-  const iDate    = header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
-  const iOI      = header.findIndex(h=>h==="Open_Interest_All");
-  const iLong    = header.findIndex(h=>h==="NonComm_Positions_Long_All");
-  const iShort   = header.findIndex(h=>h==="NonComm_Positions_Short_All");
-  // iLongOld / iShortOld were declared but never used — removed as dead code.
-
+  const results=[];
+  // We need previous week too — grab last 2 entries per market
   const seen={};
 
   for(let i=1;i<lines.length;i++){
+    // Parse CSV line handling quoted fields
     const cols=[];let cur="",inQ=false;
     for(const ch of lines[i]){
       if(ch==='"'){inQ=!inQ;}
@@ -489,6 +498,7 @@ function parseCFTCcsv(csvText){
     if(cols.length<10)continue;
 
     const rawName=(cols[iName]||"").replace(/"/g,"").trim();
+    // Find matching CFTC_MAP key
     let matched=null;
     for(const key of Object.keys(CFTC_MAP)){
       if(rawName.toUpperCase().includes(key.toUpperCase())){matched=key;break;}
@@ -502,12 +512,15 @@ function parseCFTCcsv(csvText){
     const date=(cols[iDate]||"").replace(/"/g,"");
 
     if(!seen[id]){
+      // First occurrence = latest week
       seen[id]={first:{longC,shortC,oi,date}};
     }else if(!seen[id].second){
+      // Second occurrence = previous week
       seen[id].second={longC,shortC};
     }
   }
 
+  // Build final COT rows
   const rows=[];
   for(const [key,info] of Object.entries(CFTC_MAP)){
     const s=seen[info.id];
@@ -518,6 +531,7 @@ function parseCFTCcsv(csvText){
     const longPct=parseFloat(((longC/total)*100).toFixed(2));
     const shortPct=parseFloat(((shortC/total)*100).toFixed(2));
     const netPos=longC-shortC;
+    // Change vs previous week
     let dLong=0,dShort=0,netChg=0;
     if(s.second){
       dLong=longC-s.second.longC;
@@ -533,6 +547,7 @@ function parseCFTCcsv(csvText){
       netPos,oi,dOI:0,date,
     });
   }
+  // Sort by netChg desc (same as default)
   return rows.sort((a,b)=>b.netChg-a.netChg);
 }
 
@@ -547,6 +562,7 @@ async function fetchCFTCData(){
       const r=await fetch(makeProxy(CFTC_URL));
       if(!r.ok)continue;
       const text=await r.text();
+      // allorigins wraps in {contents:"..."}
       let csv=text;
       try{const j=JSON.parse(text);if(j.contents)csv=j.contents;}catch(e){}
       if(!csv||csv.length<1000)continue;
@@ -559,9 +575,10 @@ async function fetchCFTCData(){
 
 function loadCOTData(){
   if(state.cotLoading)return;
+  // Only re-fetch if we don't have data or data is older than 12 hours
   if(state.cotData&&state.cotLastUpdate){
     const age=(Date.now()-state.cotLastUpdate)/1000/60/60;
-    if(age<12)return;
+    if(age<12)return; // Fresh enough
   }
   state.cotLoading=true;
   fetchCFTCData().then(rows=>{
@@ -574,6 +591,7 @@ function loadCOTData(){
     console.log("CFTC COT fetch failed:",e.message);
     state.cotLoading=false;
     state.cotLive=false;
+    // Keep using hardcoded fallback
   });
 }
 
@@ -592,7 +610,7 @@ function pcSignal(pc){
   return{label:"EXTREME GREED",col:"var(--bull)"};
 }
 
-// ── MYFXBOOK API ──────────────────────────────────────────────────────────────
+// ── MYFXBOOK API — multi-proxy fallback ──────────────────────────────────────
 const PROXIES=[
   u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
   u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
@@ -632,7 +650,9 @@ async function fetchMyfxbookSentiment(){
 function loadMyfxbookData(){
   if(!state.mfxEmail||!state.mfxPassword||state.sentimentLoading)return;
   state.sentimentLoading=true;
+  // ✅ Always show demo data immediately while fetching — never blank
   if(activeTab==="sentiment")renderSentiment();
+  // Set a hard 15s timeout — if all proxies fail, show demo data
   const timeout=setTimeout(()=>{
     state.sentimentLoading=false;
     state.sentimentLive=false;
@@ -657,6 +677,7 @@ function loadMyfxbookData(){
     console.log("Myfxbook error:",e.message);
     state.sentimentLoading=false;
     state.sentimentLive=false;
+    // Show demo data — no blank screen
     if(activeTab==="sentiment")renderSentiment();
   });
 }
@@ -670,30 +691,25 @@ async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed
 async function fetchFREDEcon(key){const res={};for(const[cur,series]of Object.entries(FRED_SERIES)){res[cur]=[];for(const s of series){try{const obs=await fredFetch(s.id,key,13);let val=parseFloat(obs[0].value);const date=obs[0].date;let surprise=0;if(s.yoy&&obs.length>=13){const pv=parseFloat(obs[12].value);if(!isNaN(pv)&&pv!==0)val=((val-pv)/pv)*100;}if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}res[cur].push({l:s.label,v:isNaN(val)?"N/A":s.fmt(val),s:surprise,d:date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):""})}catch(e){const fb=(FALLBACK_ECON[cur]||[]).find(f=>f.l===s.label);res[cur].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});}await new Promise(r=>setTimeout(r,150));}}return res;}
 function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLoading=true;fetchFREDEcon(state.fredKey).then(d=>{state.econData=d;state.econLive=true;state.econLoading=false;if(activeTab==="econ")renderEcon();}).catch(()=>{state.econLoading=false;});}
 
-// ── FIX C: refreshAll wrapped in try/finally so spinner always clears ─────────
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
-  try{
-    renderActive();
-    const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
-    if(r1.status==="fulfilled")state.rates=r1.value;
-    if(r2.status==="fulfilled")state.prevRates=r2.value;
-    if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
-    state.cdata=buildStrength(state.rates);
-    // Each loader handles its own errors internally
-    loadCOTData();
-    loadMyfxbookData();
-    loadSeasonalityLive();
-    loadPutCallData();
-    loadAAIIData();
-    if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
-    const now=new Date();
-    document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-    renderActive();
-  }finally{
-    // ── FIX C: spinner always removed even if an error is thrown ──────────────
-    document.getElementById("rbtn-icon").classList.remove("spinning");
-  }
+  renderActive();
+  const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
+  if(r1.status==="fulfilled")state.rates=r1.value;
+  if(r2.status==="fulfilled")state.prevRates=r2.value;
+  if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
+  state.cdata=buildStrength(state.rates);
+  // Load live sentiment from Myfxbook
+  loadCOTData();
+  loadMyfxbookData();
+  loadSeasonalityLive();
+  loadPutCallData();
+  loadAAIIData();
+  if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
+  const now=new Date();
+  document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  renderActive();
+  document.getElementById("rbtn-icon").classList.remove("spinning");
 }
 
 // ── TOP SETUPS ────────────────────────────────────────────────────────────────
@@ -723,10 +739,12 @@ function setFilter(cat){state.filterCat=cat;renderSetups();}
 
 // ── COT ───────────────────────────────────────────────────────────────────────
 function renderCOT(){
+  // ✅ Use live CFTC data if available, fall back to hardcoded
   const data = state.cotData && state.cotData.length ? state.cotData : COT_DATA;
   const isLive = state.cotLive;
   const isLoading = state.cotLoading;
 
+  // Work out last update label
   let lastUpdateLabel = "Mar 14, 2026";
   if(isLive && data[0] && data[0].date){
     try{
@@ -797,10 +815,11 @@ function renderSentiment(){
   ];
   let html=`<div class="sent-sub-tabs">${subTabs.map(t=>`<button class="sent-sub-tab${sentSubTab===t.id?" active":""}" onclick="setSentTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
 
-  // ── RETAIL LONG/SHORT ──
+  // ── RETAIL LONG/SHORT (LIVE Myfxbook) ──
   if(sentSubTab==="retail"){
     const data=state.sentimentData;
     const cats=["All","Forex","Commodity","Index","Crypto"];
+    // Determine category from name
     function getCat(name){
       if(["XAUUSD","XAGUSD","USOIL","UKOIL","COPPER"].includes(name))return"Commodity";
       if(["US500","NAS100","US30","GER40","UK100"].includes(name))return"Index";
@@ -841,31 +860,31 @@ function renderSentiment(){
     <div class="card"><div class="chd"><span class="ctitle">Retail Positioning — ${filtered.length} Instruments</span>${badge}</div><div class="cbody">`;
 
     if(state.sentimentLoading&&!state.sentimentLive){
+      // Show demo data with loading indicator — not a blank spinner
       html+=`<div class="lrow" style="margin-bottom:10px"><div class="spinner"></div><span style="color:var(--accent)">Connecting to Myfxbook... showing demo data meanwhile</span></div>`;
     }
-
-    // ── FIX: removed the redundant `if(true){` block that wrapped this loop ──
-    filtered.forEach(row=>{
-      const lp=row.longPercentage;
-      const sp=row.shortPercentage;
-      const sig=sentSignal(lp);
-      const totalVol=row.longVolume+row.shortVolume;
-      const volLabel=totalVol>50000?"Very High":totalVol>20000?"High":totalVol>5000?"Medium":"Low";
-      const volCol=totalVol>50000?"var(--bull)":totalVol>20000?"#7effc4":totalVol>5000?"var(--text)":"var(--muted)";
-      html+=`<div class="sent-row-big">
-        <div class="sent-pair-big">${row.name}</div>
-        <span class="sent-signal ${sig.cls}">${sig.label}</span>
-        <div class="sent-bar-big">
-          <div class="sent-track-big"><div class="sent-long-big" style="width:${lp}%"></div><div class="sent-short-big" style="width:${sp}%"></div></div>
-          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px">
-            <span style="color:var(--bull)">▲ ${lp.toFixed(1)}% Long (${fmtK(row.longPositions)} pos)</span>
-            <span style="color:var(--bear)">${sp.toFixed(1)}% Short (${fmtK(row.shortPositions)} pos) ▼</span>
+    if(true){
+      filtered.forEach(row=>{
+        const lp=row.longPercentage;
+        const sp=row.shortPercentage;
+        const sig=sentSignal(lp);
+        const totalVol=row.longVolume+row.shortVolume;
+        const volLabel=totalVol>50000?"Very High":totalVol>20000?"High":totalVol>5000?"Medium":"Low";
+        const volCol=totalVol>50000?"var(--bull)":totalVol>20000?"#7effc4":totalVol>5000?"var(--text)":"var(--muted)";
+        html+=`<div class="sent-row-big">
+          <div class="sent-pair-big">${row.name}</div>
+          <span class="sent-signal ${sig.cls}">${sig.label}</span>
+          <div class="sent-bar-big">
+            <div class="sent-track-big"><div class="sent-long-big" style="width:${lp}%"></div><div class="sent-short-big" style="width:${sp}%"></div></div>
+            <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;margin-top:3px">
+              <span style="color:var(--bull)">▲ ${lp.toFixed(1)}% Long (${fmtK(row.longPositions)} pos)</span>
+              <span style="color:var(--bear)">${sp.toFixed(1)}% Short (${fmtK(row.shortPositions)} pos) ▼</span>
+            </div>
           </div>
-        </div>
-        <div class="sent-vol" style="color:${volCol}">${volLabel}</div>
-      </div>`;
-    });
-
+          <div class="sent-vol" style="color:${volCol}">${volLabel}</div>
+        </div>`;
+      });
+    }
     html+=`</div></div>
     <div class="infobox ib-yellow">
       <span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC — SOURCE: Myfxbook Community Outlook</span>
@@ -890,6 +909,8 @@ function renderSentiment(){
       const gapCol=gap>0?"var(--bull)":gap<0?"var(--bear)":"var(--muted)";
       const signal=gap>20?"⬆ STRONG BUY":gap>10?"⬆ BUY":gap<-20?"⬇ STRONG SELL":gap<-10?"⬇ SELL":"→ NEUTRAL";
       const sigCol=gap>10?"var(--bull)":gap<-10?"var(--bear)":"var(--muted)";
+      const divLabel=Math.abs(gap)>20?"STRONG"+(gap>0?" BULL":" BEAR"):Math.abs(gap)>10?(gap>0?"BULL":"BEAR"):"NEUTRAL";
+      const divCls=Math.abs(gap)>10?(gap>0?"diverge-bull":"diverge-bear"):"diverge-neutral";
       const rBar=`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="width:${row.retailLong}%;height:100%;background:var(--bear);border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--bear)">${row.retailLong}%</span></div>`;
       const sBar=`<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--bg4);border-radius:2px;overflow:hidden"><div style="width:${row.institutionalLong}%;height:100%;background:var(--bull);border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--bull)">${row.institutionalLong}%</span></div>`;
       html+=`<tr><td>${row.id}</td><td>${rBar}</td><td>${sBar}</td><td style="color:${gapCol};font-family:var(--mono);font-weight:bold">${gap>0?"+":""}${gap}%</td><td style="color:${sigCol};font-family:var(--mono);font-weight:bold">${signal}</td></tr>`;
@@ -905,6 +926,9 @@ function renderSentiment(){
     <strong style="color:var(--bull)">Below 0.7</strong> = extreme greed (contrarian sell). <strong style="color:var(--bear)">Above 1.2</strong> = extreme fear (contrarian buy).</div>
     <div class="card"><div class="chd"><span class="ctitle">Put/Call Ratio — Options Market</span><span class="cbadge">DAILY · CBOE</span></div><div class="cbody">`;
     const pcData = state.putCallData || PUT_CALL;
+    const pcBadge = state.putCallLive
+      ? `<span class="cbadge-live">● LIVE · CBOE</span>`
+      : `<span class="cbadge-demo">DEMO DATA</span>`;
     pcData.forEach(row=>{
       const sig=pcSignal(row.pc);
       const barPct=Math.min(100,row.pc*50);
@@ -918,14 +942,7 @@ function renderSentiment(){
   else if(sentSubTab==="aaii"){
     const aaiiCurrent = state.aaiiData || AAII;
     const aaiiIsLive = state.aaiiLive;
-
-    // ── FIX A: use aaiiCurrent.spread everywhere, not the hardcoded AAII constant ──
-    const spreadCol = aaiiCurrent.spread > 10
-      ? "var(--bull)"
-      : aaiiCurrent.spread < -10   // was: AAII.spread < -10 — always used stale hardcoded value
-        ? "var(--bear)"
-        : "var(--neutral)";
-
+    const spreadCol=aaiiCurrent.spread>10?"var(--bull)":AAII.spread<-10?"var(--bear)":"var(--neutral)";
     html+=`<div class="sectitle">AAII Investor Sentiment Survey</div>
     <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: AAII.com — Published Every Thursday</span>
     American Association of Individual Investors surveys members weekly on 6-month market outlook.<br>
@@ -942,7 +959,7 @@ function renderSentiment(){
         <div style="font-family:var(--mono);font-size:11px;margin-top:6px;color:${spreadCol}">${aaiiCurrent.spread<-10?"EXCESSIVE BEARISH — Contrarian Bullish Signal":aaiiCurrent.spread>10?"EXCESSIVE BULLISH — Contrarian Bearish Signal":"NEAR HISTORICAL AVERAGE"}</div>
       </div>
       <div style="height:8px;background:linear-gradient(to right,var(--bear),var(--neutral),var(--bull));border-radius:4px;margin:10px 0;position:relative">
-        <div style="position:absolute;width:4px;height:14px;background:white;border-radius:2px;top:-3px;transform:translateX(-50%);left:${Math.min(95,Math.max(5,50+aaiiCurrent.spread))}%"></div>
+        <div style="position:absolute;width:4px;height:14px;background:white;border-radius:2px;top:-3px;transform:translateX(-50%);left:${Math.min(95,Math.max(5,50+AAII.spread))}%"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--muted)"><span style="color:var(--bear)">Bearish (-50%)</span><span>Neutral (0%)</span><span style="color:var(--bull)">Bullish (+50%)</span></div>
     </div></div>`;
@@ -982,12 +999,16 @@ function renderSentiment(){
 function setSentTab(id){sentSubTab=id;renderSentiment();}
 function setSentFilter(f){state.sentFilter=f;renderSentiment();}
 
-// ── PUT/CALL LIVE FETCH ───────────────────────────────────────────────────────
+
+// ── PUT/CALL LIVE FETCH — CBOE via proxy ─────────────────────────────────────
 async function fetchPutCall(){
+  // CBOE publishes daily options stats — parse their public JSON
   const url="https://www.cboe.com/us/options/market_statistics/daily/";
   try{
     const d=await proxyFetch(url);
+    // Try to extract P/C ratio from HTML/JSON response
     const text=typeof d==="string"?d:JSON.stringify(d);
+    // Look for equity P/C ratio pattern
     const m=text.match(/equity[^0-9]*?([01]\.\d{2})/i);
     if(m){
       const eqPc=parseFloat(m[1]);
@@ -1011,12 +1032,13 @@ function loadPutCallData(){
   }).catch(()=>{state.putCallLive=false;});
 }
 
-// ── AAII LIVE FETCH ───────────────────────────────────────────────────────────
+// ── AAII LIVE FETCH — via proxy ───────────────────────────────────────────────
 async function fetchAAII(){
   const url="https://www.aaii.com/sentimentsurvey/sent_results.js";
   try{
     const d=await proxyFetch(url);
     const text=typeof d==="string"?d:(d.contents||JSON.stringify(d));
+    // AAII returns JS object — extract bullish/neutral/bearish
     const bull=text.match(/bullish['"\s]*:['"\s]*([\d.]+)/i);
     const neut=text.match(/neutral['"\s]*:['"\s]*([\d.]+)/i);
     const bear=text.match(/bearish['"\s]*:['"\s]*([\d.]+)/i);
@@ -1042,14 +1064,20 @@ function loadAAIIData(){
   }).catch(()=>{state.aaiiLive=false;});
 }
 
-// ── SURPRISE METER ────────────────────────────────────────────────────────────
+// ── SURPRISE METER — dynamically calculated from FRED data ───────────────────
+// Compare latest value vs 12-month average for each series
+// This gives a real "is this better or worse than normal?" score
 function calcSurpriseFromFRED(econData){
+  // econData = {USD:[{l,v,s,d}...], EUR:...}
+  // Each item has s = surprise score (-0.5 to +0.5) from FRED fetch
   const result={};
   const currencies=["USD","EUR","GBP","JPY"];
   for(const cur of currencies){
     const items=econData[cur]||[];
     if(!items.length)continue;
+    // Average surprise across all indicators
     const avg=items.reduce((a,i)=>a+i.s,0)/items.length;
+    // Convert -0.5..+0.5 range to 0..100 score (0.0 = 50%)
     const score=Math.round(Math.max(0,Math.min(100,50+avg*100)));
     result[cur]={
       score,
@@ -1059,6 +1087,7 @@ function calcSurpriseFromFRED(econData){
   return result;
 }
 
+// Static fallback surprise data (used until FRED loads)
 const ECO_SURPRISE_FALLBACK={
   USD:{score:62,indicators:[{n:"GDP",s:.3},{n:"CPI",s:-.1},{n:"Unemp",s:.2},{n:"Rate",s:0}]},
   GBP:{score:55,indicators:[{n:"GDP",s:.2},{n:"CPI",s:-.3},{n:"Unemp",s:-.1},{n:"Rate",s:0}]},
@@ -1070,7 +1099,12 @@ const ECO_SURPRISE_FALLBACK={
   CHF:{score:48,indicators:[{n:"GDP",s:0},{n:"CPI",s:-.2},{n:"Employ",s:.1},{n:"Rate",s:0}]},
 };
 
-// ── SEASONALITY DATA ──────────────────────────────────────────────────────────
+// ── SEASONALITY DATA — 10-year historical monthly averages ───────────────────
+// Each value = avg % return for that month (Jan=0 .. Dec=11)
+// Based on 2014-2024 historical data for major forex pairs
+// 3 data series per asset matching Nick's EdgeFinder chart:
+// m10 = 10-year avg (blue bars), m5 = 5-year avg (red bars), mCur = current year (white line, null = future)
+// ── SEASON FALLBACK (used until Yahoo Finance data loads) ────────────────────
 const SEASON_DATA_FALLBACK=[
   {id:"EURUSD",name:"EUR/USD",  cat:"Forex",
    m10: [-0.38, 0.12, 0.81, 0.33,-0.58, 0.21, 0.14,-0.52, 0.68, 0.31,-0.29,-0.18],
@@ -1122,49 +1156,82 @@ const SEASON_DATA_FALLBACK=[
    mCur:[ 3.10,-1.80,-7.20, null,null,null,null,null,null,null,null,null]},
 ];
 
+// Live SEASON_DATA — starts as fallback, replaced by Yahoo Finance data
 let SEASON_DATA = SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
 
-const YAHOO_SYMBOLS={
-  EURUSD:"EURUSD=X", GBPUSD:"GBPUSD=X", USDJPY:"USDJPY=X",
-  AUDUSD:"AUDUSD=X", USDCAD:"USDCAD=X", NZDUSD:"NZDUSD=X",
-  GBPJPY:"GBPJPY=X", XAUUSD:"GC=F",     USOIL:"CL=F",
-  BTCUSD:"BTC-USD",  US500:"^GSPC",      NAS100:"^NDX",
+// ── YAHOO FINANCE SEASONALITY FETCHER ────────────────────────────────────────
+// Yahoo Finance symbols for each asset
+// ── ALPHA VANTAGE SEASONALITY FETCHER ────────────────────────────────────────
+// Uses user's existing AV key — monthly adjusted data, 20+ years history
+// AV symbols for each asset
+const AV_SYMBOLS={
+  EURUSD:{sym:"EURUSD",fn:"FX_MONTHLY",type:"fx",from:"EUR",to:"USD"},
+  GBPUSD:{sym:"GBPUSD",fn:"FX_MONTHLY",type:"fx",from:"GBP",to:"USD"},
+  USDJPY:{sym:"USDJPY",fn:"FX_MONTHLY",type:"fx",from:"USD",to:"JPY"},
+  AUDUSD:{sym:"AUDUSD",fn:"FX_MONTHLY",type:"fx",from:"AUD",to:"USD"},
+  USDCAD:{sym:"USDCAD",fn:"FX_MONTHLY",type:"fx",from:"USD",to:"CAD"},
+  NZDUSD:{sym:"NZDUSD",fn:"FX_MONTHLY",type:"fx",from:"NZD",to:"USD"},
+  GBPJPY:{sym:"GBPJPY",fn:"FX_MONTHLY",type:"fx",from:"GBP",to:"JPY"},
+  XAUUSD:{sym:"XAUUSD",fn:"FX_MONTHLY",type:"fx",from:"XAU",to:"USD"},
+  USOIL: {sym:"USOIL", fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"USO"},
+  BTCUSD:{sym:"BTCUSD",fn:"DIGITAL_CURRENCY_MONTHLY",type:"crypto",sym2:"BTC",market:"USD"},
+  US500: {sym:"US500", fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"SPY"},
+  NAS100:{sym:"NAS100",fn:"TIME_SERIES_MONTHLY_ADJUSTED",type:"stock",sym2:"QQQ"},
 };
 
-async function fetchYahooMonthly(symbol){
-  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1mo&range=11y&includePrePost=false`;
-  let data=null;
-  for(const makeUrl of [u=>u, u=>`https://corsproxy.io/?${encodeURIComponent(u)}`, u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`]){
-    try{
-      const r=await fetch(makeUrl(url));
-      if(!r.ok)continue;
-      const text=await r.text();
-      try{
-        const outer=JSON.parse(text);
-        data=outer.contents?JSON.parse(outer.contents):outer;
-        if(data?.chart?.result?.[0]?.indicators)break;
-        data=null;
-      }catch(e){continue;}
-    }catch(e){continue;}
+async function fetchAVMonthly(assetId, avKey){
+  const cfg=AV_SYMBOLS[assetId];
+  if(!cfg||!avKey)throw new Error("No config or key");
+  let url;
+  if(cfg.type==="fx"){
+    url=`https://www.alphavantage.co/query?function=FX_MONTHLY&from_symbol=${cfg.from}&to_symbol=${cfg.to}&apikey=${avKey}&outputsize=full`;
+  }else if(cfg.type==="crypto"){
+    url=`https://www.alphavantage.co/query?function=DIGITAL_CURRENCY_MONTHLY&symbol=${cfg.sym2}&market=${cfg.market}&apikey=${avKey}`;
+  }else{
+    url=`https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=${cfg.sym2}&apikey=${avKey}&outputsize=full`;
   }
-  if(!data)throw new Error("Yahoo fetch failed for "+symbol);
-  const result=data.chart.result[0];
-  const timestamps=result.timestamp;
-  const closes=result.indicators.quote[0].close;
-  if(!timestamps||!closes)throw new Error("No data for "+symbol);
+  const r=await fetch(url);
+  if(!r.ok)throw new Error("AV HTTP "+r.status);
+  const d=await r.json();
+  if(d.Note||d.Information)throw new Error("AV rate limit");
+
+  // Parse different response formats into unified {year,month,close} array
+  const entries=[];
+  if(cfg.type==="fx"){
+    const ts=d["Time Series FX (Monthly)"]||{};
+    Object.entries(ts).forEach(([date,v])=>{
+      const dt=new Date(date);
+      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["4. close"])});
+    });
+  }else if(cfg.type==="crypto"){
+    const ts=d["Time Series (Digital Currency Monthly)"]||{};
+    Object.entries(ts).forEach(([date,v])=>{
+      const dt=new Date(date);
+      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["4a. close (USD)"]||v["4. close"])});
+    });
+  }else{
+    const ts=d["Monthly Adjusted Time Series"]||{};
+    Object.entries(ts).forEach(([date,v])=>{
+      const dt=new Date(date);
+      entries.push({year:dt.getFullYear(),month:dt.getMonth(),close:parseFloat(v["5. adjusted close"])});
+    });
+  }
+  if(!entries.length)throw new Error("No data parsed");
+  // Sort ascending
+  entries.sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month);
+  // Convert to % monthly returns
   const returns=[];
-  for(let i=1;i<timestamps.length;i++){
-    if(closes[i]==null||closes[i-1]==null)continue;
-    const d=new Date(timestamps[i]*1000);
-    const pct=parseFloat(((closes[i]-closes[i-1])/closes[i-1]*100).toFixed(4));
-    returns.push({year:d.getFullYear(), month:d.getMonth(), pct});
+  for(let i=1;i<entries.length;i++){
+    const prev=entries[i-1],cur=entries[i];
+    if(!prev.close||!cur.close)continue;
+    const pct=parseFloat(((cur.close-prev.close)/prev.close*100).toFixed(4));
+    returns.push({year:cur.year,month:cur.month,pct});
   }
   return returns;
 }
 
-function calcSeasonality(returns, years){
-  const now=new Date();
-  const cutoff=now.getFullYear()-years;
+function calcSeasonality(returns,years){
+  const cutoff=new Date().getFullYear()-years;
   const byMonth=Array(12).fill(null).map(()=>[]);
   returns.forEach(r=>{if(r.year>cutoff)byMonth[r.month].push(r.pct);});
   return byMonth.map(arr=>arr.length?parseFloat((arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2)):0);
@@ -1179,9 +1246,9 @@ function calcCurrentYear(returns){
 }
 
 async function fetchSeasonalityForAsset(assetId){
-  const symbol=YAHOO_SYMBOLS[assetId];
-  if(!symbol)return null;
-  const returns=await fetchYahooMonthly(symbol);
+  const avKey=state.avKey;
+  if(!avKey)throw new Error("No AV key — add in Settings");
+  const returns=await fetchAVMonthly(assetId,avKey);
   return{
     m10:calcSeasonality(returns,10),
     m5: calcSeasonality(returns,5),
@@ -1190,21 +1257,44 @@ async function fetchSeasonalityForAsset(assetId){
   };
 }
 
+// Load seasonality — only fetches if: no key ever used before, or data >24h old
+// ✅ Never resets existing live data — keeps showing last good data on refresh
 async function loadSeasonalityLive(){
-  const selId=state.seasonAsset||"XAUUSD";
-  const ids=SEASON_DATA.map(d=>d.id);
-  const ordered=[selId,...ids.filter(id=>id!==selId)];
+  if(!state.avKey)return;
+  if(state.seasonFetching)return; // already running
+
+  // ✅ Skip if all data is already live and fetched within 24 hours
+  const allLive = SEASON_DATA.every(d=>d.live);
+  const age = (Date.now() - state.seasonLastFetch) / 3600000; // hours
+  if(allLive && age < 24){
+    if(activeTab==="seasonality")renderSeasonality();
+    return;
+  }
+
+  state.seasonFetching = true;
+  const selId = state.seasonAsset || "XAUUSD";
+  const ids = SEASON_DATA.map(d=>d.id);
+  // Selected asset first, then only non-live ones to save API calls
+  const notLive = ids.filter(id=>!SEASON_DATA.find(d=>d.id===id)?.live);
+  const ordered = [selId, ...notLive.filter(id=>id!==selId)];
+
   for(const id of ordered){
+    if(!state.avKey)break; // stop if key removed mid-fetch
     try{
-      const live=await fetchSeasonalityForAsset(id);
+      const live = await fetchSeasonalityForAsset(id);
       if(!live)continue;
-      SEASON_DATA=SEASON_DATA.map(d=>d.id===id?{...d,...live}:d);
-      if(id===state.seasonAsset&&activeTab==="seasonality")renderSeasonality();
+      // ✅ Merge live data into existing — never wipe good data
+      SEASON_DATA = SEASON_DATA.map(d=>d.id===id ? {...d,...live} : d);
+      if(id===state.seasonAsset && activeTab==="seasonality")renderSeasonality();
     }catch(e){
       console.log("Season fetch failed for "+id+":",e.message);
+      if(e.message.includes("rate limit"))await new Promise(r=>setTimeout(r,65000));
     }
-    await new Promise(r=>setTimeout(r,300));
+    await new Promise(r=>setTimeout(r,12500)); // 12.5s = safe within 5/min
   }
+
+  state.seasonLastFetch = Date.now();
+  state.seasonFetching = false;
   if(activeTab==="seasonality")renderSeasonality();
 }
 
@@ -1213,12 +1303,13 @@ const MONTH_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","
 
 function renderSeasonality(){
   const selAsset = state.seasonAsset || "XAUUSD";
-  const seasonView = state.seasonView || "monthly";
+  const seasonView = state.seasonView || "monthly"; // "annual" | "monthly"
   const pair = SEASON_DATA.find(d=>d.id===selAsset) || SEASON_DATA[0];
   const curMonth = new Date().getMonth();
 
   const assetOpts = SEASON_DATA.map(d=>`<option value="${d.id}" ${d.id===selAsset?"selected":""}>${d.name}</option>`).join("");
 
+  // ── HEADER (shared) ──
   const viewBtns = `
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
     <div style="display:flex;gap:6px">
@@ -1237,16 +1328,24 @@ function renderSeasonality(){
         style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
         ${assetOpts}
       </select>
-      ${pair.live
-        ? `<span class="cbadge-live">● LIVE · Yahoo Finance</span>`
-        : `<span class="cbadge-demo" style="cursor:pointer" onclick="loadSeasonalityLive()">⟳ Loading live...</span>`}
+      ${!state.avKey
+        ? `<span class="cbadge-demo" style="cursor:pointer" onclick="switchTab('settings')">⚠ Add Alpha Vantage key → live data</span>`
+        : pair.live
+          ? `<span class="cbadge-live">● LIVE · Alpha Vantage</span>`
+          : `<span class="cbadge-demo">⟳ Fetching from Alpha Vantage...</span>`}
     </div>
   </div>`;
 
   let html = viewBtns;
 
+  // ════════════════════════════════════════════════════════
+  // ANNUAL VIEW — cumulative weekly line chart (like Image 1)
+  // ════════════════════════════════════════════════════════
   if(seasonView === "annual"){
+    // Build 52 weekly datapoints from monthly data by interpolating
+    // 10yr avg cumulative % (white dashed), YTD cumulative % (red solid)
     const m10 = pair.m10, mCur = pair.mCur;
+    // weeks per month approx
     const weeksPerMonth = [4,4,5,4,4,4,5,4,4,5,4,5];
     const wk10 = [], wkCur = [];
     let cum10 = 0, cumCur = 0;
@@ -1265,16 +1364,17 @@ function renderSeasonality(){
     const W=700, H=280, padL=52, padR=50, padT=24, padB=50;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
-    const n = wk10.length;
+    const n = wk10.length; // 52
 
-    const allCur = wkCur.filter(v=>v!=null);
-    const allVals = [...wk10, ...allCur, 0];
+    const all10 = wk10, allCur = wkCur.filter(v=>v!=null);
+    const allVals = [...all10, ...allCur, 0];
     const yMax = Math.max(...allVals) + 1.5;
     const yMin = Math.min(...allVals) - 1.5;
 
     function xPx(i){ return padL + (i/(n-1))*chartW; }
     function yPx(v){ return padT + chartH*(1-(v-yMin)/(yMax-yMin)); }
 
+    // Y ticks (% labels right side)
     const yRange = yMax - yMin;
     const yStep = yRange > 20 ? 4 : yRange > 10 ? 2 : 1;
     let grid="", yLbl="";
@@ -1285,6 +1385,7 @@ function renderSeasonality(){
       yLbl += `<text x="${W-padR+6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" font-family="monospace">${t>0?"+":""}${t.toFixed(0)}%</text>`;
     }
 
+    // Month dividers + labels
     let mDividers = "", mLabels = "";
     let wkIdx = 0;
     weeksPerMonth.forEach((wks, mi) => {
@@ -1295,20 +1396,24 @@ function renderSeasonality(){
       wkIdx += wks;
     });
 
+    // Week number labels every 4th
     let wkLabels = "";
     for(let w=0; w<n; w+=4){
       const x = xPx(w).toFixed(1);
       wkLabels += `<text x="${x}" y="${H-padB+28}" fill="rgba(255,255,255,.25)" font-size="7" text-anchor="middle" font-family="monospace">${w+1}</text>`;
     }
 
+    // 10yr dashed line
     const pts10 = wk10.map((v,i)=>`${xPx(i).toFixed(1)},${yPx(v).toFixed(1)}`).join(" ");
     const line10 = `<polyline points="${pts10}" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="2" stroke-dasharray="5,4" stroke-linejoin="round"/>`;
 
+    // YTD solid red line
     const curPts = wkCur.map((v,i)=>v!=null?`${xPx(i).toFixed(1)},${yPx(v).toFixed(1)}`:null).filter(Boolean);
     const lineCur = curPts.length > 1
       ? `<polyline points="${curPts.join(" ")}" fill="none" stroke="#e05c6a" stroke-width="2.5" stroke-linejoin="round"/>`
       : "";
 
+    // Zero baseline
     const zeroY = yPx(0).toFixed(1);
     const baseline = `<line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="rgba(255,255,255,.25)" stroke-width="1"/>`;
 
@@ -1319,6 +1424,7 @@ function renderSeasonality(){
       ${yLbl}
     </svg>`;
 
+    // Current month signal
     const avg10cur = m10[curMonth];
     const sigCol = avg10cur >= 0.5 ? "var(--bull)" : avg10cur <= -0.5 ? "var(--bear)" : "var(--neutral)";
 
@@ -1345,89 +1451,137 @@ function renderSeasonality(){
     </div>`;
   }
 
+  // ════════════════════════════════════════════════════════
+  // MONTHLY VIEW — bar chart per month (like Image 2)
+  // ════════════════════════════════════════════════════════
   else {
-    const m10 = pair.m10, mCur = pair.mCur;
-    const W=700, H=260, padL=52, padR=16, padT=28, padB=50;
+    const m10 = pair.m10, m5 = pair.m5, mCur = pair.mCur;
+    const W=700, H=270, padL=52, padR=16, padT=28, padB=50;
     const chartW = W - padL - padR;
     const chartH = H - padT - padB;
     const n = 12;
-    const barW = chartW/n * 0.55;
+    const slotW = chartW / n;
+    // 3 bars per slot: m10 (blue), m5 (red), gap
+    const barW = slotW * 0.36;
+    const gap = slotW * 0.04;
 
-    const allVals = [...m10, ...mCur.filter(v=>v!=null), 0];
+    const allVals = [...m10, ...m5, ...mCur.filter(v=>v!=null), 0];
     const yMax = Math.max(...allVals) * 1.25 + 0.2;
     const yMin = Math.min(...allVals) * 1.25 - 0.2;
 
-    function xCenter(i){ return padL + i*(chartW/n) + (chartW/n)/2; }
+    function xCenter(i){ return padL + i*slotW + slotW/2; }
     function yPx(v){ return padT + chartH*(1-(v-yMin)/(yMax-yMin)); }
     const zero = yPx(0);
 
+    // Grid + labels
     const yRange = yMax - yMin;
     const yStep = yRange > 8 ? 2 : yRange > 4 ? 1 : 0.5;
     let grid="", yLbl="";
     for(let t = Math.ceil(yMin/yStep)*yStep; t <= yMax+0.01; t = parseFloat((t+yStep).toFixed(4))){
       const y = yPx(t).toFixed(1);
       const isZ = Math.abs(t)<0.001;
-      grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZ?'rgba(255,255,255,.2)':'rgba(255,255,255,.06)'}" stroke-width="${isZ?1:0.5}"/>`;
+      grid += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${isZ?'rgba(255,255,255,.22)':'rgba(255,255,255,.06)'}" stroke-width="${isZ?1:0.5}"/>`;
       yLbl += `<text x="${padL-6}" y="${parseFloat(y)+4}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${t>0?"+":""}${t.toFixed(2)}%</text>`;
     }
 
-    let bars="", barLabels="", curDots="", curHighlight="";
-    m10.forEach((v,i)=>{
+    // Bars: blue (m10) left, red (m5) right + dots for current year
+    let bars10="", bars5="", barLabels="", curDots="", curHighlight="";
+    for(let i=0;i<12;i++){
+      const v10 = m10[i], v5 = m5[i], cv = mCur[i];
       const cx = xCenter(i);
-      const x = cx - barW/2;
-      const y = v>=0 ? yPx(v) : zero;
-      const h = Math.max(2, Math.abs(yPx(v)-zero));
       const isCur = i === curMonth;
-      if(isCur) curHighlight = `<rect x="${padL+i*(chartW/n)+2}" y="${padT}" width="${chartW/n-4}" height="${chartH}" fill="rgba(88,166,255,.06)" rx="2"/>`;
-      const barCol = isCur ? "#4a90d9" : i < curMonth ? "rgba(74,144,217,.9)" : "rgba(74,144,217,.5)";
-      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" fill="${barCol}" rx="2"/>`;
-      const lbl = (v>0?"+":"")+v.toFixed(2)+"%";
-      const ly = v >= 0 ? y - 5 : parseFloat(y) + h + 11;
-      barLabels += `<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" fill="${isCur?'#fff':'rgba(255,255,255,.8)'}" font-size="8" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${lbl}</text>`;
-      const cv = mCur[i];
+
+      // Current month column highlight
+      if(isCur) curHighlight = `<rect x="${(padL+i*slotW+1).toFixed(1)}" y="${padT}" width="${(slotW-2).toFixed(1)}" height="${chartH}" fill="rgba(88,166,255,.06)" rx="2"/>`;
+
+      // Blue bar (10yr) — left of center
+      const x10 = cx - gap/2 - barW;
+      const y10 = v10>=0 ? yPx(v10) : zero;
+      const h10 = Math.max(2, Math.abs(yPx(v10)-zero));
+      const col10 = isCur ? "#4a90d9" : i<curMonth ? "rgba(74,144,217,.92)" : "rgba(74,144,217,.45)";
+      bars10 += `<rect x="${x10.toFixed(1)}" y="${y10.toFixed(1)}" width="${barW.toFixed(1)}" height="${h10.toFixed(1)}" fill="${col10}" rx="1.5"/>`;
+
+      // Red bar (5yr) — right of center
+      const x5 = cx + gap/2;
+      const y5 = v5>=0 ? yPx(v5) : zero;
+      const h5 = Math.max(2, Math.abs(yPx(v5)-zero));
+      const col5 = isCur ? "#dc5050" : i<curMonth ? "rgba(220,80,80,.92)" : "rgba(220,80,80,.45)";
+      bars5 += `<rect x="${x5.toFixed(1)}" y="${y5.toFixed(1)}" width="${barW.toFixed(1)}" height="${h5.toFixed(1)}" fill="${col5}" rx="1.5"/>`;
+
+      // % label for m10 on highlighted month only
+      if(isCur){
+        const lbl10 = (v10>0?"+":"")+v10.toFixed(2)+"%";
+        const ly10 = v10>=0 ? y10-5 : y10+h10+11;
+        barLabels += `<text x="${(x10+barW/2).toFixed(1)}" y="${ly10.toFixed(1)}" fill="#4a90d9" font-size="7.5" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl10}</text>`;
+        const lbl5 = (v5>0?"+":"")+v5.toFixed(2)+"%";
+        const ly5 = v5>=0 ? y5-5 : y5+h5+11;
+        barLabels += `<text x="${(x5+barW/2).toFixed(1)}" y="${ly5.toFixed(1)}" fill="#dc5050" font-size="7.5" text-anchor="middle" font-family="monospace" font-weight="bold">${lbl5}</text>`;
+      } else {
+        // Show m10 label on all bars
+        const lbl = (v10>0?"+":"")+v10.toFixed(2)+"%";
+        const ly = v10>=0 ? y10-4 : y10+h10+10;
+        barLabels += `<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" fill="rgba(255,255,255,.65)" font-size="7" text-anchor="middle" font-family="monospace">${lbl}</text>`;
+      }
+
+      // Current year dot
       if(cv != null){
         const dy = yPx(cv);
-        curDots += `<circle cx="${cx.toFixed(1)}" cy="${dy.toFixed(1)}" r="5" fill="white" stroke="#0d1117" stroke-width="1.5"/>`;
+        curDots += `<circle cx="${cx.toFixed(1)}" cy="${dy.toFixed(1)}" r="4.5" fill="white" stroke="#0d1117" stroke-width="1.5"/>`;
       }
+
+      // Month label
       barLabels += `<text x="${cx.toFixed(1)}" y="${H-padB+14}" fill="${isCur?'#58a6ff':'#8b949e'}" font-size="8.5" text-anchor="middle" font-family="monospace" font-weight="${isCur?'bold':'normal'}">${MONTH_NAMES[i]}</text>`;
-    });
+    }
 
     const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${grid}
+      ${grid}${yLbl}
       ${curHighlight}
-      ${bars}${barLabels}${curDots}
+      ${bars10}${bars5}${barLabels}${curDots}
     </svg>`;
 
-    const v10cur = m10[curMonth];
+    // Current month detail
+    const v10cur = m10[curMonth], v5cur = m5[curMonth];
     const vCur = mCur[curMonth];
     const sigCol = v10cur >= 0.2 ? "var(--bull)" : v10cur <= -0.2 ? "var(--bear)" : "var(--neutral)";
+    const lastFetchStr = state.seasonLastFetch ? new Date(state.seasonLastFetch).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}) : "never";
 
     html += `
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text)">Seasonality — Avg. returns by month — ${pair.name}</div>
-        <div style="display:flex;gap:16px">
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-            <div style="width:12px;height:10px;background:rgba(74,144,217,.9);border-radius:2px"></div>10 Year Avg
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+            <div style="width:12px;height:10px;background:rgba(74,144,217,.92);border-radius:2px"></div>10 Year Avg
           </div>
-          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
+            <div style="width:12px;height:10px;background:rgba(220,80,80,.92);border-radius:2px"></div>5 Year Avg
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--muted)">
             <div style="width:10px;height:10px;background:white;border-radius:50%"></div>This Year
           </div>
+          ${pair.live?`<span style="font-family:var(--mono);font-size:9px;color:var(--muted)">Updated: ${lastFetchStr}</span>`:""}
         </div>
       </div>
       <div style="overflow-x:auto">${svg}</div>
     </div>
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;display:inline-block;min-width:200px">
-      <div style="font-family:var(--mono);font-size:11px;font-weight:bold;color:var(--text);margin-bottom:6px">${MONTH_NAMES[curMonth]}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:3px">
+
+    <!-- Current month callout box matching Nick's tooltip style -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;display:inline-block;min-width:240px">
+      <div style="font-family:var(--mono);font-size:11px;font-weight:bold;color:var(--text);margin-bottom:8px">${MONTH_NAMES[curMonth]}</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">
         <span style="display:inline-block;width:10px;height:10px;background:rgba(74,144,217,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>
         10 Year Avg: <strong style="color:${sigCol}">${v10cur>0?"+":""}${v10cur.toFixed(2)}%</strong>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:5px">
+        <span style="display:inline-block;width:10px;height:10px;background:rgba(220,80,80,.9);border-radius:2px;margin-right:5px;vertical-align:middle"></span>
+        5 Year Avg: <strong style="color:${v5cur>=0.2?"var(--bull)":v5cur<=-0.2?"var(--bear)":"var(--neutral)"}">${v5cur>0?"+":""}${v5cur.toFixed(2)}%</strong>
       </div>
       ${vCur!=null?`<div style="font-family:var(--mono);font-size:10px;color:var(--muted)">
         <span style="display:inline-block;width:10px;height:10px;background:white;border-radius:50%;margin-right:5px;vertical-align:middle"></span>
         This Year: <strong style="color:${vCur>0?"var(--bull)":"var(--bear)"}">${vCur>0?"+":""}${vCur.toFixed(2)}%</strong>
       </div>`:""}
     </div>
+
     <div class="infobox ib-blue">
       <span class="iblabel" style="color:var(--accent)">ℹ MONTHLY SEASONALITY — 10-Year Historical Averages (2014–2024)</span>
       <strong style="color:rgba(74,144,217,.9)">Blue bars</strong> = 10-year average monthly return.
@@ -1441,32 +1595,54 @@ function renderSeasonality(){
 function setSeasonFilter(f){state.seasonFilter=f;renderSeasonality();}
 
 // ── ECONOMIC ──────────────────────────────────────────────────────────────────
+// ── ECONOMIC SURPRISE SCORES (Beat/Miss from FALLBACK_ECON) ─────────────────
+// Score = avg surprise across all indicators for that currency
+// Each indicator s: +0.5 strong beat, +0.2 mild beat, 0 in line, -0.2 mild miss, -0.5 strong miss
+// Normalised to 0-100 for gauge display
+// ECO_SURPRISE now computed dynamically from FRED in renderEcon — see ECO_SURPRISE_FALLBACK above
+
 function makeGaugeSVG(score){
+  // Proper semicircle gauge: 180deg arc from left to right
+  // cx=60, cy=62, r=44
+  // Start point (0%):  left  = (16, 62)
+  // End point (100%):  right = (104,62)
+  // Angles: 0% = 180deg, 100% = 0deg (going counterclockwise for sweep=1)
   const cx=60, cy=62, r=44;
+
   function ptAt(pct){
-    const a = Math.PI - (pct/100)*Math.PI;
+    const a = Math.PI - (pct/100)*Math.PI; // 180deg -> 0deg
     return [cx + r*Math.cos(a), cy - r*Math.sin(a)];
   }
+
   const [x40a,y40a]=ptAt(40);
   const [x60a,y60a]=ptAt(60);
   const [x100,y100]=ptAt(100);
   const [x0, y0] =ptAt(0);
   const [nx,  ny] =ptAt(score);
   const col = score>=70?"#00ff88":score>=45?"#f0b429":"#ff3b5c";
+
   return `<svg viewBox="0 0 120 68" style="width:130px;height:75px">
+    <!-- BG track -->
     <path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}"
       fill="none" stroke="#1c2330" stroke-width="11" stroke-linecap="butt"/>
+    <!-- Red zone 0-40% -->
     <path d="M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r} ${r} 0 0 1 ${x40a.toFixed(1)} ${y40a.toFixed(1)}"
       fill="none" stroke="rgba(255,59,92,.55)" stroke-width="11" stroke-linecap="butt"/>
+    <!-- Yellow zone 40-60% -->
     <path d="M ${x40a.toFixed(1)} ${y40a.toFixed(1)} A ${r} ${r} 0 0 1 ${x60a.toFixed(1)} ${y60a.toFixed(1)}"
       fill="none" stroke="rgba(240,180,41,.55)" stroke-width="11" stroke-linecap="butt"/>
+    <!-- Green zone 60-100% -->
     <path d="M ${x60a.toFixed(1)} ${y60a.toFixed(1)} A ${r} ${r} 0 0 1 ${x100.toFixed(1)} ${y100.toFixed(1)}"
       fill="none" stroke="rgba(0,255,136,.55)" stroke-width="11" stroke-linecap="butt"/>
+    <!-- Needle shadow -->
     <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
       stroke="rgba(0,0,0,.4)" stroke-width="4" stroke-linecap="round"/>
+    <!-- Needle -->
     <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
       stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Center hub -->
     <circle cx="${cx}" cy="${cy}" r="5" fill="#0d1117" stroke="${col}" stroke-width="2"/>
+    <!-- Labels -->
     <text x="11" y="67" fill="#8b949e" font-size="8" font-family="monospace">0</text>
     <text x="53" y="16" fill="#8b949e" font-size="8" font-family="monospace">50</text>
     <text x="99" y="67" fill="#8b949e" font-size="8" font-family="monospace">100</text>
@@ -1485,8 +1661,11 @@ function renderEcon(){
 
   let html=`<div class="eco-sub-tabs">${econSubTabs.map(t=>`<button class="eco-sub-tab${ecoSubTab===t.id?" active":""}" onclick="setEcoTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
 
+  // ── SURPRISE METER ──
   if(ecoSubTab==="meter"){
+    // ✅ Use FRED data if available, else fallback
     const ecoSurprise = state.econData ? calcSurpriseFromFRED(state.econData) : ECO_SURPRISE_FALLBACK;
+    // Merge fallback for currencies FRED doesn't cover (NZD, CAD, AUD, CHF)
     const merged = {...ECO_SURPRISE_FALLBACK,...ecoSurprise};
     const scores=Object.entries(merged);
     const avg=Math.round(scores.reduce((a,[,v])=>a+v.score,0)/scores.length);
@@ -1499,6 +1678,8 @@ function renderEcon(){
       A higher score means more data has been <strong style="color:var(--bull)">beating forecasts</strong>.
       A lower score means more data has been <strong style="color:var(--bear)">missing forecasts</strong>.
     </div>
+
+    <!-- INDIVIDUAL CURRENCY GAUGES -->
     <div class="sectitle">Currency Economic Surprise Scores</div>
     <div class="gauge-grid">`;
 
@@ -1514,6 +1695,8 @@ function renderEcon(){
     });
 
     html+=`</div>
+
+    <!-- GLOBAL AVERAGE GAUGE -->
     <div class="sectitle">Global Economic Surprise Score</div>
     <div class="global-gauge-wrap">
       <div style="display:flex;flex-direction:column;align-items:center">
@@ -1530,6 +1713,8 @@ function renderEcon(){
         </div>
       </div>
     </div>
+
+    <!-- INDICATOR BREAKDOWN -->
     <div class="sectitle">Indicator Breakdown by Currency</div>`;
 
     scores.forEach(([cur,data])=>{
@@ -1549,6 +1734,7 @@ function renderEcon(){
     });
   }
 
+  // ── HEATMAP ──
   else if(ecoSubTab==="heatmap"){
     const data2=state.econData||FALLBACK_ECON;const isLive=state.econLive;
     if(!state.fredKey)html+=`<div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ UPGRADE TO LIVE DATA</span>Go to <strong style="color:var(--accent)">fred.stlouisfed.org</strong> → My Account → API Keys → paste in ⚙ Settings.</div>`;
@@ -1671,6 +1857,22 @@ function renderSettings(){
       3. Paste above → Save ✅
     </div>
   </div>
+
+  <div class="apibox"><h3>🌱 ALPHA VANTAGE — Live Seasonality + Gold, Oil (Free)</h3>
+    <div class="key-status ${state.avKey?"key-ok":"key-missing"}">${state.avKey?"✅ AV key saved — Seasonality data is LIVE from real price history":"⚠ No key — Seasonality using fallback data"}</div>
+    <div class="apirow" style="margin-top:10px">
+      <span class="apilbl">AV Key</span>
+      <input class="apiinp" id="av-input" placeholder="alphavantage.co → Get Free API Key" value="${state.avKey}"/>
+      <button class="apibtn" onclick="saveAVKey()">💾 Save</button>
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.8">
+      1. Go to <span style="color:var(--accent)">alphavantage.co</span> → click <strong style="color:var(--text)">Get Free API Key</strong><br>
+      2. Fill in a name → get key instantly (no credit card)<br>
+      3. Paste above → Save ✅ Seasonality fetches real 10yr price history automatically<br>
+      <span style="color:var(--neutral)">⚠ Free tier = 25 calls/day. Seasonality loads 1 asset at a time (12s apart).</span>
+    </div>
+  </div>
+
   <div class="apibox"><h3>📱 ADD TO HOME SCREEN</h3>
     <div style="font-size:11px;color:var(--muted);line-height:2.1">
       <strong style="color:var(--text)">Android Chrome</strong> → Tap ⋮ → "Add to Home screen"<br>
@@ -1688,6 +1890,7 @@ function saveMyfxbook(){
   saveKey("mfx_email",email);saveKey("mfx_password",password);saveKey("mfx_session","");
   state.sentimentLive=false;state.sentimentLoading=false;
   renderSettings();
+  // Immediately try to fetch live data
   loadMyfxbookData();
   if(activeTab==="sentiment")renderSentiment();
 }
@@ -1699,6 +1902,17 @@ function clearMyfxbook(){
   if(activeTab==="sentiment")renderSentiment();
 }
 function saveFREDKey(){const val=document.getElementById("fred-input").value.trim();if(!val)return;state.fredKey=val;saveKey("fred",val);state.econData=null;state.econLive=false;state.econLoading=false;renderSettings();loadFREDData();if(activeTab==="econ")renderEcon();}
+function saveAVKey(){
+  const val=document.getElementById("av-input").value.trim();
+  if(!val)return;
+  state.avKey=val;saveKey("av",val);
+  // Reset all season data to fallback so live re-fetch starts fresh
+  SEASON_DATA=SEASON_DATA_FALLBACK.map(d=>({...d,live:false}));
+  renderSettings();
+  // Start fetching live seasonality immediately
+  loadSeasonalityLive();
+  if(activeTab==="seasonality")renderSeasonality();
+}
 
 // ── TABS ──────────────────────────────────────────────────────────────────────
 function initTabs(){
@@ -1713,14 +1927,14 @@ function switchTab(id){
   renderActive();
 }
 function renderActive(){
-  if(activeTab==="setups")          renderSetups();
+  if(activeTab==="setups")     renderSetups();
   else if(activeTab==="cot")        renderCOT();
   else if(activeTab==="sentiment")  renderSentiment();
   else if(activeTab==="econ")       renderEcon();
   else if(activeTab==="currency")   renderCurrency();
   else if(activeTab==="carry")      renderCarry();
   else if(activeTab==="feargreed")  renderFearGreed();
-  else if(activeTab==="seasonality")renderSeasonality();
+  else if(activeTab==="seasonality") renderSeasonality();
   else if(activeTab==="settings")   renderSettings();
 }
 
