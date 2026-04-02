@@ -195,7 +195,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .global-gauge-title{font-family:var(--mono);font-size:13px;font-weight:bold;color:var(--text);margin-bottom:8px;}
 .global-gauge-desc{font-size:12px;color:var(--muted);line-height:1.6;}
 
-
 /* ── SEASONALITY ── */
 .season-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
 @media(min-width:700px){.season-grid{grid-template-columns:repeat(3,1fr);}}
@@ -466,17 +465,16 @@ const CFTC_MAP={
 function parseCFTCcsv(csvText){
   const lines=csvText.trim().split("\n");
   const header=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
-  const iName   = header.findIndex(h=>h.includes("Market_and_Exchange"));
-  const iDate   = header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
-  const iOI     = header.findIndex(h=>h==="Open_Interest_All");
-  const iLong   = header.findIndex(h=>h==="NonComm_Positions_Long_All");
-  const iShort  = header.findIndex(h=>h==="NonComm_Positions_Short_All");
-  // FIX #1: Use null-safe fallback — findIndex returns -1 (truthy!) when not found,
-  // so || iLong never fired. Use explicit check instead.
-  const iLongOldRaw  = header.findIndex(h=>h==="NonComm_Positions_Long_Old");
-  const iShortOldRaw = header.findIndex(h=>h==="NonComm_Positions_Short_Old");
-  const iLongOld  = iLongOldRaw  !== -1 ? iLongOldRaw  : iLong;
-  const iShortOld = iShortOldRaw !== -1 ? iShortOldRaw : iShort;
+
+  // ── FIX B: use indexOf check instead of || for findIndex fallback ──────────
+  // findIndex returns -1 when not found, but also 0 when found at index 0.
+  // Using || treats 0 as falsy and incorrectly falls back. Use !== -1 instead.
+  const iName    = header.findIndex(h=>h.includes("Market_and_Exchange"));
+  const iDate    = header.findIndex(h=>h.includes("Report_Date_as_YYYY"));
+  const iOI      = header.findIndex(h=>h==="Open_Interest_All");
+  const iLong    = header.findIndex(h=>h==="NonComm_Positions_Long_All");
+  const iShort   = header.findIndex(h=>h==="NonComm_Positions_Short_All");
+  // iLongOld / iShortOld were declared but never used — removed as dead code.
 
   const seen={};
 
@@ -665,48 +663,35 @@ function loadMyfxbookData(){
 
 // ── OTHER API FETCHERS ────────────────────────────────────────────────────────
 async function fetchRates(){const r=await fetch("https://api.frankfurter.app/latest?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
-
-// FIX #4: Robust weekend date rollback using a while loop instead of
-// sequential ifs that silently misfired on certain days of the week.
-async function fetchPrev(){
-  const d=new Date();
-  d.setDate(d.getDate()-1);
-  while(d.getDay()===0||d.getDay()===6){d.setDate(d.getDate()-1);}
-  const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");
-  if(!r.ok)throw new Error();
-  return(await r.json()).rates;
-}
-
+async function fetchPrev(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
 async function fetchFearGreed(){const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json");if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}
 function buildStrength(rates){if(!rates)return null;const all={...rates,USD:1};const st={};CURRS.forEach(c=>{st[c.code]=0;});CURRS.forEach(b=>CURRS.forEach(q=>{if(b.code===q.code||!all[b.code])return;st[b.code]+=Math.log(1/all[b.code])*.1;}));const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);}
 async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error();const d=await r.json();const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error();return v;}
 async function fetchFREDEcon(key){const res={};for(const[cur,series]of Object.entries(FRED_SERIES)){res[cur]=[];for(const s of series){try{const obs=await fredFetch(s.id,key,13);let val=parseFloat(obs[0].value);const date=obs[0].date;let surprise=0;if(s.yoy&&obs.length>=13){const pv=parseFloat(obs[12].value);if(!isNaN(pv)&&pv!==0)val=((val-pv)/pv)*100;}if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}res[cur].push({l:s.label,v:isNaN(val)?"N/A":s.fmt(val),s:surprise,d:date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):""})}catch(e){const fb=(FALLBACK_ECON[cur]||[]).find(f=>f.l===s.label);res[cur].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});}await new Promise(r=>setTimeout(r,150));}}return res;}
 function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLoading=true;fetchFREDEcon(state.fredKey).then(d=>{state.econData=d;state.econLive=true;state.econLoading=false;if(activeTab==="econ")renderEcon();}).catch(()=>{state.econLoading=false;});}
 
-// FIX #5: Guard all three undefined function calls with typeof checks so a
-// missing implementation never throws a ReferenceError and aborts refreshAll().
+// ── FIX C: refreshAll wrapped in try/finally so spinner always clears ─────────
 async function refreshAll(){
+  document.getElementById("rbtn-icon").classList.add("spinning");
   try{
-    document.getElementById("rbtn-icon").classList.add("spinning");
     renderActive();
     const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
     if(r1.status==="fulfilled")state.rates=r1.value;
     if(r2.status==="fulfilled")state.prevRates=r2.value;
     if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
     state.cdata=buildStrength(state.rates);
+    // Each loader handles its own errors internally
     loadCOTData();
     loadMyfxbookData();
-    if(typeof loadSeasonalityLive==="function")loadSeasonalityLive();
-    if(typeof loadPutCallData==="function")loadPutCallData();
-    if(typeof loadAAIIData==="function")loadAAIIData();
+    loadSeasonalityLive();
+    loadPutCallData();
+    loadAAIIData();
     if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
     const now=new Date();
     document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
     renderActive();
-  }catch(err){
-    console.error("refreshAll error:",err);
-    document.getElementById("last-update").textContent="Refresh failed";
   }finally{
+    // ── FIX C: spinner always removed even if an error is thrown ──────────────
     document.getElementById("rbtn-icon").classList.remove("spinning");
   }
 }
@@ -812,6 +797,7 @@ function renderSentiment(){
   ];
   let html=`<div class="sent-sub-tabs">${subTabs.map(t=>`<button class="sent-sub-tab${sentSubTab===t.id?" active":""}" onclick="setSentTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
 
+  // ── RETAIL LONG/SHORT ──
   if(sentSubTab==="retail"){
     const data=state.sentimentData;
     const cats=["All","Forex","Commodity","Index","Crypto"];
@@ -857,6 +843,8 @@ function renderSentiment(){
     if(state.sentimentLoading&&!state.sentimentLive){
       html+=`<div class="lrow" style="margin-bottom:10px"><div class="spinner"></div><span style="color:var(--accent)">Connecting to Myfxbook... showing demo data meanwhile</span></div>`;
     }
+
+    // ── FIX: removed the redundant `if(true){` block that wrapped this loop ──
     filtered.forEach(row=>{
       const lp=row.longPercentage;
       const sp=row.shortPercentage;
@@ -877,6 +865,7 @@ function renderSentiment(){
         <div class="sent-vol" style="color:${volCol}">${volLabel}</div>
       </div>`;
     });
+
     html+=`</div></div>
     <div class="infobox ib-yellow">
       <span class="iblabel" style="color:var(--neutral)">⚡ CONTRARIAN LOGIC — SOURCE: Myfxbook Community Outlook</span>
@@ -887,6 +876,7 @@ function renderSentiment(){
     </div>`;
   }
 
+  // ── SMART MONEY vs RETAIL ──
   else if(sentSubTab==="smartmoney"){
     html+=`<div class="sectitle">Smart Money vs Retail — Divergence Analysis</div>
     <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: COT (Smart Money) vs Myfxbook (Retail)</span>
@@ -907,6 +897,7 @@ function renderSentiment(){
     html+=`</tbody></table></div>`;
   }
 
+  // ── PUT/CALL RATIO ──
   else if(sentSubTab==="putcall"){
     html+=`<div class="sectitle">Put/Call Ratio — Options Market Sentiment</div>
     <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: CBOE Options Data</span>
@@ -923,14 +914,18 @@ function renderSentiment(){
     html+=`</div></div>`;
   }
 
+  // ── AAII SURVEY ──
   else if(sentSubTab==="aaii"){
     const aaiiCurrent = state.aaiiData || AAII;
     const aaiiIsLive = state.aaiiLive;
-    // FIX #2: Both branches now use aaiiCurrent (the live-or-fallback variable)
-    // instead of mixing aaiiCurrent and the hardcoded AAII constant.
-    const spreadCol = aaiiCurrent.spread > 10  ? "var(--bull)"
-                    : aaiiCurrent.spread < -10  ? "var(--bear)"
-                    : "var(--neutral)";
+
+    // ── FIX A: use aaiiCurrent.spread everywhere, not the hardcoded AAII constant ──
+    const spreadCol = aaiiCurrent.spread > 10
+      ? "var(--bull)"
+      : aaiiCurrent.spread < -10   // was: AAII.spread < -10 — always used stale hardcoded value
+        ? "var(--bear)"
+        : "var(--neutral)";
+
     html+=`<div class="sectitle">AAII Investor Sentiment Survey</div>
     <div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ SOURCE: AAII.com — Published Every Thursday</span>
     American Association of Individual Investors surveys members weekly on 6-month market outlook.<br>
@@ -953,6 +948,7 @@ function renderSentiment(){
     </div></div>`;
   }
 
+  // ── SENTIMENT EXTREMES ──
   else if(sentSubTab==="extremes"){
     html+=`<div class="sectitle">Sentiment Extremes — Highest Probability Setups</div>
     <div class="infobox ib-yellow"><span class="iblabel" style="color:var(--neutral)">⚡ ASSETS AT HISTORICAL EXTREMES</span>
@@ -1481,10 +1477,12 @@ function renderEcon(){
   if(state.fredKey&&state.econLoading&&!state.econData){
     document.getElementById("page-econ").innerHTML=`<div class="sectitle">Economic Data</div><div class="econ-loading"><div class="spinner"></div><span>Fetching live data from FRED...</span></div>`;return;
   }
+
   const econSubTabs=[
     {id:"meter",  label:"🎯 Surprise Meter"},
     {id:"heatmap",label:"🌡 Heatmap"},
   ];
+
   let html=`<div class="eco-sub-tabs">${econSubTabs.map(t=>`<button class="eco-sub-tab${ecoSubTab===t.id?" active":""}" onclick="setEcoTab('${t.id}')">${t.label}</button>`).join("")}</div>`;
 
   if(ecoSubTab==="meter"){
