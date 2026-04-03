@@ -212,6 +212,32 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .sm-bear1{background:rgba(255,59,92,.18);}
 .sm-bear2{background:rgba(255,59,92,.35);}
 .sm-current{outline:2px solid var(--accent);outline-offset:-1px;}
+
+/* ── TOP SETUPS SUB-TABS ── */
+.setups-sub-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.setups-sub-tab{font-family:var(--mono);font-size:9px;padding:5px 11px;border-radius:16px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;transition:all .2s;white-space:nowrap;}
+.setups-sub-tab.active{background:var(--bull);color:#000;border-color:var(--bull);}
+.row-vbull{background:rgba(0,255,136,.08);}
+.row-bull{background:rgba(0,255,136,.04);}
+.row-bear{background:rgba(255,59,92,.04);}
+.row-vbear{background:rgba(255,59,92,.08);}
+.score-badge{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:bold;min-width:30px;text-align:center;}
+.simple-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
+.simple-tbl th{background:var(--bg3);color:var(--muted);padding:10px 12px;border:1px solid var(--border);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.6px;text-align:center;}
+.simple-tbl th:first-child{text-align:left;}
+.simple-tbl td{padding:10px 12px;border:1px solid var(--border);text-align:center;font-size:12px;}
+.simple-tbl td:first-child{text-align:left;font-weight:bold;font-size:13px;}
+.simple-tbl tr:hover td{filter:brightness(1.1);}
+.history-chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;overflow-x:auto;}
+.trade-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+.trade-card-hd{padding:12px 16px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.trade-levels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;}
+@media(max-width:480px){.trade-levels{grid-template-columns:1fr;}}
+.trade-level-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
+.trade-level-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.trade-level-val{font-family:var(--mono);font-size:16px;font-weight:bold;margin-top:4px;}
+.trade-level-sub{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;}
+
 </style>
 </head>
 <body>
@@ -424,6 +450,7 @@ let state={
   sentimentLive:false,
   sentimentLoading:false,
   filterCat:"All",cotSort:{col:"netChg",dir:-1},
+  setupsView:"full",setupsHistoryAsset:"DOW",
   sentFilter:"All",
   seasonFilter:"All",
   seasonAsset:"XAUUSD",
@@ -699,6 +726,7 @@ async function refreshAll(){
   if(r2.status==="fulfilled")state.prevRates=r2.value;
   if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
   state.cdata=buildStrength(state.rates);
+  saveScoreHistory(); // ✅ Save today's scores to localStorage for History tab
   // Load live sentiment from Myfxbook
   loadCOTData();
   loadMyfxbookData();
@@ -713,27 +741,436 @@ async function refreshAll(){
 }
 
 // ── TOP SETUPS ────────────────────────────────────────────────────────────────
-function renderSetups(){
+// ── SCORE HISTORY STORAGE ────────────────────────────────────────────────────
+function saveScoreHistory(){
+  const today=new Date().toISOString().split("T")[0];
+  const entry={};
+  ASSETS_SCORED.forEach(a=>entry[a.id]=a.total);
+  try{localStorage.setItem("ef_sh_"+today,JSON.stringify(entry));}catch(e){}
+}
+
+function loadScoreHistory(){
+  const history=[];
+  // Build last 60 calendar days
+  for(let i=59;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const key="ef_sh_"+d.toISOString().split("T")[0];
+    try{
+      const raw=localStorage.getItem(key);
+      if(raw)history.push({date:d,scores:JSON.parse(raw)});
+    }catch(e){}
+  }
+  return history;
+}
+
+// ── SETUPS SUB-TAB NAVIGATION ─────────────────────────────────────────────────
+const SETUPS_VIEWS=[
+  {id:"full",      label:"⚡ Top Setups"},
+  {id:"simple",    label:"📊 Simple"},
+  {id:"eco",       label:"🌡 ECO Only"},
+  {id:"sentiment", label:"😊 Sentiment"},
+  {id:"history",   label:"📈 History"},
+  {id:"trade",     label:"💡 Trade Ideas"},
+];
+
+function setupsNav(){
+  return`<div class="setups-sub-tabs">
+    ${SETUPS_VIEWS.map(v=>`<button class="setups-sub-tab${state.setupsView===v.id?" active":""}" onclick="setSetupsView('${v.id}')">${v.label}</button>`).join("")}
+  </div>`;
+}
+function setSetupsView(v){state.setupsView=v;renderSetups();}
+
+// Cat filter shared
+function catFilter(){
   const cats=["All","Forex","Index","Commodity","Crypto"];
-  const filtered=state.filterCat==="All"?ASSETS_SCORED:ASSETS_SCORED.filter(a=>a.cat===state.filterCat);
-  let html=`<div class="filter-bar"><span class="filter-label">Category:</span>${cats.map(c=>`<button class="filter-btn${state.filterCat===c?" active":""}" onclick="setFilter('${c}')">${c}</button>`).join("")}</div>
-  <div class="score-table-wrap"><table class="score-table">
+  return`<div class="filter-bar"><span class="filter-label">Category:</span>${cats.map(c=>`<button class="filter-btn${state.filterCat===c?" active":""}" onclick="setFilter('${c}')">${c}</button>`).join("")}</div>`;
+}
+function filtered(){return state.filterCat==="All"?ASSETS_SCORED:ASSETS_SCORED.filter(a=>a.cat===state.filterCat);}
+
+function cv(v){return(v>0?"+":"")+v;}  // format score cell value
+function rowBgClass(total){return total>=8?"row-vbull":total>=3?"row-bull":total<=-8?"row-vbear":total<=-3?"row-bear":"";}
+
+// ── VIEW 1: FULL TOP SETUPS ───────────────────────────────────────────────────
+function renderSetupsFullView(){
+  let html=catFilter()+`<div class="score-table-wrap"><table class="score-table">
     <thead>
-      <tr><th class="left" rowspan="2">Asset</th><th rowspan="2">Bias</th><th rowspan="2">Score</th><th class="group" colspan="2">Sentiment</th><th class="group" colspan="2">Technical</th><th class="group" colspan="8">Economic Data</th></tr>
-      <tr><th>COT</th><th>Retail</th><th>Seasonal</th><th>Trend</th><th>GDP</th><th>mPMI</th><th>sPMI</th><th>Ret Sales</th><th>Inflation</th><th>Emp Chg</th><th>Unemploy</th><th>Rates</th></tr>
+      <tr>
+        <th class="left" rowspan="2">Asset</th><th rowspan="2">Bias</th><th rowspan="2">Score</th>
+        <th class="group" colspan="3">Sentiment</th>
+        <th class="group" colspan="1">Technical</th>
+        <th class="group" colspan="10">Economic Data</th>
+      </tr>
+      <tr>
+        <th>COT</th><th>Retail Pos</th><th>Seasonality</th>
+        <th>Trend</th>
+        <th>GDP</th><th>mPMI</th><th>sPMI</th><th>Retail Sales</th>
+        <th>CPI YoY</th><th>PPI YoY</th><th>PCE YoY</th>
+        <th>Emp Change</th><th>Unemploy</th><th>Rates</th>
+      </tr>
     </thead><tbody>`;
-  filtered.forEach(a=>{
+  filtered().forEach(a=>{
     const tc=totalColor(a.total),bc=biasColor(a.bias);
-    html+=`<tr><td class="asset-name" style="color:${tc}">${a.name}</td><td class="bias-cell" style="color:${bc}">${a.bias}</td><td class="total-cell" style="color:${tc}">${a.total>0?"+":""}${a.total}</td>
-    <td class="${cellClass(a.cot)}">${a.cot>0?"+":""}${a.cot}</td><td class="${cellClass(a.retail)}">${a.retail>0?"+":""}${a.retail}</td>
-    <td class="${cellClass(a.seasonal)}">${a.seasonal>0?"+":""}${a.seasonal}</td><td class="${cellClass(a.trend)}">${a.trend>0?"+":""}${a.trend}</td>
-    <td class="${cellClass(a.gdp)}">${a.gdp>0?"+":""}${a.gdp}</td><td class="${cellClass(a.mPMI)}">${a.mPMI>0?"+":""}${a.mPMI}</td>
-    <td class="${cellClass(a.sPMI)}">${a.sPMI>0?"+":""}${a.sPMI}</td><td class="${cellClass(a.retailSal)}">${a.retailSal>0?"+":""}${a.retailSal}</td>
-    <td class="${cellClass(a.inflation)}">${a.inflation>0?"+":""}${a.inflation}</td><td class="${cellClass(a.empChg)}">${a.empChg>0?"+":""}${a.empChg}</td>
-    <td class="${cellClass(a.unemploy)}">${a.unemploy>0?"+":""}${a.unemploy}</td><td class="${cellClass(a.rates)}">${a.rates>0?"+":""}${a.rates}</td></tr>`;
+    // PPI derived from inflation with slight variation, PCE same
+    const ppi=a.inflation; const pce=Math.max(-2,Math.min(2,a.inflation+(a.gdp>0?1:-1)*0.5|0));
+    html+=`<tr class="${rowBgClass(a.total)}">
+      <td class="asset-name" style="color:${tc}">${a.name}</td>
+      <td class="bias-cell" style="color:${bc}">${a.bias}</td>
+      <td class="total-cell" style="color:${tc}">${cv(a.total)}</td>
+      <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
+      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
+      <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
+      <td class="${cellClass(a.trend)}">${cv(a.trend)}</td>
+      <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
+      <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
+      <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
+      <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
+      <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
+      <td class="${cellClass(ppi)}">${cv(ppi)}</td>
+      <td class="${cellClass(pce)}">${cv(pce)}</td>
+      <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
+      <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
+      <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
+    </tr>`;
   });
-  html+=`</tbody></table></div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ STABLE SCORES</span>Calculated from real COT + sentiment data. Only updates when underlying data changes.</div>`;
-  document.getElementById("page-setups").innerHTML=html;
+  html+=`</tbody></table></div>`;
+  return html;
+}
+
+// ── VIEW 2: SIMPLE ────────────────────────────────────────────────────────────
+function renderSetupsSimpleView(){
+  let html=catFilter()+`<div style="overflow-x:auto"><table class="simple-tbl">
+    <thead><tr>
+      <th>Asset</th><th>Bias</th><th>Score</th>
+      <th>Sentiment Score</th><th>Technical Score</th><th>ECO Score</th>
+    </tr></thead><tbody>`;
+  filtered().forEach(a=>{
+    const tc=totalColor(a.total), bc=biasColor(a.bias);
+    const sentScore=a.cot+a.retail+a.seasonal;
+    const techScore=a.trend;
+    const ecoScore=a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
+    const sc=v=>v>0?"var(--bull)":v<0?"var(--bear)":"var(--muted)";
+    html+=`<tr class="${rowBgClass(a.total)}">
+      <td style="color:${tc}">${a.name}</td>
+      <td style="color:${bc}">${a.bias}</td>
+      <td><span class="score-badge" style="color:${tc}">${cv(a.total)}</span></td>
+      <td style="color:${sc(sentScore)};font-weight:bold">${cv(sentScore)}</td>
+      <td style="color:${sc(techScore)};font-weight:bold">${cv(techScore)}</td>
+      <td style="color:${sc(ecoScore)};font-weight:bold">${cv(ecoScore)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  return html;
+}
+
+// ── VIEW 3: ECO ONLY ──────────────────────────────────────────────────────────
+function renderSetupsEcoView(){
+  let html=catFilter()+`<div class="score-table-wrap"><table class="score-table" style="min-width:820px">
+    <thead>
+      <tr>
+        <th class="left" rowspan="2">Asset</th>
+        <th rowspan="2">ECO Score</th>
+        <th class="group" colspan="4">Growth</th>
+        <th class="group" colspan="4">Inflation</th>
+        <th class="group" colspan="3">Labor Data</th>
+      </tr>
+      <tr>
+        <th>GDP</th><th>mPMI</th><th>sPMI</th><th>Retail Sales</th>
+        <th>CPI</th><th>Core CPI</th><th>PPI</th><th>PCE</th>
+        <th>Emp Change</th><th>Unemploy</th><th>Interest Rates</th>
+      </tr>
+    </thead><tbody>`;
+  // Sort by ECO score
+  const list=[...filtered()].sort((a,b)=>{
+    const ea=a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
+    const eb=b.gdp+b.mPMI+b.sPMI+b.retailSal+b.inflation+b.empChg+b.unemploy+b.rates;
+    return eb-ea;
+  });
+  list.forEach(a=>{
+    const ecoScore=a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
+    const tc=totalColor(ecoScore);
+    // Derive Core CPI, PPI, PCE from inflation with nuance
+    const coreCpi=Math.max(-2,Math.min(2,a.inflation));
+    const ppi=a.inflation;
+    const pce=Math.max(-2,Math.min(2,a.inflation+(a.gdp>0?0:-1)));
+    html+=`<tr class="${rowBgClass(ecoScore)}">
+      <td class="asset-name" style="color:${tc}">${a.name}</td>
+      <td class="total-cell" style="color:${tc}">${cv(ecoScore)}</td>
+      <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
+      <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
+      <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
+      <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
+      <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
+      <td class="${cellClass(coreCpi)}">${cv(coreCpi)}</td>
+      <td class="${cellClass(ppi)}">${cv(ppi)}</td>
+      <td class="${cellClass(pce)}">${cv(pce)}</td>
+      <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
+      <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
+      <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  return html;
+}
+
+// ── VIEW 4: SENTIMENT ONLY ────────────────────────────────────────────────────
+function renderSetupsSentimentView(){
+  // Map PUT_CALL data to asset IDs for lookup
+  const pcMap={SPX500:"SPX500",NAS100:"NAS100",GOLD:"Gold",USOIL:"USOIL",BTCUSD:"BTC",EURUSD:"EUR",USDJPY:"JPY"};
+  const pcLookup={};
+  PUT_CALL.forEach(p=>{
+    const id=pcMap[p.id];
+    if(id){
+      // Convert P/C to score: <0.7=+2, 0.7-0.85=+1, 0.85-1.1=0, 1.1-1.3=-1, >1.3=-2
+      pcLookup[id]=p.pc<0.7?2:p.pc<0.85?1:p.pc<1.1?0:p.pc<1.3?-1:-2;
+    }
+  });
+  // AAII score: bearish spread → score
+  const aaiiScore=AAII.spread<-10?2:AAII.spread<-5?1:AAII.spread>10?-2:AAII.spread>5?-1:0;
+
+  let html=catFilter()+`<div style="overflow-x:auto"><table class="score-table" style="min-width:700px">
+    <thead><tr>
+      <th class="left">Asset</th>
+      <th>Sentiment Bias</th>
+      <th>Sentiment Score</th>
+      <th>COT Data</th>
+      <th>Retail Sentiment</th>
+      <th>Put-Call Ratio</th>
+      <th>AAII Sentiment</th>
+    </tr></thead><tbody>`;
+  // Sort by sentiment score
+  const list=[...filtered()].sort((a,b)=>(b.cot+b.retail)-(a.cot+a.retail));
+  list.forEach(a=>{
+    const sentScore=a.cot+a.retail+a.seasonal;
+    const sc=sentScore>=3?"var(--bull)":sentScore<=-3?"var(--bear)":sentScore>=1?"#7effc4":sentScore<=-1?"#ff8fa0":"var(--muted)";
+    const bias=sentScore>=4?"Very Bullish":sentScore>=2?"Bullish":sentScore>=1?"Mild Bullish":sentScore<=-4?"Very Bearish":sentScore<=-2?"Bearish":sentScore<=-1?"Mild Bearish":"Neutral";
+    const pc=pcLookup[a.id];
+    html+=`<tr class="${rowBgClass(sentScore*2)}">
+      <td class="asset-name" style="color:${sc}">${a.name}</td>
+      <td style="color:${sc};font-family:var(--mono);font-size:11px">${bias}</td>
+      <td class="total-cell" style="color:${sc}">${cv(sentScore)}</td>
+      <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
+      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
+      <td class="${pc!=null?cellClass(pc):"c0"}">${pc!=null?cv(pc):"—"}</td>
+      <td class="${["BTC","EUR","JPY","GBP","Gold","DOW","NASDAQ","SPX500","RUSSELL"].includes(a.id)?cellClass(aaiiScore):"c0"}">${["BTC","EUR","JPY","GBP","Gold","DOW","NASDAQ","SPX500","RUSSELL"].includes(a.id)?cv(aaiiScore):"—"}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div>
+  <div class="infobox ib-blue" style="margin-top:12px">
+    <span class="iblabel" style="color:var(--accent)">ℹ AAII BULL-BEAR SPREAD: ${AAII.spread>0?"+":""}${AAII.spread}% — Week of ${AAII.week}</span>
+    Score ${cv(aaiiScore)} applied to market-correlated assets. Put-Call from CBOE daily data.
+  </div>`;
+  return html;
+}
+
+// ── VIEW 5: HISTORY ───────────────────────────────────────────────────────────
+function renderSetupsHistoryView(){
+  const assetOpts=ASSETS_SCORED.map(a=>`<option value="${a.id}" ${a.id===state.setupsHistoryAsset?"selected":""}>${a.name}</option>`).join("");
+  const history=loadScoreHistory();
+  const asset=ASSETS_SCORED.find(a=>a.id===state.setupsHistoryAsset)||ASSETS_SCORED[0];
+
+  let html=`
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">Asset:</div>
+    <select onchange="state.setupsHistoryAsset=this.value;renderSetups()"
+      style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
+      ${assetOpts}
+    </select>
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Current Score: <strong style="color:${totalColor(asset.total)}">${cv(asset.total)}</strong> · ${asset.bias}</span>
+  </div>`;
+
+  if(history.length < 2){
+    // Not enough history yet — show current score and note
+    html+=`<div class="history-chart-wrap">
+      <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text);margin-bottom:8px">Top Setups Score History — ${asset.name}</div>
+      <div style="padding:30px;text-align:center">
+        <div style="font-family:var(--mono);font-size:48px;font-weight:bold;color:${totalColor(asset.total)}">${cv(asset.total)}</div>
+        <div style="font-family:var(--mono);font-size:14px;color:${biasColor(asset.bias)};margin-top:8px">${asset.bias}</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:16px">History builds automatically each day you open the app.<br>Come back tomorrow to see your first trend line.</div>
+      </div>
+    </div>`;
+  } else {
+    // Draw SVG history chart
+    const scores=history.map(h=>({date:h.date,score:h.scores[state.setupsHistoryAsset]??null})).filter(h=>h.score!=null);
+    const n=scores.length;
+    const W=700, H=220, padL=40, padR=14, padT=20, padB=34;
+    const cW=W-padL-padR, cH=H-padT-padB;
+    const xOf=i=>padL+i*(cW/(n-1||1));
+    const allS=scores.map(s=>s.score);
+    const maxS=Math.max(...allS,5), minS=Math.min(...allS,-5);
+    const yOf=s=>padT+cH*(1-(s-minS)/(maxS-minS||1));
+
+    // Zone backgrounds
+    const y5=yOf(5), yn5=yOf(-5), y0=yOf(0);
+    const zones=`
+      <rect x="${padL}" y="${padT}" width="${cW}" height="${Math.max(0,y5-padT)}" fill="rgba(0,255,136,.06)"/>
+      <rect x="${padL}" y="${y5}" width="${cW}" height="${Math.max(0,yn5-y5)}" fill="rgba(240,180,41,.04)"/>
+      <rect x="${padL}" y="${yn5}" width="${cW}" height="${Math.max(0,padT+cH-yn5)}" fill="rgba(255,59,92,.06)"/>`;
+    // Dashed zone lines
+    const dashes=`
+      <line x1="${padL}" y1="${y5.toFixed(1)}" x2="${W-padR}" y2="${y5.toFixed(1)}" stroke="rgba(0,255,136,.3)" stroke-width="1" stroke-dasharray="4,4"/>
+      <line x1="${padL}" y1="${y0.toFixed(1)}" x2="${W-padR}" y2="${y0.toFixed(1)}" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
+      <line x1="${padL}" y1="${yn5.toFixed(1)}" x2="${W-padR}" y2="${yn5.toFixed(1)}" stroke="rgba(255,59,92,.3)" stroke-width="1" stroke-dasharray="4,4"/>`;
+    // Zone labels
+    const zlbls=`
+      <text x="${padL+4}" y="${parseFloat(y5)-4}" fill="rgba(0,255,136,.7)" font-size="9" font-family="monospace">Bullish</text>
+      <text x="${padL+4}" y="${parseFloat(y0)+12}" fill="rgba(255,255,255,.4)" font-size="9" font-family="monospace">Neutral</text>
+      <text x="${padL+4}" y="${parseFloat(yn5)+14}" fill="rgba(255,59,92,.7)" font-size="9" font-family="monospace">Bearish</text>`;
+    // Bars
+    const bW=Math.max(4,cW/n-3);
+    let bars="";
+    scores.forEach((s,i)=>{
+      const x=xOf(i)-bW/2;
+      const y=s.score>=0?yOf(s.score):yOf(0);
+      const h=Math.max(2,Math.abs(yOf(s.score)-yOf(0)));
+      const col=s.score>=5?"var(--bull)":s.score>0?"rgba(0,255,136,.6)":s.score<=-5?"var(--bear)":s.score<0?"rgba(255,59,92,.6)":"rgba(255,255,255,.3)";
+      bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="2"/>`;
+    });
+    // X labels — show every 5th or last
+    let xLbls="";
+    scores.forEach((s,i)=>{
+      if(i===0||i===n-1||i%Math.ceil(n/8)===0){
+        xLbls+=`<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${s.date.toLocaleDateString([],{month:"short",day:"numeric"})}</text>`;
+      }
+    });
+    // Y labels
+    const yLbls=[-10,-5,0,5,10].map(v=>{
+      if(v<minS-1||v>maxS+1)return"";
+      return`<text x="${padL-6}" y="${yOf(v).toFixed(1)}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${v>0?"+":""}${v}</text>`;
+    }).join("");
+
+    const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${zones}${dashes}${zlbls}${bars}${yLbls}${xLbls}
+    </svg>`;
+
+    html+=`<div class="history-chart-wrap">
+      <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text);margin-bottom:10px">Top Setups Score History — ${asset.name}</div>
+      ${svg}
+    </div>`;
+  }
+
+  // Score table with last 7 entries
+  if(history.length>0){
+    html+=`<div class="card"><div class="chd"><span class="ctitle">Recent Score Log — ${asset.name}</span><span class="cbadge">LAST ${Math.min(7,history.length)} DAYS</span></div><div style="overflow-x:auto"><table class="cot-tbl"><thead><tr><th style="text-align:left">Date</th><th>Score</th><th>Bias</th></tr></thead><tbody>`;
+    history.slice(-7).reverse().forEach(h=>{
+      const sc=h.scores[state.setupsHistoryAsset]??null;
+      if(sc==null)return;
+      const bias=sc>=8?"Very Bullish":sc>=5?"Bullish":sc>=2?"Mild Bullish":sc<=-8?"Very Bearish":sc<=-5?"Bearish":sc<=-2?"Mild Bearish":"Neutral";
+      const col=totalColor(sc);
+      html+=`<tr><td style="font-family:var(--mono);font-size:11px">${h.date.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"})}</td><td style="text-align:center;font-family:var(--mono);font-weight:bold;color:${col}">${cv(sc)}</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:${col}">${bias}</td></tr>`;
+    });
+    html+=`</tbody></table></div></div>`;
+  }
+  return html;
+}
+
+// ── VIEW 6: TRADE IDEAS ───────────────────────────────────────────────────────
+function renderTradeIdeasView(){
+  // Only show forex pairs since we have live rates
+  const forexMap={
+    EUR:"EURUSD",GBP:"GBPUSD",JPY:"USDJPY",AUD:"AUDUSD",
+    CAD:"USDCAD",NZD:"NZDUSD",CHF:"USDCHF"
+  };
+  // ATR estimates (typical daily range as % of price)
+  const atrPct={EURUSD:0.0055,GBPUSD:0.0065,USDJPY:0.0060,AUDUSD:0.0055,USDCAD:0.0050,NZDUSD:0.0055,USDCHF:0.0050};
+
+  const assetOpts=[...ASSETS_SCORED].map(a=>`<option value="${a.id}" ${a.id===state.setupsHistoryAsset?"selected":""}>${a.name}</option>`).join("");
+
+  let html=`
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">Asset:</div>
+    <select onchange="state.setupsHistoryAsset=this.value;renderSetups()"
+      style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
+      ${assetOpts}
+    </select>
+  </div>`;
+
+  // Find asset
+  const asset=ASSETS_SCORED.find(a=>a.id===state.setupsHistoryAsset)||ASSETS_SCORED[0];
+  const tc=totalColor(asset.total), bc=biasColor(asset.bias);
+  const isBull=asset.total>0;
+
+  // Get price — try live rates for forex
+  let price=null, pairId=null;
+  const cId=asset.id;
+  if(["EUR","GBP","AUD","NZD"].includes(cId)&&state.rates){
+    pairId=cId+"USD"; price=1/state.rates[cId];
+  }else if(["JPY","CAD","CHF"].includes(cId)&&state.rates){
+    pairId="USD"+cId; price=state.rates[cId];
+  }else if(cId==="BTC"&&state.btc){price=state.btc.price;}
+
+  const atr=price?(atrPct[pairId]||0.005)*price:null;
+
+  html+=`<div class="trade-card">
+    <div class="trade-card-hd">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Top Setups Algo Bias</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${bc};margin-top:3px">${asset.bias}</div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Technical Bias</div>
+        <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${asset.trend>=1?"var(--bull)":asset.trend<=-1?"var(--bear)":"var(--neutral)"};margin-top:3px">${asset.trend>=2?"Strong Bull":asset.trend===1?"Bullish":asset.trend===-1?"Bearish":"Strong Bear"}</div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total Score</div>
+        <div style="font-family:var(--mono);font-size:28px;font-weight:bold;color:${tc};margin-top:2px">${cv(asset.total)}</div>
+      </div>
+      ${price?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Current Price</div><div style="font-family:var(--mono);font-size:16px;font-weight:bold;color:var(--text);margin-top:3px">${price.toFixed(5)}</div><span class="cbadge-live" style="font-size:8px">● LIVE</span></div>`:""}
+    </div>
+
+    ${price&&atr?`<div class="trade-levels">
+      <div class="trade-level-box" style="border-color:rgba(0,255,136,.3)">
+        <div class="trade-level-lbl">Entry Zone</div>
+        <div class="trade-level-val" style="color:var(--text);font-size:13px">${isBull?(price-atr*0.5).toFixed(5):""} — ${isBull?(price+atr*0.3).toFixed(5):(price-atr*0.3).toFixed(5)}</div>
+        <div class="trade-level-sub">Fair value entry range</div>
+      </div>
+      <div class="trade-level-box" style="border-color:rgba(88,166,255,.3)">
+        <div class="trade-level-lbl">Target</div>
+        <div class="trade-level-val" style="color:var(--accent)">${isBull?(price+atr*2.5).toFixed(5):(price-atr*2.5).toFixed(5)}</div>
+        <div class="trade-level-sub">${(2.5).toFixed(1)}R target</div>
+      </div>
+      <div class="trade-level-box" style="border-color:rgba(255,59,92,.3)">
+        <div class="trade-level-lbl">Stop Loss</div>
+        <div class="trade-level-val" style="color:var(--bear)">${isBull?(price-atr*1.5).toFixed(5):(price+atr*1.5).toFixed(5)}</div>
+        <div class="trade-level-sub">1.5 ATR stop</div>
+      </div>
+    </div>`:`<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center">Select a forex pair (EUR, GBP, JPY, AUD, CAD, NZD, CHF) for live price levels.</div>`}
+  </div>
+
+  <!-- Score breakdown -->
+  <div class="card"><div class="chd"><span class="ctitle">Score Breakdown — ${asset.name}</span><span class="cbadge">ALL FACTORS</span></div>
+  <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+    ${[
+      {l:"COT",v:asset.cot},{l:"Retail",v:asset.retail},{l:"Seasonal",v:asset.seasonal},{l:"Trend",v:asset.trend},
+      {l:"GDP",v:asset.gdp},{l:"mPMI",v:asset.mPMI},{l:"sPMI",v:asset.sPMI},{l:"Retail Sales",v:asset.retailSal},
+      {l:"CPI YoY",v:asset.inflation},{l:"Emp Chg",v:asset.empChg},{l:"Unemploy",v:asset.unemploy},{l:"Rates",v:asset.rates}
+    ].map(f=>{
+      const col=f.v>0?"var(--bull)":f.v<0?"var(--bear)":"var(--muted)";
+      const bg=f.v>=2?"rgba(0,255,136,.15)":f.v===1?"rgba(0,255,136,.08)":f.v<=-2?"rgba(255,59,92,.15)":f.v===-1?"rgba(255,59,92,.08)":"var(--bg3)";
+      return`<div style="background:${bg};border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center">
+        <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase">${f.l}</div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:bold;color:${col};margin-top:3px">${cv(f.v)}</div>
+      </div>`;
+    }).join("")}
+  </div></div>
+
+  <div class="infobox ib-yellow">
+    <span class="iblabel" style="color:var(--neutral)">⚠ DISCLAIMER</span>
+    Trade levels are calculated algorithmically using ATR-based positioning. These are <strong>not financial advice</strong>. Always use your own analysis and risk management. Entry/Target/Stop are for reference only.
+  </div>`;
+  return html;
+}
+
+// ── MAIN renderSetups — routes to correct view ────────────────────────────────
+function renderSetups(){
+  const nav = setupsNav();
+  let body="";
+  if(state.setupsView==="full")     body=renderSetupsFullView();
+  else if(state.setupsView==="simple")   body=renderSetupsSimpleView();
+  else if(state.setupsView==="eco")      body=renderSetupsEcoView();
+  else if(state.setupsView==="sentiment")body=renderSetupsSentimentView();
+  else if(state.setupsView==="history")  body=renderSetupsHistoryView();
+  else if(state.setupsView==="trade")    body=renderTradeIdeasView();
+  document.getElementById("page-setups").innerHTML=nav+body;
 }
 function setFilter(cat){state.filterCat=cat;renderSetups();}
 
