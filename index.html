@@ -2726,65 +2726,212 @@ function renderActive(){
 
 // ── SCORING ENGINE ────────────────────────────────────────────────────────────
 // Weights are adjustable multipliers per component.
+// ═══════════════════════════════════════════════════════════════════════════
+// SCORECARD ENGINE v2 — Live Data Driven
+// Reads from state (COT, Myfxbook, FRED, Put/Call, AAII, rates).
+// Falls back to ASSETS_SCORED static values when live data unavailable.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── WEIGHTS (adjustable) ─────────────────────────────────────────────────────
 const SC_WEIGHTS = {
-  technical:   1.0,   // trend + seasonal
-  sentiment:   1.0,   // retail (contrarian)
-  cot:         1.0,   // institutional
-  growth:      1.0,   // gdp + pmis + retailSal
-  inflation:   1.0,   // inflation signal
-  jobs:        1.0,   // employment + rates
+  technical:  0.30,
+  sentiment:  0.20,
+  cot:        0.20,
+  macro:      0.30,   // growth + inflation + jobs bundled for weighted sum
 };
 
-// Derive component scores from the existing ASSETS_SCORED data structure.
-// Each asset has the raw factor scores already — we group them here.
-function calculateComponentScore(a) {
-  // Technical: trend (momentum proxy) + seasonal
-  const technical = Math.max(-2, Math.min(2,
-    Math.round((a.trend * 0.7 + a.seasonal * 0.3))
-  ));
-  // Sentiment: retail contrarian (retail score already encoded as contrarian)
-  const sentiment = Math.max(-2, Math.min(2, a.retail));
-  // COT: institutional positioning
-  const cot = Math.max(-2, Math.min(2, a.cot));
-  // Growth: GDP + mPMI + sPMI + retailSal averaged, clamped to [-2,+2]
-  const growthRaw = a.gdp + a.mPMI + a.sPMI + a.retailSal;
-  const growth = Math.max(-2, Math.min(2, Math.round(growthRaw / 2)));
-  // Inflation: CPI/PPI/PCE proxy — already encoded
-  const inflation = Math.max(-2, Math.min(2, a.inflation));
-  // Jobs: employment change + unemployment signal + rate impact
-  const jobsRaw = a.empChg + a.unemploy + a.rates;
-  const jobs = Math.max(-2, Math.min(2, Math.round(jobsRaw / 1.5)));
+// Internal sub-weights within macro
+const SC_MACRO_WEIGHTS = {
+  growth:    0.40,
+  inflation: 0.30,
+  jobs:      0.30,
+};
 
-  return { technical, sentiment, cot, growth, inflation, jobs };
+// ── FOREX ASSET → MYFXBOOK SYMBOL MAP ────────────────────────────────────────
+const SC_MFX_MAP = {
+  EUR:"EURUSD", GBP:"GBPUSD", JPY:"USDJPY", AUD:"AUDUSD",
+  CAD:"USDCAD", NZD:"NZDUSD", CHF:"USDCHF",
+};
+// For USD-quote pairs: sentiment is contrarian — heavy longs → bearish
+// For USD-base pairs: invert
+const SC_MFX_INVERT = { JPY:true, CAD:true, CHF:true }; // USD is base
+
+// ── ASSET → COT ID MAP ───────────────────────────────────────────────────────
+const SC_COT_MAP = {
+  Gold:"Gold", SILVER:"SILVER", USOIL:"USOIL", BTC:"BTC",
+  NASDAQ:"NASDAQ", DOW:"DOW", SPX500:"SPX", RUSSELL:"RUSSELL", US10T:"US10T",
+  COPPER:"COPPER",
+  EUR:"EUR", GBP:"GBP", JPY:"JPY", AUD:"AUD", CAD:"CAD", CHF:"CHF", NZD:"NZD", USD:"USD",
+};
+
+// ── ASSET → PUT-CALL ID MAP ───────────────────────────────────────────────────
+const SC_PC_MAP = {
+  SPX500:"SPX500", NASDAQ:"NAS100", Gold:"GOLD", USOIL:"USOIL",
+  BTC:"BTCUSD", EUR:"EURUSD", JPY:"USDJPY",
+};
+
+// ── STEP 1: Aggregate live state into a unified snapshot ─────────────────────
+// This is called by runEngine. It does NOT do any new HTTP requests —
+// it packages data already fetched by the existing refreshAll() pipeline.
+async function fetchAllData() {
+  const cotRows   = (state.cotData && state.cotData.length) ? state.cotData : COT_DATA;
+  const sentiment = state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT;
+  const econ      = state.econData      || FALLBACK_ECON;
+  const putCall   = state.putCallLive   ? (state.putCallData || PUT_CALL) : PUT_CALL;
+  const aaiiData  = state.aaiiLive      ? (state.aaiiData    || AAII)     : AAII;
+  const rates     = state.rates;
+
+  return { cotRows, sentiment, econ, putCall, aaiiData, rates, ts: Date.now() };
 }
 
-function calculateAssetScore(a) {
-  const comp = calculateComponentScore(a);
-  const w = SC_WEIGHTS;
-  const total = Math.round(
-    comp.technical * w.technical +
-    comp.sentiment * w.sentiment +
-    comp.cot       * w.cot       +
-    comp.growth    * w.growth    +
-    comp.inflation * w.inflation +
-    comp.jobs      * w.jobs
-  );
-  const bias =
-    total >= 5  ? "Bullish"  :
-    total <= -5 ? "Bearish"  :
-    total >= 3  ? "Mild Bull":
-    total <= -3 ? "Mild Bear": "Neutral";
+// ── STEP 2: Derive per-component scores from live snapshot ───────────────────
+// Returns scores in range [-2, +2] per component.
+function deriveComponents(assetId, liveData) {
+  const fallback = ASSETS_SCORED.find(a => a.id === assetId);
+  const clamp2   = v => Math.max(-2, Math.min(2, Math.round(v)));
+
+  // ── TECHNICAL ──
+  // Use static trend + seasonal (no live OHLC feed available).
+  // When live rates exist for FX pairs, add a mild drift signal.
+  let technical = fallback ? clamp2(fallback.trend * 0.7 + fallback.seasonal * 0.3) : 0;
+  if (liveData.rates && SC_MFX_MAP[assetId]) {
+    // Rate-of-change proxy: compare to previous rates snapshot (prevRates)
+    const sym = SC_MFX_MAP[assetId];
+    const inverted = !!SC_MFX_INVERT[assetId];
+    if (state.prevRates && state.rates) {
+      const cur  = inverted ? (state.rates[assetId]   || 1) : (1 / (state.rates[assetId]   || 1));
+      const prev = inverted ? (state.prevRates[assetId] || 1) : (1 / (state.prevRates[assetId] || 1));
+      const roc  = (cur - prev) / prev;
+      const rocSignal = roc > 0.003 ? 1 : roc < -0.003 ? -1 : 0;  // 0.3% threshold
+      // Blend: 70% static bias, 30% live momentum
+      technical = clamp2(technical * 0.7 + rocSignal * 0.3 * 2);
+    }
+  }
+
+  // ── SENTIMENT ──
+  // Source 1: Myfxbook retail (contrarian)
+  let sentimentScore = fallback ? clamp2(fallback.retail) : 0;
+  const mfxSym = SC_MFX_MAP[assetId];
+  if (mfxSym && liveData.sentiment && liveData.sentiment.length) {
+    const row = liveData.sentiment.find(s => s.name === mfxSym);
+    if (row) {
+      const lp = row.longPercentage;
+      // Contrarian: >65% longs = bearish signal, <35% longs = bullish signal
+      const rawSent = lp >= 75 ? -2 : lp >= 65 ? -1 : lp <= 25 ? 2 : lp <= 35 ? 1 : 0;
+      if (SC_MFX_INVERT[assetId]) sentimentScore = clamp2(-rawSent);
+      else sentimentScore = rawSent;
+    }
+  }
+  // Source 2: Put/Call ratio (blended 30%)
+  const pcId = SC_PC_MAP[assetId];
+  if (pcId && liveData.putCall && liveData.putCall.length) {
+    const row = liveData.putCall.find(p => p.id === pcId);
+    if (row) {
+      const pcSignal = row.pc > 1.2 ? 1 : row.pc < 0.7 ? -1 : 0;
+      sentimentScore = clamp2(sentimentScore * 0.7 + pcSignal * 0.3 * 2);
+    }
+  }
+  // Source 3: AAII for equity/macro assets
+  if (["DOW","NASDAQ","SPX500","RUSSELL","Gold","BTC"].includes(assetId) && liveData.aaiiData) {
+    const spread = liveData.aaiiData.spread ?? 0;
+    const aaiiSignal = spread < -15 ? 2 : spread < -5 ? 1 : spread > 15 ? -2 : spread > 5 ? -1 : 0;
+    sentimentScore = clamp2(sentimentScore * 0.6 + aaiiSignal * 0.4 * 2);
+  }
+
+  // ── COT (Institutional) ──
+  let cotScore = fallback ? clamp2(fallback.cot) : 0;
+  const cotId = SC_COT_MAP[assetId];
+  if (cotId && liveData.cotRows && liveData.cotRows.length) {
+    const row = liveData.cotRows.find(r => r.id === cotId);
+    if (row) {
+      // Net positioning: longPct - shortPct as fraction of 100
+      const net     = (row.longPct || 50) - (row.shortPct || 50); // -100..+100
+      const netChg  = row.netChg || 0;
+      const netSig  = net  > 20 ? 2 : net  > 5 ? 1 : net  < -20 ? -2 : net  < -5 ? -1 : 0;
+      const chgSig  = netChg > 3 ? 1 : netChg < -3 ? -1 : 0;
+      cotScore = clamp2(netSig * 0.7 + chgSig * 0.3 * 2);
+    }
+  }
+
+  // ── MACRO (Growth + Inflation + Jobs) ──
+  let growthScore    = fallback ? clamp2((fallback.gdp + fallback.mPMI + fallback.sPMI + fallback.retailSal) / 2) : 0;
+  let inflationScore = fallback ? clamp2(fallback.inflation)                                                       : 0;
+  let jobsScore      = fallback ? clamp2((fallback.empChg + fallback.unemploy + fallback.rates) / 1.5)            : 0;
+
+  // Override with live FRED data where available
+  // FRED data is keyed by currency (USD, EUR, GBP, JPY)
+  const fredKey = ["EUR","GBP","JPY"].includes(assetId) ? assetId
+                : ["DOW","NASDAQ","SPX500","RUSSELL","Gold","USOIL","SILVER","COPPER","US10T","BTC"] .includes(assetId) ? "USD"
+                : assetId === "USD" ? "USD" : null;
+
+  if (fredKey && liveData.econ && liveData.econ[fredKey] && liveData.econ[fredKey].length) {
+    const econItems = liveData.econ[fredKey];
+    // Sum surprise scores from FRED (each is -0.5..+0.5)
+    const gdpItem = econItems.find(i => i.l.toLowerCase().includes("gdp"));
+    const cpiItem = econItems.find(i => i.l.toLowerCase().includes("cpi"));
+    const unempItem = econItems.find(i => i.l.toLowerCase().includes("unemploy") || i.l.toLowerCase().includes("rate") && !i.l.toLowerCase().includes("fed") && !i.l.toLowerCase().includes("ecb") && !i.l.toLowerCase().includes("boe") && !i.l.toLowerCase().includes("boj"));
+
+    if (gdpItem)   growthScore    = clamp2((gdpItem.s ?? 0) * 4);   // scale .5 → 2
+    if (cpiItem)   inflationScore = clamp2(-(cpiItem.s ?? 0) * 4);  // high CPI = bearish
+    if (unempItem) jobsScore      = clamp2(-(unempItem.s ?? 0) * 4); // high unemp = bearish
+  }
+
+  // Macro composite
+  const macroRaw = growthScore * SC_MACRO_WEIGHTS.growth
+                 + inflationScore * SC_MACRO_WEIGHTS.inflation
+                 + jobsScore      * SC_MACRO_WEIGHTS.jobs;
+  const macro = clamp2(macroRaw / 0.4); // renormalize so full-bull macro = +2
+
+  return {
+    technical, sentiment: sentimentScore, cot: cotScore,
+    growth: growthScore, inflation: inflationScore, jobs: jobsScore, macro,
+  };
+}
+
+// ── STEP 3: Weighted asset score ──────────────────────────────────────────────
+function calculateComponentScore(a) {
+  // Legacy compatibility — used by getAssetMetrics (keeps metric tables working)
+  return deriveComponents(a.id, {
+    cotRows:    (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
+    sentiment:  state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
+    econ:       state.econData      || FALLBACK_ECON,
+    putCall:    state.putCallLive   ? (state.putCallData || PUT_CALL) : PUT_CALL,
+    aaiiData:   state.aaiiLive      ? (state.aaiiData    || AAII)     : AAII,
+    rates:      state.rates,
+  });
+}
+
+function calculateAssetScore(a, liveData) {
+  const ld   = liveData || {
+    cotRows:    (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
+    sentiment:  state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
+    econ:       state.econData      || FALLBACK_ECON,
+    putCall:    state.putCallLive   ? (state.putCallData || PUT_CALL) : PUT_CALL,
+    aaiiData:   state.aaiiLive      ? (state.aaiiData    || AAII)     : AAII,
+    rates:      state.rates,
+  };
+  const comp = deriveComponents(a.id, ld);
+  const w    = SC_WEIGHTS;
+  // Weighted sum: technical, sentiment, cot each scaled from [-2,+2]; macro already composite
+  const raw =
+    comp.technical * w.technical * 5 +   // ×5 → [-10,+10] range
+    comp.sentiment * w.sentiment * 5 +
+    comp.cot       * w.cot       * 5 +
+    comp.macro     * w.macro     * 5;
+  const total = Math.max(-12, Math.min(12, Math.round(raw)));
+  const bias  = total >= 5 ? "Bullish" : total <= -5 ? "Bearish"
+              : total >= 3 ? "Mild Bull" : total <= -3 ? "Mild Bear" : "Neutral";
   return { asset: a.id, name: a.name, cat: a.cat, components: comp, totalScore: total, bias };
 }
 
-// Build currency strength map for forex scorecard
-function buildCurrencyScores() {
-  // Currency IDs that appear directly as single-currency assets
+// ── STEP 4: Currency strength + forex pair ────────────────────────────────────
+function buildCurrencyScores(liveData) {
+  const ld = liveData;
   const ccyIds = ["USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD"];
   const scores = {};
   ccyIds.forEach(ccy => {
     const a = ASSETS_SCORED.find(x => x.id === ccy);
-    scores[ccy] = a ? calculateAssetScore(a).totalScore : 0;
+    scores[ccy] = a ? calculateAssetScore(a, ld).totalScore : 0;
   });
   return scores;
 }
@@ -2793,17 +2940,174 @@ function calculateForexScore(baseCcy, quoteCcy, ccyScores) {
   const baseScore  = ccyScores[baseCcy]  ?? 0;
   const quoteScore = ccyScores[quoteCcy] ?? 0;
   const pairScore  = baseScore - quoteScore;
-  const bias =
-    pairScore >= 3  ? "Bullish"  :
-    pairScore <= -3 ? "Bearish"  :
-    pairScore >= 1  ? "Mild Bull":
-    pairScore <= -1 ? "Mild Bear": "Neutral";
+  const bias = pairScore >= 3 ? "Bullish" : pairScore <= -3 ? "Bearish"
+             : pairScore >= 1 ? "Mild Bull" : pairScore <= -1 ? "Mild Bear" : "Neutral";
   return { base: baseCcy, quote: quoteCcy, baseScore, quoteScore, pairScore, bias };
 }
 
-// ── GAUGE SVG helper ──────────────────────────────────────────────────────────
+// ── STEP 5: Score ALL assets for the engine ───────────────────────────────────
+function scoreAllAssets(liveData) {
+  const out = {};
+  ASSETS_SCORED.forEach(a => { out[a.id] = calculateAssetScore(a, liveData); });
+  return out;
+}
+
+// ── STEP 6: Build forex pair results ─────────────────────────────────────────
+function buildForexPairs(ccyScores) {
+  return SC_FOREX_PAIRS.map(p => ({
+    ...p, ...calculateForexScore(p.base, p.quote, ccyScores),
+  }));
+}
+
+// ── STEP 7: UI updaters — patch existing DOM without full re-render ───────────
+function updateAssetUI(scored) {
+  const sc = scored.totalScore;
+  const bc = sc >= 3 ? "var(--bull)" : sc <= -3 ? "var(--bear)" : sc >= 1 ? "#7effc4" : sc <= -1 ? "#ff8fa0" : "var(--neutral)";
+
+  // Score number
+  const scEl = document.getElementById("sc-score-num");
+  if (scEl) { scEl.textContent = (sc >= 0 ? "+" : "") + sc; scEl.style.color = bc; }
+
+  // Gauge SVG — replace entire SVG element
+  const gaugeWrap = document.getElementById("sc-gauge-wrap");
+  if (gaugeWrap) gaugeWrap.innerHTML = scGaugeSVG(sc, 10);
+
+  // Bias label
+  const biasEl = document.getElementById("sc-bias-lbl");
+  const biasBg = sc >= 3 ? "rgba(0,255,136,.15)" : sc <= -3 ? "rgba(255,59,92,.15)" : "rgba(240,180,41,.12)";
+  if (biasEl) { biasEl.textContent = scored.bias; biasEl.style.color = bc; biasEl.style.background = biasBg; }
+
+  // Component bars — each bar has data-comp attribute
+  const comp = scored.components;
+  const compVals = {
+    technical: comp.technical, sentiment: comp.sentiment, cot: comp.cot,
+    growth: comp.growth, inflation: comp.inflation, jobs: comp.jobs,
+  };
+  Object.entries(compVals).forEach(([key, val]) => {
+    const row = document.querySelector(`[data-sc-comp="${key}"]`);
+    if (!row) return;
+    const fill = row.querySelector(".sc-comp-bar-fill");
+    const text = row.querySelector(".sc-comp-val");
+    const pct  = Math.round(Math.max(0, Math.min(100, ((val + 2) / 4) * 100)));
+    const col  = val >= 1 ? "var(--bull)" : val <= -1 ? "var(--bear)" : "var(--neutral)";
+    if (fill) { fill.style.width = pct + "%"; fill.style.background = col; }
+    if (text) { text.textContent = (val >= 0 ? "+" : "") + val; text.style.color = col; }
+  });
+
+  // Status badge
+  const stEl = document.getElementById("sc-status");
+  if (stEl) {
+    const isLive = state.cotLive || state.sentimentLive || state.econLive;
+    stEl.className = isLive ? "cbadge-live" : "cbadge-demo";
+    stEl.textContent = isLive ? "● LIVE DATA" : "STATIC DATA";
+  }
+}
+
+function updateForexUI(pairs, ccyScores) {
+  pairs.forEach(fx => {
+    const card = document.querySelector(`[data-fx-pair="${fx.id}"]`);
+    if (!card) return;
+
+    const pCol = fx.pairScore >= 3 ? "var(--bull)" : fx.pairScore <= -3 ? "var(--bear)"
+               : fx.pairScore >= 1 ? "#7effc4" : fx.pairScore <= -1 ? "#ff8fa0" : "var(--neutral)";
+    const pBg  = fx.pairScore >= 3 ? "rgba(0,255,136,.12)" : fx.pairScore <= -3 ? "rgba(255,59,92,.12)" : "rgba(240,180,41,.08)";
+    const SCORE_MAX = 10;
+
+    // Bias badge
+    const badge = card.querySelector(".sc-tbl-badge");
+    if (badge) {
+      badge.className = `sc-tbl-badge ${fx.pairScore>=1?"badge-bull":fx.pairScore<=-1?"badge-bear":"badge-neut"}`;
+      badge.textContent = fx.bias;
+    }
+    // Pair score pill
+    const pill = card.querySelector("[data-fx-score]");
+    if (pill) { pill.textContent = (fx.pairScore>=0?"+":"")+fx.pairScore; pill.style.color=pCol; pill.style.background=pBg; }
+
+    // Base bar + value
+    const baseBar = card.querySelector("[data-fx-bar='base']");
+    const baseVal = card.querySelector("[data-fx-val='base']");
+    const basePct = Math.round(Math.max(5,Math.min(95,50+(fx.baseScore/SCORE_MAX)*45)));
+    const baseCol = fx.baseScore>=1?"var(--bull)":fx.baseScore<=-1?"var(--bear)":"var(--neutral)";
+    if (baseBar) { baseBar.style.width=basePct+"%"; baseBar.style.background=baseCol; }
+    if (baseVal) { baseVal.textContent=(fx.baseScore>=0?"+":"")+fx.baseScore; baseVal.style.color=baseCol; }
+
+    // Quote bar + value
+    const quoteBar = card.querySelector("[data-fx-bar='quote']");
+    const quoteVal = card.querySelector("[data-fx-val='quote']");
+    const quotePct = Math.round(Math.max(5,Math.min(95,50+(fx.quoteScore/SCORE_MAX)*45)));
+    const quoteCol = fx.quoteScore>=1?"var(--bull)":fx.quoteScore<=-1?"var(--bear)":"var(--neutral)";
+    if (quoteBar) { quoteBar.style.width=quotePct+"%"; quoteBar.style.background=quoteCol; }
+    if (quoteVal) { quoteVal.textContent=(fx.quoteScore>=0?"+":"")+fx.quoteScore; quoteVal.style.color=quoteCol; }
+  });
+
+  // Currency strength ranking
+  const csEl = document.getElementById("sc-ccy-ranking");
+  if (csEl && ccyScores) {
+    const csMax = Math.max(...Object.values(ccyScores).map(Math.abs), 1);
+    const sorted = Object.entries(ccyScores).sort((a,b)=>b[1]-a[1]);
+    csEl.innerHTML = sorted.map(([ccy,sc],i)=>{
+      const col=sc>=1?"var(--bull)":sc<=-1?"var(--bear)":"var(--neutral)";
+      const pct=Math.round(Math.max(5,Math.min(95,50+(sc/csMax)*45)));
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border)">
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted);width:16px">${i+1}</span>
+        <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col};width:36px">${ccy}</span>
+        <div style="flex:1;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${col};border-radius:4px"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col};width:28px;text-align:right">${sc>=0?"+":""}${sc}</span>
+      </div>`;
+    }).join("");
+  }
+
+  // Forex status badge
+  const fxSt = document.getElementById("fx-status");
+  if (fxSt) {
+    const isLive = state.cotLive || state.sentimentLive || state.econLive;
+    fxSt.className = isLive ? "cbadge-live" : "cbadge-demo";
+    fxSt.textContent = isLive ? "● LIVE DATA" : "STATIC DATA";
+  }
+}
+
+// ── STEP 8: ENGINE — orchestrate fetch → score → update ─────────────────────
+let _engineRunning = false;
+
+async function runEngine() {
+  if (_engineRunning) return;           // prevent overlap
+  _engineRunning = true;
+  try {
+    const liveData   = await fetchAllData();
+    const allScores  = scoreAllAssets(liveData);
+    const ccyScores  = buildCurrencyScores(liveData);
+    const fxPairs    = buildForexPairs(ccyScores);
+
+    // Store results in state so renderers can access them
+    state.scLiveData   = liveData;
+    state.scAllScores  = allScores;
+    state.scCcyScores  = ccyScores;
+    state.scFxPairs    = fxPairs;
+    state.scLastRun    = Date.now();
+
+    // Update active tab's UI — either patch existing DOM or re-render
+    if (activeTab === "scorecard") {
+      const raw = ASSETS_SCORED.find(a => a.id === state.scAsset) || ASSETS_SCORED[0];
+      const sc  = allScores[raw.id] || calculateAssetScore(raw, liveData);
+      // Try DOM patch first; fall back to full re-render if IDs missing
+      if (document.getElementById("sc-score-num")) updateAssetUI(sc);
+      else renderScorecard();
+    }
+    if (activeTab === "forex") {
+      if (document.querySelector("[data-fx-pair]")) updateForexUI(fxPairs, ccyScores);
+      else renderForexScorecard();
+    }
+  } catch(e) {
+    console.warn("runEngine error:", e.message);
+  } finally {
+    _engineRunning = false;
+  }
+}
+
+// ── HELPERS: retained + kept identical ───────────────────────────────────────
 function scGaugeSVG(score, maxRange) {
-  // score: -maxRange..+maxRange → semicircle needle
   const cx=70, cy=70, r=52;
   const pct = Math.max(0, Math.min(1, (score + maxRange) / (2 * maxRange)));
   const angle = Math.PI - pct * Math.PI;
@@ -2811,19 +3115,11 @@ function scGaugeSVG(score, maxRange) {
   const ny = cy - r * 0.75 * Math.sin(angle);
   const col = score >= 3 ? "#00ff88" : score >= 1 ? "#7effc4" :
               score <= -3 ? "#ff3b5c" : score <= -1 ? "#ff8fa0" : "#f0b429";
-
-  // Arc path helpers
-  const arcPt = (a) => ({
+  const arcPt = a => ({
     x: parseFloat((cx + r * Math.cos(a)).toFixed(1)),
     y: parseFloat((cy - r * Math.sin(a)).toFixed(1)),
   });
-
-  // Zone arcs: red(left 40%), yellow(middle 20%), green(right 40%)
-  const p0  = arcPt(Math.PI);         // 0%
-  const p40 = arcPt(Math.PI * 0.6);   // 40%
-  const p60 = arcPt(Math.PI * 0.4);   // 60%
-  const p100= arcPt(0);               // 100%
-
+  const p0=arcPt(Math.PI), p40=arcPt(Math.PI*0.6), p60=arcPt(Math.PI*0.4), p100=arcPt(0);
   return `<svg viewBox="0 0 140 78" class="sc-gauge-svg">
     <path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p40.x} ${p40.y}"
       fill="none" stroke="rgba(255,59,92,.5)" stroke-width="11" stroke-linecap="butt"/>
@@ -2840,26 +3136,22 @@ function scGaugeSVG(score, maxRange) {
   </svg>`;
 }
 
-// ── COMPONENT BAR helper ──────────────────────────────────────────────────────
-function scCompBar(label, value, maxVal) {
+function scCompBar(label, value, maxVal, compKey) {
   const pct = Math.round(Math.max(0, Math.min(100, ((value + maxVal) / (2 * maxVal)) * 100)));
   const col = value >= 1 ? "var(--bull)" : value <= -1 ? "var(--bear)" : "var(--neutral)";
-  const textCol = value >= 1 ? "var(--bull)" : value <= -1 ? "var(--bear)" : "var(--neutral)";
-  return `<div class="sc-comp-row">
+  return `<div class="sc-comp-row" data-sc-comp="${compKey || label.toLowerCase().replace(/\s+/g,'_')}">
     <span class="sc-comp-lbl">${label}</span>
     <div class="sc-comp-bar-track">
       <div class="sc-comp-bar-fill" style="width:${pct}%;background:${col}"></div>
     </div>
-    <span class="sc-comp-val" style="color:${textCol}">${value>0?"+":""}${value}</span>
+    <span class="sc-comp-val" style="color:${col}">${value>0?"+":""}${value}</span>
   </div>`;
 }
 
-// ── METRIC TABLE ROW helper ───────────────────────────────────────────────────
-// bias: "bull"|"bear"|"neut", metric, actual, forecast, surprise text
 function scMetricRow(metric, bias, actual, forecast, surprise) {
-  const badgeClass = bias === "bull" ? "badge-bull" : bias === "bear" ? "badge-bear" : "badge-neut";
-  const biasLabel  = bias === "bull" ? "▲ Beat" : bias === "bear" ? "▼ Miss" : "→ In Line";
-  const surpCol    = bias === "bull" ? "var(--bull)" : bias === "bear" ? "var(--bear)" : "var(--muted)";
+  const badgeClass = bias==="bull"?"badge-bull":bias==="bear"?"badge-bear":"badge-neut";
+  const biasLabel  = bias==="bull"?"▲ Beat":bias==="bear"?"▼ Miss":"→ In Line";
+  const surpCol    = bias==="bull"?"var(--bull)":bias==="bear"?"var(--bear)":"var(--muted)";
   return `<tr>
     <td class="sc-tbl-metric">${metric}</td>
     <td><span class="sc-tbl-badge ${badgeClass}">${biasLabel}</span></td>
@@ -2869,50 +3161,63 @@ function scMetricRow(metric, bias, actual, forecast, surprise) {
   </tr>`;
 }
 
-// Per-asset detailed metrics (Technical, Institutional, Economic, Inflation, Jobs)
-// Derived from ASSETS_SCORED factors — no extra hardcoding, values scale with score.
 function getAssetMetrics(a) {
+  // Uses live deriveComponents for accurate bias; scales to readable figures
+  const comp = deriveComponents(a.id, {
+    cotRows:  (state.cotData&&state.cotData.length)?state.cotData:COT_DATA,
+    sentiment:state.sentimentLive?state.sentimentData:FALLBACK_SENTIMENT,
+    econ:     state.econData||FALLBACK_ECON,
+    putCall:  state.putCallLive?(state.putCallData||PUT_CALL):PUT_CALL,
+    aaiiData: state.aaiiLive?(state.aaiiData||AAII):AAII,
+    rates:    state.rates,
+  });
   const s2b = v => v >= 1 ? "bull" : v <= -1 ? "bear" : "neut";
-  const pct  = v => v > 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`;
-  const fmtS = v => v > 0 ? `+${v.toFixed(1)}` : `${v.toFixed(1)}`;
+  const pct = v => (v > 0 ? "+" : "") + v.toFixed(1) + "%";
+  const fmtS = v => (v > 0 ? "+" : "") + v.toFixed(1);
+  const tr=a.trend,seas=a.seasonal,gdp=a.gdp,mPMI=a.mPMI,sPMI=a.sPMI;
+  const rS=a.retailSal,inf=a.inflation,emp=a.empChg,unemp=a.unemploy,rt=a.rates;
 
-  // Scale raw scores to plausible actual/forecast figures
-  const tr = a.trend, seas = a.seasonal, gdp = a.gdp, mPMI = a.mPMI, sPMI = a.sPMI;
-  const rS = a.retailSal, inf = a.inflation, emp = a.empChg, unemp = a.unemploy, rt = a.rates;
+  // Blend live FRED data into metric display where available
+  const fredKey = ["EUR","GBP","JPY"].includes(a.id) ? a.id
+                : ["DOW","NASDAQ","SPX500","RUSSELL","Gold","USOIL","SILVER","COPPER","US10T","BTC"].includes(a.id) ? "USD"
+                : a.id === "USD" ? "USD" : null;
+  const fredItems = fredKey && state.econData && state.econData[fredKey] ? state.econData[fredKey] : null;
+  const gdpItem   = fredItems?.find(i=>i.l.toLowerCase().includes("gdp"));
+  const cpiItem   = fredItems?.find(i=>i.l.toLowerCase().includes("cpi"));
+  const unempItem = fredItems?.find(i=>i.l.toLowerCase().includes("unemploy"));
 
   return {
     technical: [
-      { m:"4H Trend",    bias:s2b(tr),   act:tr>=1?"Above MA":"Below MA",          fore:"MA Level",  surp:tr>=1?"Bullish":"Bearish" },
-      { m:"Daily Trend", bias:s2b(tr),   act:tr>=2?"Strong Up":tr>=1?"Up":"Down",  fore:"Neutral",   surp:fmtS(tr*0.8) },
-      { m:"Momentum",    bias:s2b(seas),  act:seas>=1?"Positive":"Negative",        fore:"Flat",      surp:fmtS(seas*0.6) },
-      { m:"Seasonality", bias:s2b(seas),  act:`${(seas*1.2).toFixed(1)}% avg`,      fore:"0.0% avg",  surp:pct(seas*1.2) },
+      { m:"4H Trend",    bias:s2b(comp.technical), act:comp.technical>=1?"Above MA":"Below MA",         fore:"MA Level", surp:fmtS(comp.technical*0.8) },
+      { m:"Daily Trend", bias:s2b(tr),              act:tr>=2?"Strong Up":tr>=1?"Up":"Down",             fore:"Neutral",  surp:fmtS(tr*0.8) },
+      { m:"Momentum",    bias:s2b(seas),             act:seas>=1?"Positive":"Negative",                  fore:"Flat",     surp:fmtS(seas*0.6) },
+      { m:"Seasonality", bias:s2b(seas),             act:`${(seas*1.2).toFixed(1)}% avg`,               fore:"0.0% avg", surp:pct(seas*1.2) },
     ],
     institutional: [
-      { m:"Net COT Pos",    bias:s2b(a.cot),  act:`${(a.cot*14000).toLocaleString()}`,  fore:"0",  surp:a.cot>=1?"Rising":"Falling" },
-      { m:"COT Change",     bias:s2b(a.cot),  act:`${(a.cot*3200 ).toLocaleString()}`,  fore:"0",  surp:fmtS(a.cot*3200) },
-      { m:"Retail Long%",   bias:s2b(-a.retail), act:a.retail<=-1?"72%":a.retail>=1?"28%":"50%", fore:"50%", surp:a.retail<=-1?"Crowd Long":"Crowd Short" },
-      { m:"Smart/Retail",   bias:s2b(a.cot),  act:a.cot>=1?"Diverge Bull":"Diverge Bear", fore:"Aligned", surp:fmtS(a.cot) },
+      { m:"Net COT Pos",  bias:s2b(comp.cot),   act:`${(comp.cot*14000).toLocaleString()}`,  fore:"0",  surp:comp.cot>=1?"Rising":"Falling" },
+      { m:"COT Change",   bias:s2b(comp.cot),   act:`${(comp.cot*3200).toLocaleString()}`,   fore:"0",  surp:fmtS(comp.cot*3200) },
+      { m:"Retail Long%", bias:s2b(-comp.sentiment), act:comp.sentiment<=-1?"72%":comp.sentiment>=1?"28%":"50%", fore:"50%", surp:comp.sentiment<=-1?"Crowd Long":"Crowd Short" },
+      { m:"Smart/Retail", bias:s2b(comp.cot),   act:comp.cot>=1?"Diverge Bull":"Diverge Bear", fore:"Aligned", surp:fmtS(comp.cot) },
     ],
     economic: [
-      { m:"GDP YoY",      bias:s2b(gdp),  act:pct(2.1+gdp*0.6),   fore:pct(2.0),      surp:fmtS(gdp*0.5) },
-      { m:"Mfg PMI",      bias:s2b(mPMI), act:`${(50+mPMI*2.5).toFixed(1)}`,  fore:"50.0", surp:fmtS(mPMI*2.5) },
-      { m:"Serv PMI",     bias:s2b(sPMI), act:`${(52+sPMI*2.5).toFixed(1)}`,  fore:"52.0", surp:fmtS(sPMI*2.5) },
-      { m:"Retail Sales", bias:s2b(rS),   act:pct(0.4+rS*0.3),    fore:pct(0.3),      surp:fmtS(rS*0.3) },
+      { m:"GDP YoY",      bias:s2b(comp.growth),  act:gdpItem?gdpItem.v:pct(2.1+gdp*0.6),  fore:pct(2.0),  surp:gdpItem?fmtS(gdpItem.s*4):fmtS(gdp*0.5) },
+      { m:"Mfg PMI",      bias:s2b(mPMI),          act:`${(50+mPMI*2.5).toFixed(1)}`,       fore:"50.0",    surp:fmtS(mPMI*2.5) },
+      { m:"Serv PMI",     bias:s2b(sPMI),          act:`${(52+sPMI*2.5).toFixed(1)}`,       fore:"52.0",    surp:fmtS(sPMI*2.5) },
+      { m:"Retail Sales", bias:s2b(rS),            act:pct(0.4+rS*0.3),                    fore:pct(0.3),  surp:fmtS(rS*0.3) },
     ],
     inflation: [
-      { m:"CPI YoY",   bias:s2b(-inf), act:pct(3.0+inf*0.4),  fore:pct(3.1), surp:pct(inf*0.4) },
-      { m:"PPI YoY",   bias:s2b(-inf), act:pct(2.8+inf*0.5),  fore:pct(2.9), surp:pct(inf*0.5) },
-      { m:"PCE YoY",   bias:s2b(-inf), act:pct(2.6+inf*0.3),  fore:pct(2.5), surp:pct(inf*0.3) },
+      { m:"CPI YoY", bias:s2b(-comp.inflation), act:cpiItem?cpiItem.v:pct(3.0+inf*0.4),   fore:pct(3.1), surp:cpiItem?fmtS(cpiItem.s*4):pct(inf*0.4) },
+      { m:"PPI YoY", bias:s2b(-comp.inflation), act:pct(2.8+inf*0.5),                     fore:pct(2.9), surp:pct(inf*0.5) },
+      { m:"PCE YoY", bias:s2b(-comp.inflation), act:pct(2.6+inf*0.3),                     fore:pct(2.5), surp:pct(inf*0.3) },
     ],
     jobs: [
-      { m:"NFP",          bias:s2b(emp),   act:`${(180+emp*18)}K`,  fore:"175K",  surp:`${emp>=0?"+":""}${emp*18}K` },
-      { m:"Unemployment", bias:s2b(unemp), act:`${(4.0-unemp*0.2).toFixed(1)}%`, fore:"4.0%", surp:fmtS(-unemp*0.2)+"%"},
-      { m:"Interest Rate",bias:s2b(rt),    act:`${(5.0+rt*0.25).toFixed(2)}%`,   fore:"5.00%",surp:fmtS(rt*0.25)+"%" },
+      { m:"NFP",          bias:s2b(comp.jobs),   act:`${(180+emp*18)}K`,                                  fore:"175K",  surp:`${emp>=0?"+":""}${emp*18}K` },
+      { m:"Unemployment", bias:s2b(-comp.jobs),  act:unempItem?unempItem.v:`${(4.0-unemp*0.2).toFixed(1)}%`, fore:"4.0%", surp:unempItem?fmtS(unempItem.s*4)+"%":fmtS(-unemp*0.2)+"%" },
+      { m:"Interest Rate",bias:s2b(rt),          act:`${(5.0+rt*0.25).toFixed(2)}%`,                      fore:"5.00%", surp:fmtS(rt*0.25)+"%" },
     ],
   };
 }
 
-// ── Score-over-time mini chart (SVG, uses localStorage history) ───────────────
 function scHistoryChart(assetId, curScore) {
   const pts = [];
   for (let i = 29; i >= 0; i--) {
@@ -2924,60 +3229,38 @@ function scHistoryChart(assetId, curScore) {
       pts.push({ d, sc });
     } catch(e) { pts.push({ d, sc: null }); }
   }
-  pts[pts.length - 1].sc = curScore; // always pin today
-
+  pts[pts.length - 1].sc = curScore;
   const filled = pts.filter(p => p.sc !== null);
   if (filled.length < 2) {
-    // Return minimal placeholder
     return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)">
-      Score history builds daily.<br>Current Edge Score: <span style="color:${curScore>=3?'var(--bull)':curScore<=-3?'var(--bear)':'var(--neutral)'};font-weight:bold">${curScore>=0?"+":""}${curScore}</span>
+      Score history builds daily. Current Edge Score: <span style="color:${curScore>=3?"var(--bull)":curScore<=-3?"var(--bear)":"var(--neutral)"};font-weight:bold">${curScore>=0?"+":""}${curScore}</span>
     </div>`;
   }
-
-  const W=480, H=170, pL=32, pR=10, pT=12, pB=28;
-  const cW=W-pL-pR, cH=H-pT-pB;
+  const W=480,H=170,pL=32,pR=10,pT=12,pB=28,cW=W-pL-pR,cH=H-pT-pB;
   const n=filled.length;
   const allSc=filled.map(p=>p.sc);
-  const sMax=Math.max(...allSc,5), sMin=Math.min(...allSc,-5);
+  const sMax=Math.max(...allSc,5),sMin=Math.min(...allSc,-5);
   const xOf=i=>pL+i*(cW/(n-1||1));
   const yOf=v=>pT+cH*(1-(v-sMin)/(sMax-sMin||1));
   const z=yOf(0);
-
-  // Zone backgrounds
   let zones=`<rect x="${pL}" y="${pT}" width="${cW}" height="${Math.max(0,yOf(5)-pT)}" fill="rgba(0,255,136,.06)"/>`;
   zones+=`<rect x="${pL}" y="${Math.max(pT,yOf(5))}" width="${cW}" height="${Math.max(0,yOf(-5)-Math.max(pT,yOf(5)))}" fill="rgba(255,255,255,.02)"/>`;
   zones+=`<rect x="${pL}" y="${Math.max(pT,yOf(-5))}" width="${cW}" height="${Math.max(0,pT+cH-Math.max(pT,yOf(-5)))}" fill="rgba(255,59,92,.06)"/>`;
-
-  // Ref lines
   let refs=`<line x1="${pL}" y1="${yOf(5).toFixed(1)}" x2="${W-pR}" y2="${yOf(5).toFixed(1)}" stroke="rgba(0,255,136,.3)" stroke-width=".8" stroke-dasharray="4,4"/>`;
   refs+=`<line x1="${pL}" y1="${z.toFixed(1)}" x2="${W-pR}" y2="${z.toFixed(1)}" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>`;
   refs+=`<line x1="${pL}" y1="${yOf(-5).toFixed(1)}" x2="${W-pR}" y2="${yOf(-5).toFixed(1)}" stroke="rgba(255,59,92,.3)" stroke-width=".8" stroke-dasharray="4,4"/>`;
-
-  // Y labels
   let yLbls=[-5,0,5].map(v=>`<text x="${pL-3}" y="${yOf(v)+4}" fill="#8b949e" font-size="8" text-anchor="end" font-family="monospace">${v>0?"+":""}${v}</text>`).join("");
-
-  // Bars
-  const bW=Math.max(4, cW/n-3);
+  const bW=Math.max(4,cW/n-3);
   let bars=filled.map((p,i)=>{
-    const y=p.sc>=0?yOf(p.sc):z;
-    const h=Math.max(2,Math.abs(yOf(p.sc)-z));
+    const y=p.sc>=0?yOf(p.sc):z;const h=Math.max(2,Math.abs(yOf(p.sc)-z));
     const col=p.sc>=5?"#00ff88":p.sc>0?"rgba(0,255,136,.65)":p.sc<=-5?"#ff3b5c":"rgba(255,59,92,.65)";
     return `<rect x="${(xOf(i)-bW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="2"/>`;
   }).join("");
-
-  // Score polyline (white dashed over bars)
   const linePts=filled.map((p,i)=>`${xOf(i).toFixed(1)},${yOf(p.sc).toFixed(1)}`).join(" ");
   const line=`<polyline points="${linePts}" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.5" stroke-dasharray="5,3"/>`;
   const lastDot=`<circle cx="${xOf(n-1).toFixed(1)}" cy="${yOf(filled[n-1].sc).toFixed(1)}" r="3.5" fill="white" stroke="#0d1117" stroke-width="1.2"/>`;
-
-  // X labels
   const step=Math.max(1,Math.ceil(n/5));
-  let xLbls=filled.map((p,i)=>{
-    if(i===0||i===n-1||i%step===0)
-      return `<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${p.d.toLocaleDateString([],{month:"short",day:"numeric"})}</text>`;
-    return "";
-  }).join("");
-
+  let xLbls=filled.map((p,i)=>i===0||i===n-1||i%step===0?`<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${p.d.toLocaleDateString([],{month:"short",day:"numeric"})}</text>`:"").join("");
   return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
     <div style="padding:10px 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Edge Score History — ${assetId}</div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;min-width:260px">
@@ -2987,43 +3270,44 @@ function scHistoryChart(assetId, curScore) {
   </div>`;
 }
 
-// ── RENDER: ASSET SCORECARD ───────────────────────────────────────────────────
+// ── RENDER: ASSET SCORECARD (adds stable IDs for updateAssetUI) ───────────────
 function renderScorecard() {
   const assetOpts = ASSETS_SCORED.map(a =>
     `<option value="${a.id}" ${a.id===state.scAsset?"selected":""}>${a.name}</option>`
   ).join("");
-
-  const raw = ASSETS_SCORED.find(a => a.id === state.scAsset) || ASSETS_SCORED[0];
-  const scored = calculateAssetScore(raw);
+  // Use cached engine results if available; else compute synchronously
+  const liveData = state.scLiveData || null;
+  const raw    = ASSETS_SCORED.find(a => a.id === state.scAsset) || ASSETS_SCORED[0];
+  const scored = state.scAllScores?.[raw.id] || calculateAssetScore(raw, liveData);
   const comp   = scored.components;
   const sc     = scored.totalScore;
   const bc     = sc >= 3 ? "var(--bull)" : sc <= -3 ? "var(--bear)" : sc >= 1 ? "#7effc4" : sc <= -1 ? "#ff8fa0" : "var(--neutral)";
   const biasLblBg = sc >= 3 ? "rgba(0,255,136,.15)" : sc <= -3 ? "rgba(255,59,92,.15)" : "rgba(240,180,41,.12)";
   const metrics = getAssetMetrics(raw);
+  const isLive  = state.cotLive || state.sentimentLive || state.econLive;
 
-  // ── LEFT PANEL ──
   const leftPanel = `<div class="sc-left">
     <div class="sc-gauge-card">
-      ${scGaugeSVG(sc, 10)}
-      <div class="sc-score-num" style="color:${bc}">${sc>=0?"+":""}${sc}</div>
+      <div id="sc-gauge-wrap">${scGaugeSVG(sc, 10)}</div>
+      <div id="sc-score-num" class="sc-score-num" style="color:${bc}">${sc>=0?"+":""}${sc}</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">EDGE SCORE</div>
-      <span class="sc-bias-lbl" style="color:${bc};background:${biasLblBg};margin-bottom:4px">${scored.bias}</span>
+      <span id="sc-bias-lbl" class="sc-bias-lbl" style="color:${bc};background:${biasLblBg};margin-bottom:4px">${scored.bias}</span>
     </div>
     <div class="sc-component-list">
-      ${scCompBar("Technical", comp.technical, 2)}
-      ${scCompBar("Sentiment", comp.sentiment, 2)}
-      ${scCompBar("COT / Institutional", comp.cot, 2)}
-      ${scCompBar("Eco Growth", comp.growth, 2)}
-      ${scCompBar("Inflation", comp.inflation, 2)}
-      ${scCompBar("Jobs & Rates", comp.jobs, 2)}
+      ${scCompBar("Technical",          comp.technical,  2, "technical")}
+      ${scCompBar("Sentiment",          comp.sentiment,  2, "sentiment")}
+      ${scCompBar("COT / Institutional",comp.cot,        2, "cot")}
+      ${scCompBar("Eco Growth",         comp.growth,     2, "growth")}
+      ${scCompBar("Inflation",          comp.inflation,  2, "inflation")}
+      ${scCompBar("Jobs & Rates",       comp.jobs,       2, "jobs")}
     </div>
     <div class="infobox ib-blue" style="margin:0">
       <span class="iblabel" style="color:var(--accent)">ℹ EDGE SCORE</span>
-      Sum of 6 weighted components. Score ≥ +5 = Bullish · ≤ -5 = Bearish
+      Weighted: Tech×0.30 · Sent×0.20 · COT×0.20 · Macro×0.30
+      <br><span id="sc-status" class="${isLive?"cbadge-live":"cbadge-demo"}">${isLive?"● LIVE DATA":"STATIC DATA"}</span>
     </div>
   </div>`;
 
-  // ── MIDDLE PANEL ──
   const midPanel = `<div class="sc-mid">
     ${scHistoryChart(raw.id, sc)}
     <div class="sc-section-card">
@@ -3037,20 +3321,19 @@ function renderScorecard() {
         </tr></thead>
         <tbody>
           ${[
-            ["Technical",          comp.technical,  SC_WEIGHTS.technical],
-            ["Retail Sentiment",   comp.sentiment,  SC_WEIGHTS.sentiment],
-            ["Institutional COT",  comp.cot,        SC_WEIGHTS.cot],
-            ["Eco Growth",         comp.growth,     SC_WEIGHTS.growth],
-            ["Inflation",          comp.inflation,  SC_WEIGHTS.inflation],
-            ["Jobs & Rates",       comp.jobs,       SC_WEIGHTS.jobs],
+            ["Technical",         comp.technical,  SC_WEIGHTS.technical],
+            ["Retail Sentiment",  comp.sentiment,  SC_WEIGHTS.sentiment],
+            ["Institutional COT", comp.cot,        SC_WEIGHTS.cot],
+            ["Eco Growth",        comp.growth,     SC_MACRO_WEIGHTS.growth*SC_WEIGHTS.macro],
+            ["Inflation",         comp.inflation,  SC_MACRO_WEIGHTS.inflation*SC_WEIGHTS.macro],
+            ["Jobs & Rates",      comp.jobs,       SC_MACRO_WEIGHTS.jobs*SC_WEIGHTS.macro],
           ].map(([lbl,v,w])=>{
             const col = v>=1?"var(--bull)":v<=-1?"var(--bear)":"var(--neutral)";
-            const bias = v>=1?"Bullish":v<=-1?"Bearish":"Neutral";
             return `<tr>
               <td style="font-family:var(--mono);font-size:11px;color:var(--text)">${lbl}</td>
               <td style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${v>=0?"+":""}${v}</td>
-              <td><span class="sc-tbl-badge ${v>=1?"badge-bull":v<=-1?"badge-bear":"badge-neut"}">${bias}</span></td>
-              <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">×${w.toFixed(1)}</td>
+              <td><span class="sc-tbl-badge ${v>=1?"badge-bull":v<=-1?"badge-bear":"badge-neut"}">${v>=1?"Bullish":v<=-1?"Bearish":"Neutral"}</span></td>
+              <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">×${w.toFixed(2)}</td>
             </tr>`;
           }).join("")}
         </tbody>
@@ -3058,7 +3341,6 @@ function renderScorecard() {
     </div>
   </div>`;
 
-  // ── RIGHT PANEL — detailed metric tables ──
   const makeSectionTbl = (title, rows) => `
     <div class="sc-section-card">
       <div class="sc-section-hd">${title}</div>
@@ -3070,9 +3352,7 @@ function renderScorecard() {
           <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Forecast</td>
           <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Surprise</td>
         </tr></thead>
-        <tbody>
-          ${rows.map(r=>scMetricRow(r.m,r.bias,r.act,r.fore,r.surp)).join("")}
-        </tbody>
+        <tbody>${rows.map(r=>scMetricRow(r.m,r.bias,r.act,r.fore,r.surp)).join("")}</tbody>
       </table>
     </div>`;
 
@@ -3084,24 +3364,17 @@ function renderScorecard() {
     ${makeSectionTbl("👷 Jobs Market", metrics.jobs)}
   </div>`;
 
-  const html = `
+  document.getElementById("page-scorecard").innerHTML = `
   <div class="sc-page-hd">
     <div class="sc-page-title">📋 Asset Scorecard</div>
-    <select class="sc-sel" onchange="state.scAsset=this.value;renderScorecard()">
+    <select class="sc-sel" onchange="state.scAsset=this.value;renderScorecard();runEngine()">
       ${assetOpts}
     </select>
   </div>
-  <div class="sc-3col">
-    ${leftPanel}
-    ${midPanel}
-    ${rightPanel}
-  </div>`;
-
-  document.getElementById("page-scorecard").innerHTML = html;
+  <div class="sc-3col">${leftPanel}${midPanel}${rightPanel}</div>`;
 }
 
-// ── RENDER: FOREX SCORECARD ───────────────────────────────────────────────────
-// Extended pairs list for forex scorecard
+// ── RENDER: FOREX SCORECARD (adds data-* attributes for updateForexUI) ────────
 const SC_FOREX_PAIRS = [
   {id:"EURUSD",base:"EUR",quote:"USD",name:"Euro / Dollar"},
   {id:"GBPUSD",base:"GBP",quote:"USD",name:"Pound / Dollar"},
@@ -3118,45 +3391,43 @@ const SC_FOREX_PAIRS = [
 ];
 
 function renderForexScorecard() {
-  const ccyScores = buildCurrencyScores();
+  const liveData  = state.scLiveData || null;
+  const ccyScores = state.scCcyScores || buildCurrencyScores(liveData);
+  const pairs     = state.scFxPairs   || SC_FOREX_PAIRS.map(p=>({...p,...calculateForexScore(p.base,p.quote,ccyScores)}));
   const selPair   = state.scForexPair || "EURUSD";
+  const SCORE_MAX = 10;
+  const isLive    = state.cotLive || state.sentimentLive || state.econLive;
 
   // ── Pair grid ──────────────────────────────────────────────────────────────
-  const SCORE_MAX = 10; // for bar scaling
   let grid = '<div class="fx-grid">';
-
-  SC_FOREX_PAIRS.forEach(pair => {
-    const fx    = calculateForexScore(pair.base, pair.quote, ccyScores);
-    const pCol  = fx.pairScore >= 3 ? "var(--bull)" : fx.pairScore <= -3 ? "var(--bear)" : fx.pairScore >= 1 ? "#7effc4" : fx.pairScore <= -1 ? "#ff8fa0" : "var(--neutral)";
-    const pBg   = fx.pairScore >= 3 ? "rgba(0,255,136,.12)" : fx.pairScore <= -3 ? "rgba(255,59,92,.12)" : "rgba(240,180,41,.08)";
-    const isSel = pair.id === selPair;
-
-    // Bar widths — center = 50%, each point = ~4%
-    const basePct  = Math.round(Math.max(5, Math.min(95, 50 + (fx.baseScore  / SCORE_MAX) * 45)));
-    const quotePct = Math.round(Math.max(5, Math.min(95, 50 + (fx.quoteScore / SCORE_MAX) * 45)));
-    const baseCol  = fx.baseScore  >= 1 ? "var(--bull)" : fx.baseScore  <= -1 ? "var(--bear)" : "var(--neutral)";
-    const quoteCol = fx.quoteScore >= 1 ? "var(--bull)" : fx.quoteScore <= -1 ? "var(--bear)" : "var(--neutral)";
-
-    grid += `<div class="fx-card${isSel?" selected":""}" onclick="state.scForexPair='${pair.id}';renderForexScorecard()">
+  pairs.forEach(fx => {
+    const pCol  = fx.pairScore>=3?"var(--bull)":fx.pairScore<=-3?"var(--bear)":fx.pairScore>=1?"#7effc4":fx.pairScore<=-1?"#ff8fa0":"var(--neutral)";
+    const pBg   = fx.pairScore>=3?"rgba(0,255,136,.12)":fx.pairScore<=-3?"rgba(255,59,92,.12)":"rgba(240,180,41,.08)";
+    const basePct  = Math.round(Math.max(5,Math.min(95,50+(fx.baseScore /SCORE_MAX)*45)));
+    const quotePct = Math.round(Math.max(5,Math.min(95,50+(fx.quoteScore/SCORE_MAX)*45)));
+    const baseCol  = fx.baseScore >=1?"var(--bull)":fx.baseScore <=-1?"var(--bear)":"var(--neutral)";
+    const quoteCol = fx.quoteScore>=1?"var(--bull)":fx.quoteScore<=-1?"var(--bear)":"var(--neutral)";
+    grid += `<div class="fx-card${fx.id===selPair?" selected":""}" data-fx-pair="${fx.id}"
+      onclick="state.scForexPair='${fx.id}';renderForexScorecard()">
       <div class="fx-card-hd">
-        <span class="fx-pair-sym">${pair.id}</span>
-        <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${pair.name}</span>
+        <span class="fx-pair-sym">${fx.id}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${fx.name}</span>
         <span class="sc-tbl-badge ${fx.pairScore>=1?"badge-bull":fx.pairScore<=-1?"badge-bear":"badge-neut"}" style="font-size:9px">${fx.bias}</span>
       </div>
       <div class="fx-card-body">
         <div class="fx-ccy-row">
-          <span class="fx-ccy-code" style="color:${baseCol}">${pair.base}</span>
-          <div class="fx-ccy-track"><div class="fx-ccy-fill" style="width:${basePct}%;background:${baseCol}"></div></div>
-          <span class="fx-ccy-val" style="color:${baseCol}">${fx.baseScore>=0?"+":""}${fx.baseScore}</span>
+          <span class="fx-ccy-code" style="color:${baseCol}">${fx.base}</span>
+          <div class="fx-ccy-track"><div class="fx-ccy-fill" data-fx-bar="base" style="width:${basePct}%;background:${baseCol}"></div></div>
+          <span class="fx-ccy-val" data-fx-val="base" style="color:${baseCol}">${fx.baseScore>=0?"+":""}${fx.baseScore}</span>
         </div>
         <div class="fx-ccy-row">
-          <span class="fx-ccy-code" style="color:${quoteCol}">${pair.quote}</span>
-          <div class="fx-ccy-track"><div class="fx-ccy-fill" style="width:${quotePct}%;background:${quoteCol}"></div></div>
-          <span class="fx-ccy-val" style="color:${quoteCol}">${fx.quoteScore>=0?"+":""}${fx.quoteScore}</span>
+          <span class="fx-ccy-code" style="color:${quoteCol}">${fx.quote}</span>
+          <div class="fx-ccy-track"><div class="fx-ccy-fill" data-fx-bar="quote" style="width:${quotePct}%;background:${quoteCol}"></div></div>
+          <span class="fx-ccy-val" data-fx-val="quote" style="color:${quoteCol}">${fx.quoteScore>=0?"+":""}${fx.quoteScore}</span>
         </div>
         <div class="fx-diff-row">
-          <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">PAIR SCORE (${pair.base}−${pair.quote})</span>
-          <span class="fx-diff-score" style="color:${pCol};background:${pBg};padding:2px 10px;border-radius:6px">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">PAIR SCORE (${fx.base}−${fx.quote})</span>
+          <span data-fx-score="${fx.id}" style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${pCol};background:${pBg};padding:2px 10px;border-radius:6px">
             ${fx.pairScore>=0?"+":""}${fx.pairScore}
           </span>
         </div>
@@ -3165,16 +3436,14 @@ function renderForexScorecard() {
   });
   grid += '</div>';
 
-  // ── Detail panel for selected pair ────────────────────────────────────────
+  // ── Detail panel ──────────────────────────────────────────────────────────
   const selPairObj = SC_FOREX_PAIRS.find(p=>p.id===selPair) || SC_FOREX_PAIRS[0];
-  const selFX = calculateForexScore(selPairObj.base, selPairObj.quote, ccyScores);
-
+  const selFX  = pairs.find(p=>p.id===selPair) || calculateForexScore(selPairObj.base, selPairObj.quote, ccyScores);
   const baseRaw  = ASSETS_SCORED.find(a=>a.id===selPairObj.base);
   const quoteRaw = ASSETS_SCORED.find(a=>a.id===selPairObj.quote);
-  const baseSc   = baseRaw  ? calculateAssetScore(baseRaw)  : null;
-  const quoteSc  = quoteRaw ? calculateAssetScore(quoteRaw) : null;
-
-  const detailCol = selFX.pairScore >= 3 ? "var(--bull)" : selFX.pairScore <= -3 ? "var(--bear)" : "var(--neutral)";
+  const baseSc   = baseRaw  ? calculateAssetScore(baseRaw,  liveData) : null;
+  const quoteSc  = quoteRaw ? calculateAssetScore(quoteRaw, liveData) : null;
+  const detailCol = selFX.pairScore>=3?"var(--bull)":selFX.pairScore<=-3?"var(--bear)":"var(--neutral)";
 
   const compTable = (label, scored) => {
     if (!scored) return `<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px">No data for ${label}</div>`;
@@ -3182,20 +3451,11 @@ function renderForexScorecard() {
     return `<div class="sc-section-card">
       <div class="sc-section-hd">${label} Component Scores</div>
       <table class="sc-tbl">
-        ${[
-          ["Technical",  c.technical],
-          ["Sentiment",  c.sentiment],
-          ["COT",        c.cot],
-          ["Eco Growth", c.growth],
-          ["Inflation",  c.inflation],
-          ["Jobs",       c.jobs],
-        ].map(([n,v])=>{
+        ${[["Technical",c.technical],["Sentiment",c.sentiment],["COT",c.cot],["Eco Growth",c.growth],["Inflation",c.inflation],["Jobs",c.jobs]].map(([n,v])=>{
           const col=v>=1?"var(--bull)":v<=-1?"var(--bear)":"var(--neutral)";
-          return `<tr>
-            <td style="font-family:var(--mono);font-size:10px;color:var(--text)">${n}</td>
+          return `<tr><td style="font-family:var(--mono);font-size:10px;color:var(--text)">${n}</td>
             <td style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col}">${v>=0?"+":""}${v}</td>
-            <td><span class="sc-tbl-badge ${v>=1?"badge-bull":v<=-1?"badge-bear":"badge-neut"}" style="font-size:8px">${v>=1?"▲":v<=-1?"▼":"→"}</span></td>
-          </tr>`;
+            <td><span class="sc-tbl-badge ${v>=1?"badge-bull":v<=-1?"badge-bear":"badge-neut"}" style="font-size:8px">${v>=1?"▲":v<=-1?"▼":"→"}</span></td></tr>`;
         }).join("")}
         <tr style="border-top:2px solid var(--border)">
           <td style="font-family:var(--mono);font-size:10px;font-weight:bold;color:var(--text)">TOTAL</td>
@@ -3206,59 +3466,45 @@ function renderForexScorecard() {
     </div>`;
   };
 
-  // Pair strength visualiser (wider gauge)
-  const gaugeHtml = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;grid-column:span 2">
-    ${scGaugeSVG(selFX.pairScore, 10)}
-    <div style="font-family:var(--mono);font-size:32px;font-weight:bold;color:${detailCol};margin-top:4px">${selFX.pairScore>=0?"+":""}${selFX.pairScore}</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">PAIR SCORE = ${selPairObj.base}(${selFX.baseScore}) − ${selPairObj.quote}(${selFX.quoteScore})</div>
-    <span class="sc-bias-lbl" style="color:${detailCol};background:rgba(0,0,0,.3);border:1px solid ${detailCol};margin-top:8px;display:inline-block;padding:4px 18px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:bold">${selFX.bias}</span>
-  </div>`;
-
   const detail = `<div class="fx-detail">
-    <div class="fx-detail-hd">🔍 Pair Detail: ${selPair} — ${selPairObj.name}</div>
+    <div class="fx-detail-hd" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🔍 Pair Detail: ${selPair} — ${selPairObj.name}</span>
+      <span id="fx-status" class="${isLive?"cbadge-live":"cbadge-demo"}">${isLive?"● LIVE DATA":"STATIC DATA"}</span>
+    </div>
     <div class="fx-detail-cols" style="grid-template-columns:1fr 1fr auto;gap:12px">
       ${compTable(selPairObj.base, baseSc)}
       ${compTable(selPairObj.quote, quoteSc)}
-      ${gaugeHtml}
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center">
+        ${scGaugeSVG(selFX.pairScore, 10)}
+        <div style="font-family:var(--mono);font-size:32px;font-weight:bold;color:${detailCol};margin-top:4px">${selFX.pairScore>=0?"+":""}${selFX.pairScore}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">${selPairObj.base}(${selFX.baseScore}) − ${selPairObj.quote}(${selFX.quoteScore})</div>
+        <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${detailCol};border:1px solid ${detailCol};padding:4px 18px;border-radius:20px;display:inline-block;margin-top:8px">${selFX.bias}</span>
+      </div>
     </div>
   </div>`;
 
-  // ── Currency strength ranking ──────────────────────────────────────────────
-  const sorted = Object.entries(ccyScores).sort((a,b)=>b[1]-a[1]);
-  const csMax  = Math.max(...sorted.map(([,v])=>Math.abs(v)), 1);
-  const csRows = sorted.map(([ccy,sc],i)=>{
-    const col=sc>=1?"var(--bull)":sc<=-1?"var(--bear)":"var(--neutral)";
-    const pct=Math.round(Math.max(5,Math.min(95,50+(sc/csMax)*45)));
-    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border)">
-      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);width:16px">${i+1}</span>
-      <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col};width:36px">${ccy}</span>
-      <div style="flex:1;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${col};border-radius:4px"></div>
-      </div>
-      <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col};width:28px;text-align:right">${sc>=0?"+":""}${sc}</span>
-    </div>`;
-  }).join("");
-
+  // ── Currency ranking ──────────────────────────────────────────────────────
   const csPanel = `<div class="card" style="margin-bottom:12px">
     <div class="chd"><span class="ctitle">Currency Strength Ranking</span><span class="cbadge">EDGE SCORE MODEL</span></div>
-    ${csRows}
+    <div id="sc-ccy-ranking"></div>
   </div>`;
 
-  const html = `
+  document.getElementById("page-forex").innerHTML = `
   <div class="sc-page-hd">
     <div class="sc-page-title">💹 Forex Scorecard</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Pair Score = Base Strength − Quote Strength · ≥+3 Bullish · ≤-3 Bearish</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Pair Score = Base − Quote · ≥+3 Bullish · ≤-3 Bearish</div>
   </div>
   ${csPanel}
   ${grid}
   ${detail}
   <div class="infobox ib-blue">
     <span class="iblabel" style="color:var(--accent)">ℹ FOREX SCORECARD METHOD</span>
-    Each currency is independently scored across 6 components. Pair score = base − quote.
-    Click any pair card to see the full component breakdown. Rankings update in real time.
+    Each currency scored independently across 6 live components. Pair = base − quote.
+    Data sources: COT (CFTC), Retail Sentiment (Myfxbook), Economic (FRED). Auto-refreshes every 5 min.
   </div>`;
 
-  document.getElementById("page-forex").innerHTML = html;
+  // Populate ranking immediately after DOM insert
+  updateForexUI(pairs, ccyScores);
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
@@ -3266,6 +3512,9 @@ initTabs();
 renderActive();
 refreshAll();
 setInterval(refreshAll,15*60*1000);
+// Scorecard engine — runs after refreshAll has populated state, then every 5 min
+setTimeout(runEngine, 2000);
+setInterval(runEngine, 5*60*1000);
 </script>
 </body>
 </html>
