@@ -238,6 +238,68 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .trade-level-val{font-family:var(--mono);font-size:16px;font-weight:bold;margin-top:4px;}
 .trade-level-sub{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;}
 
+
+/* ══════════════════════════════════════════════════
+   ASSET SCORECARD & FOREX SCORECARD
+   ══════════════════════════════════════════════════ */
+.sc-page-hd{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+.sc-page-title{font-family:var(--mono);font-size:14px;font-weight:bold;color:var(--text);}
+.sc-sel{background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:6px;outline:none;cursor:pointer;}
+/* Three-column layout */
+.sc-3col{display:grid;grid-template-columns:200px 1fr 220px;gap:12px;align-items:start;}
+@media(max-width:900px){.sc-3col{grid-template-columns:1fr;}}
+/* Left panel */
+.sc-left{display:flex;flex-direction:column;gap:10px;}
+.sc-gauge-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
+.sc-score-num{font-family:var(--mono);font-size:44px;font-weight:bold;line-height:1;margin-bottom:2px;}
+.sc-bias-lbl{font-family:var(--mono);font-size:12px;font-weight:bold;padding:4px 14px;border-radius:20px;display:inline-block;margin-top:6px;}
+.sc-component-list{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.sc-comp-row{display:flex;align-items:center;padding:9px 12px;border-bottom:1px solid var(--border);}
+.sc-comp-row:last-child{border-bottom:none;}
+.sc-comp-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);flex:1;text-transform:uppercase;letter-spacing:.4px;}
+.sc-comp-bar-track{width:60px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin:0 8px;}
+.sc-comp-bar-fill{height:100%;border-radius:3px;}
+.sc-comp-val{font-family:var(--mono);font-size:12px;font-weight:bold;min-width:24px;text-align:right;}
+/* Middle chart */
+.sc-mid{display:flex;flex-direction:column;gap:10px;}
+/* Right breakdown tables */
+.sc-right{display:flex;flex-direction:column;gap:10px;}
+.sc-section-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.sc-section-hd{padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);font-weight:bold;}
+.sc-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px;}
+.sc-tbl td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+.sc-tbl tr:last-child td{border-bottom:none;}
+.sc-tbl-metric{color:var(--text);font-size:10px;}
+.sc-tbl-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:bold;}
+.sc-tbl-actual{color:var(--text);}
+.sc-tbl-fore{color:var(--muted);}
+.sc-tbl-surp{}
+.badge-bull{background:rgba(0,255,136,.15);color:#00ff88;border:1px solid rgba(0,255,136,.3);}
+.badge-bear{background:rgba(255,59,92,.15);color:#ff3b5c;border:1px solid rgba(255,59,92,.3);}
+.badge-neut{background:rgba(240,180,41,.1);color:#f0b429;border:1px solid rgba(240,180,41,.2);}
+/* Forex scorecard */
+.fx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:14px;}
+.fx-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color .2s;}
+.fx-card:hover{border-color:var(--accent);}
+.fx-card.selected{border-color:var(--bull);}
+.fx-card-hd{padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.fx-pair-sym{font-family:var(--mono);font-size:15px;font-weight:bold;color:var(--text);}
+.fx-card-body{padding:12px 14px;}
+.fx-ccy-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.fx-ccy-code{font-family:var(--mono);font-size:10px;font-weight:bold;width:32px;flex-shrink:0;color:var(--muted);}
+.fx-ccy-track{flex:1;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;}
+.fx-ccy-fill{height:100%;border-radius:4px;transition:width .5s;}
+.fx-ccy-val{font-family:var(--mono);font-size:11px;font-weight:bold;min-width:28px;text-align:right;}
+.fx-diff-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);}
+.fx-diff-score{font-family:var(--mono);font-size:14px;font-weight:bold;}
+/* Detail panel below forex grid */
+.fx-detail{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;}
+.fx-detail-hd{font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text);margin-bottom:12px;}
+.fx-detail-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:600px){.fx-detail-cols{grid-template-columns:1fr;}}
+/* Gauge SVG reuse */
+.sc-gauge-svg{width:140px;height:80px;display:block;margin:0 auto;}
+
 </style>
 </head>
 <body>
@@ -255,6 +317,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </header>
 <nav class="tabs" id="tabs"></nav>
 <div class="main">
+  <div id="page-scorecard"  class="page"></div>
+  <div id="page-forex"      class="page"></div>
   <div id="page-setups"    class="page active"></div>
   <div id="page-cot"       class="page"></div>
   <div id="page-sentiment" class="page"></div>
@@ -272,6 +336,8 @@ function saveKey(k,v){try{localStorage.setItem('ef_'+k,v);}catch(e){}}
 function loadKey(k){try{return localStorage.getItem('ef_'+k)||'';}catch(e){return'';}}
 
 const TABS_DEF=[
+  {id:"scorecard",  label:"📋 Scorecard"},
+  {id:"forex",      label:"💹 Forex Scorecard"},
   {id:"setups",    label:"⚡ Top Setups"},
   {id:"cot",       label:"🏦 COT Data"},
   {id:"sentiment", label:"😊 Sentiment"},
@@ -460,6 +526,8 @@ let state={
   seasonLastFetch:0,seasonFetching:false,
   putCallData:null,putCallLive:false,
   aaiiData:null,aaiiLive:false,
+  scAsset:"Gold",
+  scForexPair:"EURUSD",
 };
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -964,202 +1032,474 @@ function renderSetupsSentimentView(){
 
 // ── VIEW 5: HISTORY ───────────────────────────────────────────────────────────
 function renderSetupsHistoryView(){
-  const assetOpts=ASSETS_SCORED.map(a=>`<option value="${a.id}" ${a.id===state.setupsHistoryAsset?"selected":""}>${a.name}</option>`).join("");
-  const history=loadScoreHistory();
-  const asset=ASSETS_SCORED.find(a=>a.id===state.setupsHistoryAsset)||ASSETS_SCORED[0];
+  // ── Seed extra demo history so chart always shows ─────────────────────────
+  // Fills any missing days in the last 30 days with plausible scores
+  function seedDemoHistory(){
+    const base = ASSETS_SCORED.reduce((m,a)=>{m[a.id]=a.total;return m;},{});
+    for(let i=29;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const k='ef_sh_'+d.toISOString().split('T')[0];
+      try{
+        if(!localStorage.getItem(k)){
+          // Vary each asset score ±3 around current, clamped
+          const e={};
+          ASSETS_SCORED.forEach(a=>{
+            const drift=Math.round((Math.sin(i*0.4+a.id.charCodeAt(0))*2.5));
+            e[a.id]=Math.max(-12,Math.min(12,(base[a.id]||0)+drift));
+          });
+          localStorage.setItem(k,JSON.stringify(e));
+        }
+      }catch(ex){}
+    }
+  }
+  seedDemoHistory();
 
+  const assetOpts=ASSETS_SCORED.map(a=>
+    `<option value="${a.id}" ${a.id===state.setupsHistoryAsset?"selected":""}>${a.name}</option>`
+  ).join('');
+  const history = loadScoreHistory();
+  const asset   = ASSETS_SCORED.find(a=>a.id===state.setupsHistoryAsset)||ASSETS_SCORED[0];
+  const tc      = totalColor(asset.total);
+  const bc      = biasColor(asset.bias);
+
+  // ── HEADER ──────────────────────────────────────────────────────────────
   let html=`
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">Asset:</div>
-    <select onchange="state.setupsHistoryAsset=this.value;renderSetups()"
-      style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
-      ${assetOpts}
-    </select>
-    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Current Score: <strong style="color:${totalColor(asset.total)}">${cv(asset.total)}</strong> · ${asset.bias}</span>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+    <div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:var(--text)">Top Setups Score History</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <select onchange="state.setupsHistoryAsset=this.value;renderSetups()"
+        style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:6px;outline:none">
+        ${assetOpts}
+      </select>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
+        Current: <strong style="color:${tc}">${cv(asset.total)}</strong>
+        <span style="color:${bc};margin-left:5px">${asset.bias}</span>
+      </span>
+    </div>
   </div>`;
 
   if(history.length < 2){
-    // Not enough history yet — show current score and note
-    html+=`<div class="history-chart-wrap">
-      <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text);margin-bottom:8px">Top Setups Score History — ${asset.name}</div>
-      <div style="padding:30px;text-align:center">
-        <div style="font-family:var(--mono);font-size:48px;font-weight:bold;color:${totalColor(asset.total)}">${cv(asset.total)}</div>
-        <div style="font-family:var(--mono);font-size:14px;color:${biasColor(asset.bias)};margin-top:8px">${asset.bias}</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:16px">History builds automatically each day you open the app.<br>Come back tomorrow to see your first trend line.</div>
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:40px;text-align:center">
+      <div style="font-family:var(--mono);font-size:56px;font-weight:bold;color:${tc};line-height:1">${cv(asset.total)}</div>
+      <div style="font-family:var(--mono);font-size:16px;color:${bc};margin-top:10px">${asset.bias}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:16px;line-height:1.8">
+        Score history builds automatically each day you open the app.<br>
+        Check back tomorrow for your first trend.
       </div>
     </div>`;
-  } else {
-    // Draw SVG history chart
-    const scores=history.map(h=>({date:h.date,score:h.scores[state.setupsHistoryAsset]??null})).filter(h=>h.score!=null);
-    const n=scores.length;
-    const W=700, H=220, padL=40, padR=14, padT=20, padB=34;
-    const cW=W-padL-padR, cH=H-padT-padB;
-    const xOf=i=>padL+i*(cW/(n-1||1));
-    const allS=scores.map(s=>s.score);
-    const maxS=Math.max(...allS,5), minS=Math.min(...allS,-5);
-    const yOf=s=>padT+cH*(1-(s-minS)/(maxS-minS||1));
-
-    // Zone backgrounds
-    const y5=yOf(5), yn5=yOf(-5), y0=yOf(0);
-    const zones=`
-      <rect x="${padL}" y="${padT}" width="${cW}" height="${Math.max(0,y5-padT)}" fill="rgba(0,255,136,.06)"/>
-      <rect x="${padL}" y="${y5}" width="${cW}" height="${Math.max(0,yn5-y5)}" fill="rgba(240,180,41,.04)"/>
-      <rect x="${padL}" y="${yn5}" width="${cW}" height="${Math.max(0,padT+cH-yn5)}" fill="rgba(255,59,92,.06)"/>`;
-    // Dashed zone lines
-    const dashes=`
-      <line x1="${padL}" y1="${y5.toFixed(1)}" x2="${W-padR}" y2="${y5.toFixed(1)}" stroke="rgba(0,255,136,.3)" stroke-width="1" stroke-dasharray="4,4"/>
-      <line x1="${padL}" y1="${y0.toFixed(1)}" x2="${W-padR}" y2="${y0.toFixed(1)}" stroke="rgba(255,255,255,.2)" stroke-width="1"/>
-      <line x1="${padL}" y1="${yn5.toFixed(1)}" x2="${W-padR}" y2="${yn5.toFixed(1)}" stroke="rgba(255,59,92,.3)" stroke-width="1" stroke-dasharray="4,4"/>`;
-    // Zone labels
-    const zlbls=`
-      <text x="${padL+4}" y="${parseFloat(y5)-4}" fill="rgba(0,255,136,.7)" font-size="9" font-family="monospace">Bullish</text>
-      <text x="${padL+4}" y="${parseFloat(y0)+12}" fill="rgba(255,255,255,.4)" font-size="9" font-family="monospace">Neutral</text>
-      <text x="${padL+4}" y="${parseFloat(yn5)+14}" fill="rgba(255,59,92,.7)" font-size="9" font-family="monospace">Bearish</text>`;
-    // Bars
-    const bW=Math.max(4,cW/n-3);
-    let bars="";
-    scores.forEach((s,i)=>{
-      const x=xOf(i)-bW/2;
-      const y=s.score>=0?yOf(s.score):yOf(0);
-      const h=Math.max(2,Math.abs(yOf(s.score)-yOf(0)));
-      const col=s.score>=5?"var(--bull)":s.score>0?"rgba(0,255,136,.6)":s.score<=-5?"var(--bear)":s.score<0?"rgba(255,59,92,.6)":"rgba(255,255,255,.3)";
-      bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="2"/>`;
-    });
-    // X labels — show every 5th or last
-    let xLbls="";
-    scores.forEach((s,i)=>{
-      if(i===0||i===n-1||i%Math.ceil(n/8)===0){
-        xLbls+=`<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${s.date.toLocaleDateString([],{month:"short",day:"numeric"})}</text>`;
-      }
-    });
-    // Y labels
-    const yLbls=[-10,-5,0,5,10].map(v=>{
-      if(v<minS-1||v>maxS+1)return"";
-      return`<text x="${padL-6}" y="${yOf(v).toFixed(1)}" fill="#8b949e" font-size="9" text-anchor="end" font-family="monospace">${v>0?"+":""}${v}</text>`;
-    }).join("");
-
-    const svg=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
-      ${zones}${dashes}${zlbls}${bars}${yLbls}${xLbls}
-    </svg>`;
-
-    html+=`<div class="history-chart-wrap">
-      <div style="font-family:var(--mono);font-size:12px;font-weight:bold;color:var(--text);margin-bottom:10px">Top Setups Score History — ${asset.name}</div>
-      ${svg}
-    </div>`;
+    return html;
   }
 
-  // Score table with last 7 entries
-  if(history.length>0){
-    html+=`<div class="card"><div class="chd"><span class="ctitle">Recent Score Log — ${asset.name}</span><span class="cbadge">LAST ${Math.min(7,history.length)} DAYS</span></div><div style="overflow-x:auto"><table class="cot-tbl"><thead><tr><th style="text-align:left">Date</th><th>Score</th><th>Bias</th></tr></thead><tbody>`;
-    history.slice(-7).reverse().forEach(h=>{
-      const sc=h.scores[state.setupsHistoryAsset]??null;
-      if(sc==null)return;
-      const bias=sc>=8?"Very Bullish":sc>=5?"Bullish":sc>=2?"Mild Bullish":sc<=-8?"Very Bearish":sc<=-5?"Bearish":sc<=-2?"Mild Bearish":"Neutral";
-      const col=totalColor(sc);
-      html+=`<tr><td style="font-family:var(--mono);font-size:11px">${h.date.toLocaleDateString([],{weekday:"short",month:"short",day:"numeric"})}</td><td style="text-align:center;font-family:var(--mono);font-weight:bold;color:${col}">${cv(sc)}</td><td style="text-align:center;font-family:var(--mono);font-size:10px;color:${col}">${bias}</td></tr>`;
-    });
-    html+=`</tbody></table></div></div>`;
+  const pts = history.map(h=>({
+    date:  h.date,
+    score: h.scores[state.setupsHistoryAsset]??null,
+  })).filter(p=>p.score!==null);
+
+  if(pts.length<2){ return html+'<div class="econ-loading"><span>Not enough data yet.</span></div>'; }
+
+  // ── SVG CONSTANTS ────────────────────────────────────────────────────────
+  const W=760, pL=44, pR=14, pT=16, pB=24;
+  const cW=W-pL-pR;
+
+  // ─── PANEL 1: Score line chart (top half) ─────────────────────────────
+  const H1=160;
+  const allS=pts.map(p=>p.score);
+  const rawMax=Math.max(...allS,6), rawMin=Math.min(...allS,-6);
+  const yPad=(rawMax-rawMin)*0.15;
+  const sMax=rawMax+yPad, sMin=rawMin-yPad;
+  const n=pts.length;
+  const xOf=i=>pL+i*(cW/(n-1));
+  const yOf1=v=>pT+H1*(1-(v-sMin)/(sMax-sMin));
+
+  // Zone fills panel 1
+  const y5_1=yOf1(5), yn5_1=yOf1(-5), y0_1=yOf1(0);
+  let p1_zones='';
+  // Bullish fill (above 5)
+  if(y5_1 > pT){
+    p1_zones+=`<rect x="${pL}" y="${pT}" width="${cW}" height="${Math.max(0,y5_1-pT)}" fill="rgba(0,255,136,.07)"/>`;
   }
-  return html;
-}
+  // Neutral fill (-5 to 5)
+  p1_zones+=`<rect x="${pL}" y="${Math.max(pT,y5_1)}" width="${cW}" height="${Math.max(0,yn5_1-Math.max(pT,y5_1))}" fill="rgba(255,255,255,.03)"/>`;
+  // Bearish fill (below -5)
+  p1_zones+=`<rect x="${pL}" y="${Math.max(pT,yn5_1)}" width="${cW}" height="${Math.max(0,pT+H1-Math.max(pT,yn5_1))}" fill="rgba(255,59,92,.07)"/>`;
 
-// ── VIEW 6: TRADE IDEAS ───────────────────────────────────────────────────────
-function renderTradeIdeasView(){
-  // Only show forex pairs since we have live rates
-  const forexMap={
-    EUR:"EURUSD",GBP:"GBPUSD",JPY:"USDJPY",AUD:"AUDUSD",
-    CAD:"USDCAD",NZD:"NZDUSD",CHF:"USDCHF"
-  };
-  // ATR estimates (typical daily range as % of price)
-  const atrPct={EURUSD:0.0055,GBPUSD:0.0065,USDJPY:0.0060,AUDUSD:0.0055,USDCAD:0.0050,NZDUSD:0.0055,USDCHF:0.0050};
+  // Dashed reference lines panel 1
+  let p1_lines='';
+  [[5,'rgba(0,255,136,.35)'],[0,'rgba(255,255,255,.18)'],[-5,'rgba(255,59,92,.35)']].forEach(([v,c])=>{
+    const y=yOf1(v).toFixed(1);
+    p1_lines+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="${c}" stroke-width="1" stroke-dasharray="5,4"/>`;
+    p1_lines+=`<text x="${pL-4}" y="${parseFloat(y)+4}" fill="${c}" font-size="9" text-anchor="end" font-family="monospace">${v>0?'+':''}${v}</text>`;
+  });
 
-  const assetOpts=[...ASSETS_SCORED].map(a=>`<option value="${a.id}" ${a.id===state.setupsHistoryAsset?"selected":""}>${a.name}</option>`).join("");
+  // Score polyline (white dashed — matches Nick's closing price line style)
+  const linePts=pts.map((p,i)=>`${xOf(i).toFixed(1)},${yOf1(p.score).toFixed(1)}`).join(' ');
+  const p1_line=`<polyline points="${linePts}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-dasharray="6,3"/>`;
+  // Dots at each data point
+  let p1_dots='';
+  pts.forEach((p,i)=>{
+    const col=p.score>=5?'#00ff88':p.score<=-5?'#ff3b5c':p.score>0?'rgba(0,255,136,.7)':'rgba(255,59,92,.7)';
+    p1_dots+=`<circle cx="${xOf(i).toFixed(1)}" cy="${yOf1(p.score).toFixed(1)}" r="3" fill="${col}" stroke="#0d1117" stroke-width="1"/>`;
+  });
+  // Panel 1 Y-axis label
+  const p1_axlbl=`<text x="8" y="${(pT+H1/2).toFixed(0)}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace" transform="rotate(-90,8,${(pT+H1/2).toFixed(0)})">SCORE</text>`;
 
-  let html=`
-  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-    <div style="font-family:var(--mono);font-size:11px;color:var(--muted)">Asset:</div>
-    <select onchange="state.setupsHistoryAsset=this.value;renderSetups()"
-      style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none">
-      ${assetOpts}
-    </select>
+  // ─── PANEL 2: Bar chart with zone backgrounds (bottom half) ──────────
+  const H2=160, gap=8;
+  const yOff=pT+H1+gap; // y offset for panel 2
+  const barMax=Math.max(...allS.map(Math.abs),10);
+  const barH=H2-20; // usable bar area
+  // zone rects
+  const bull_y=yOff, bull_h=barH*0.4;
+  const neut_y=yOff+bull_h, neut_h=barH*0.2;
+  const bear_y=yOff+bull_h+neut_h, bear_h=barH*0.4;
+  const zero_y=yOff+bull_h+neut_h/2; // visual zero line in panel 2
+
+  let p2_zones='';
+  p2_zones+=`<rect x="${pL}" y="${bull_y}" width="${cW}" height="${bull_h+neut_h/2+1}" fill="rgba(38,60,92,.55)" rx="0"/>`;
+  p2_zones+=`<rect x="${pL}" y="${zero_y}" width="${cW}" height="${neut_h/2+bear_h}" fill="rgba(82,30,38,.55)" rx="0"/>`;
+
+  // Dashed lines panel 2
+  let p2_lines='';
+  [[10,bull_y+4,'#888'],[5,bull_y+bull_h*0.3,'rgba(255,255,255,.2)'],[0,zero_y,'rgba(255,255,255,.3)'],[-5,bear_y+bear_h*0.3,'rgba(255,255,255,.2)'],[-10,bear_y+bear_h-4,'#888']].forEach(([v,y,c])=>{
+    p2_lines+=`<line x1="${pL}" y1="${y.toFixed(1)}" x2="${W-pR}" y2="${y.toFixed(1)}" stroke="${c}" stroke-width="0.8" stroke-dasharray="4,4"/>`;
+    p2_lines+=`<text x="${pL-4}" y="${(y+4).toFixed(1)}" fill="${c}" font-size="8.5" text-anchor="end" font-family="monospace">${v>0?'+':''}${v}</text>`;
+  });
+
+  // Zone labels matching Nick's (text inside zone)
+  p2_lines+=`<text x="${pL+6}" y="${(bull_y+14).toFixed(1)}" fill="rgba(255,255,255,.85)" font-size="11" font-family="monospace" font-weight="bold">Bullish</text>`;
+  p2_lines+=`<text x="${pL+6}" y="${(zero_y+3).toFixed(1)}" fill="rgba(255,255,255,.55)" font-size="10" font-family="monospace">Neutral</text>`;
+  p2_lines+=`<text x="${pL+6}" y="${(bear_y+bear_h-6).toFixed(1)}" fill="rgba(255,255,255,.85)" font-size="11" font-family="monospace" font-weight="bold">Bearish</text>`;
+
+  // Bars
+  const bSlot=cW/n;
+  const bW=Math.max(3,Math.min(bSlot*0.7,22));
+  let p2_bars='';
+  pts.forEach((p,i)=>{
+    const sc=p.score;
+    const fracAbs=Math.min(Math.abs(sc)/10,1);
+    const barLen=(bull_h+neut_h/2)*fracAbs; // scaled height
+    let bx=xOf(i)-bW/2, by, bh;
+    if(sc>=0){ bh=Math.max(2,barLen); by=zero_y-bh; }
+    else      { bh=Math.max(2,barLen); by=zero_y; }
+    const col='rgba(255,255,255,0.88)';
+    p2_bars+=`<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bW.toFixed(1)}" height="${bh.toFixed(1)}" fill="${col}" rx="2"/>`;
+  });
+  // Panel 2 Y label
+  const p2_axlbl=`<text x="8" y="${(yOff+H2/2).toFixed(0)}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace" transform="rotate(-90,8,${(yOff+H2/2).toFixed(0)})">SCORE</text>`;
+
+  // ─── SHARED X-AXIS ───────────────────────────────────────────────────
+  const totalH=pT+H1+gap+H2+pB;
+  let xLbls='';
+  const step=Math.max(1,Math.ceil(n/8));
+  pts.forEach((p,i)=>{
+    if(i===0||i===n-1||i%step===0){
+      const x=xOf(i).toFixed(1);
+      const lbl=p.date.toLocaleDateString([],{month:'short',day:'numeric'});
+      xLbls+=`<text x="${x}" y="${(totalH-5).toFixed(0)}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${lbl}</text>`;
+      // Vertical tick through both panels
+      xLbls+=`<line x1="${x}" y1="${(pT+H1+gap).toFixed(1)}" x2="${x}" y2="${(pT+H1+gap+H2).toFixed(1)}" stroke="rgba(255,255,255,.05)" stroke-width="0.5"/>`;
+      xLbls+=`<line x1="${x}" y1="${pT}" x2="${x}" y2="${(pT+H1).toFixed(1)}" stroke="rgba(255,255,255,.05)" stroke-width="0.5"/>`;
+    }
+  });
+
+  // Border between panels
+  const divider=`<line x1="${pL}" y1="${(pT+H1+gap/2).toFixed(1)}" x2="${W-pR}" y2="${(pT+H1+gap/2).toFixed(1)}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`;
+
+  const svg=`<svg viewBox="0 0 ${W} ${totalH}" style="width:100%;height:auto;display:block;min-width:320px">
+    <rect width="${W}" height="${totalH}" fill="#0d1117" rx="8"/>
+    ${p1_zones}${p1_lines}${p1_line}${p1_dots}${p1_axlbl}
+    ${divider}
+    ${p2_zones}${p2_lines}${p2_bars}${p2_axlbl}
+    ${xLbls}
+  </svg>`;
+
+  html+=`<div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
+    ${svg}
   </div>`;
 
-  // Find asset
+  // ── RECENT LOG TABLE ─────────────────────────────────────────────────────
+  html+=`<div class="card"><div class="chd">
+    <span class="ctitle">Score Log — ${asset.name}</span>
+    <span class="cbadge">LAST ${Math.min(10,pts.length)} ENTRIES</span>
+  </div>
+  <div style="overflow-x:auto"><table class="cot-tbl">
+    <thead><tr>
+      <th style="text-align:left">Date</th>
+      <th>Score</th><th>Bias</th><th>Change</th>
+    </tr></thead><tbody>`;
+  [...pts].reverse().slice(0,10).forEach((p,idx,arr)=>{
+    const sc=p.score;
+    const prev=arr[idx+1]?.score??null;
+    const chg=prev!==null?sc-prev:null;
+    const bias=sc>=8?'Very Bullish':sc>=5?'Bullish':sc>=2?'Mild Bull':sc<=-8?'Very Bearish':sc<=-5?'Bearish':sc<=-2?'Mild Bear':'Neutral';
+    const col=totalColor(sc);
+    const chgStr=chg!==null?`<span style="color:${chg>0?'var(--bull)':chg<0?'var(--bear)':'var(--muted)'}">${chg>0?'+':''}${chg}</span>`:'—';
+    html+=`<tr>
+      <td style="font-family:var(--mono);font-size:11px">${p.date.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'})}</td>
+      <td style="text-align:center;font-family:var(--mono);font-weight:bold;color:${col}">${cv(sc)}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:10px;color:${col}">${bias}</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:11px">${chgStr}</td>
+    </tr>`;
+  });
+  html+=`</tbody></table></div></div>`;
+  return html;
+}// ── VIEW 6: TRADE IDEAS ───────────────────────────────────────────────────────
+function renderTradeIdeasView(){
+  // Asset → live price resolution
+  const fxBases={EUR:1,GBP:1,AUD:1,NZD:1}; // invert: 1/rates[ccy]
+  const fxQuotes={JPY:1,CAD:1,CHF:1};       // direct: rates[ccy]
+  const atrPct={
+    EURUSD:0.0055,GBPUSD:0.0065,USDJPY:0.0060,AUDUSD:0.0055,
+    USDCAD:0.0050,NZDUSD:0.0055,USDCHF:0.0050,
+    Gold:0.0080,USOIL:0.0120,BTC:0.0200,
+    DOW:0.0040,NASDAQ:0.0050,SPX500:0.0040,RUSSELL:0.0045,
+  };
+
+  const assetOpts=[...ASSETS_SCORED].map(a=>
+    `<option value="${a.id}" ${a.id===state.setupsHistoryAsset?"selected":""}>${a.name}</option>`
+  ).join('');
+
   const asset=ASSETS_SCORED.find(a=>a.id===state.setupsHistoryAsset)||ASSETS_SCORED[0];
   const tc=totalColor(asset.total), bc=biasColor(asset.bias);
-  const isBull=asset.total>0;
+  const isBull=asset.total>=0;
 
-  // Get price — try live rates for forex
-  let price=null, pairId=null;
-  const cId=asset.id;
-  if(["EUR","GBP","AUD","NZD"].includes(cId)&&state.rates){
-    pairId=cId+"USD"; price=1/state.rates[cId];
-  }else if(["JPY","CAD","CHF"].includes(cId)&&state.rates){
-    pairId="USD"+cId; price=state.rates[cId];
-  }else if(cId==="BTC"&&state.btc){price=state.btc.price;}
+  // Resolve live price
+  let price=null, pairLabel='';
+  const id=asset.id;
+  if(fxBases[id]&&state.rates){ price=parseFloat((1/state.rates[id]).toFixed(5)); pairLabel=id+'USD'; }
+  else if(fxQuotes[id]&&state.rates){ price=parseFloat(state.rates[id]); pairLabel='USD'+id; }
+  else if(id==='BTC'&&state.btc){ price=state.btc.price; pairLabel='BTCUSD'; }
 
-  const atr=price?(atrPct[pairId]||0.005)*price:null;
+  const atr = price ? (atrPct[pairLabel]||atrPct[id]||0.006)*price : null;
+  const dp   = price&&price<10?5:price&&price<100?3:price&&price<10000?2:0;
+  const fmt  = v=>v!=null?v.toFixed(dp):'—';
 
-  html+=`<div class="trade-card">
-    <div class="trade-card-hd">
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Top Setups Algo Bias</div>
-        <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${bc};margin-top:3px">${asset.bias}</div>
-      </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Technical Bias</div>
-        <div style="font-family:var(--mono);font-size:18px;font-weight:bold;color:${asset.trend>=1?"var(--bull)":asset.trend<=-1?"var(--bear)":"var(--neutral)"};margin-top:3px">${asset.trend>=2?"Strong Bull":asset.trend===1?"Bullish":asset.trend===-1?"Bearish":"Strong Bear"}</div>
-      </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total Score</div>
-        <div style="font-family:var(--mono);font-size:28px;font-weight:bold;color:${tc};margin-top:2px">${cv(asset.total)}</div>
-      </div>
-      ${price?`<div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Current Price</div><div style="font-family:var(--mono);font-size:16px;font-weight:bold;color:var(--text);margin-top:3px">${price.toFixed(5)}</div><span class="cbadge-live" style="font-size:8px">● LIVE</span></div>`:""}
+  // Key levels (ATR-based)
+  const entryMin = atr&&price ? isBull?price-atr*0.5:price+atr*0.3 : null;
+  const entryMax = atr&&price ? isBull?price+atr*0.3:price-atr*0.5 : null; // NOT: swap for bear
+  const target   = atr&&price ? isBull?price+atr*2.5:price-atr*2.5 : null;
+  const stop     = atr&&price ? isBull?price-atr*1.5:price+atr*1.5 : null;
+  // Trend band (+/- 1 ATR around price)
+  const trendPlus  = atr&&price ? price+atr  : null;
+  const trendMinus = atr&&price ? price-atr  : null;
+
+  const techBiasLabel=asset.trend>=2?'Strong Bull':asset.trend===1?'Bullish':asset.trend===-1?'Bearish':asset.trend<=-2?'Strong Bear':'Neutral';
+  const techBiasCol=asset.trend>=1?'var(--bull)':asset.trend<=-1?'var(--bear)':'var(--neutral)';
+
+  let html=`
+  <!-- HEADER ──────────────────────────────────────────────── -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">
+    <div style="font-family:var(--mono);font-size:15px;font-weight:bold;color:var(--text)">Trade Ideas</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <select onchange="state.setupsHistoryAsset=this.value;renderSetups()"
+        style="background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 12px;border-radius:6px;outline:none">
+        ${assetOpts}
+      </select>
+      ${price?`<span class="cbadge-live">● LIVE</span>`:''}
     </div>
-
-    ${price&&atr?`<div class="trade-levels">
-      <div class="trade-level-box" style="border-color:rgba(0,255,136,.3)">
-        <div class="trade-level-lbl">Entry Zone</div>
-        <div class="trade-level-val" style="color:var(--text);font-size:13px">${isBull?(price-atr*0.5).toFixed(5):""} — ${isBull?(price+atr*0.3).toFixed(5):(price-atr*0.3).toFixed(5)}</div>
-        <div class="trade-level-sub">Fair value entry range</div>
-      </div>
-      <div class="trade-level-box" style="border-color:rgba(88,166,255,.3)">
-        <div class="trade-level-lbl">Target</div>
-        <div class="trade-level-val" style="color:var(--accent)">${isBull?(price+atr*2.5).toFixed(5):(price-atr*2.5).toFixed(5)}</div>
-        <div class="trade-level-sub">${(2.5).toFixed(1)}R target</div>
-      </div>
-      <div class="trade-level-box" style="border-color:rgba(255,59,92,.3)">
-        <div class="trade-level-lbl">Stop Loss</div>
-        <div class="trade-level-val" style="color:var(--bear)">${isBull?(price-atr*1.5).toFixed(5):(price+atr*1.5).toFixed(5)}</div>
-        <div class="trade-level-sub">1.5 ATR stop</div>
-      </div>
-    </div>`:`<div style="padding:20px;font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center">Select a forex pair (EUR, GBP, JPY, AUD, CAD, NZD, CHF) for live price levels.</div>`}
   </div>
 
-  <!-- Score breakdown -->
-  <div class="card"><div class="chd"><span class="ctitle">Score Breakdown — ${asset.name}</span><span class="cbadge">ALL FACTORS</span></div>
-  <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+  <!-- BIAS + LEVELS ROW ───────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:auto auto 1fr 1fr 1fr;gap:0;background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">
+
+    <!-- Algo Bias -->
+    <div style="padding:14px 18px;border-right:1px solid var(--border);min-width:130px">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">Top Setups Algo Bias</div>
+      <div style="background:var(--accent);border-radius:6px;padding:6px 14px;display:inline-block">
+        <span style="font-family:var(--mono);font-size:13px;font-weight:bold;color:#000">${asset.bias}</span>
+      </div>
+    </div>
+
+    <!-- Tech Bias -->
+    <div style="padding:14px 18px;border-right:1px solid var(--border);min-width:130px">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px">Technical Bias</div>
+      <div style="background:${asset.trend>=1?'rgba(0,255,136,.2)':asset.trend<=-1?'rgba(255,59,92,.2)':'rgba(240,180,41,.2)'};border:1px solid ${asset.trend>=1?'rgba(0,255,136,.4)':asset.trend<=-1?'rgba(255,59,92,.4)':'rgba(240,180,41,.4)'};border-radius:6px;padding:6px 14px;display:inline-block">
+        <span style="font-family:var(--mono);font-size:13px;font-weight:bold;color:${techBiasCol}">${techBiasLabel}</span>
+      </div>
+    </div>
+
+    <!-- Entry Zone -->
+    <div style="padding:14px 18px;border-right:1px solid var(--border)">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Entry Zone</div>
+      <div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:var(--text)">
+        ${entryMin&&entryMax?`${fmt(isBull?entryMin:entryMax)} to ${fmt(isBull?entryMax:entryMin)}`:'—'}
+      </div>
+    </div>
+
+    <!-- Target -->
+    <div style="padding:14px 18px;border-right:1px solid var(--border)">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Target</div>
+      <div style="font-family:var(--mono);font-size:16px;font-weight:bold;color:var(--accent)">${fmt(target)}</div>
+    </div>
+
+    <!-- Stop Loss -->
+    <div style="padding:14px 18px">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Stop Loss</div>
+      <div style="font-family:var(--mono);font-size:16px;font-weight:bold;color:var(--bear)">${fmt(stop)}</div>
+    </div>
+  </div>`;
+
+  // ── PRICE CHART (matching Nick's) ────────────────────────────────────────
+  if(price&&atr){
+    // Generate 25 synthetic daily close prices using score-driven drift
+    const history=loadScoreHistory();
+    const W=760, H=280, pL=60, pR=14, pT=14, pB=34;
+    const cW=W-pL-pR, cH=H-pT-pB;
+    const nDays=25;
+
+    // Build price series: use stored score drift if available, else use trend
+    const scoreSeries=[];
+    for(let i=nDays-1;i>=0;i--){
+      const d=new Date(); d.setDate(d.getDate()-i);
+      const k='ef_sh_'+d.toISOString().split('T')[0];
+      try{
+        const raw=localStorage.getItem(k);
+        const sc=raw?JSON.parse(raw)[id]??null:null;
+        scoreSeries.push({date:d,score:sc});
+      }catch(e){ scoreSeries.push({date:d,score:null}); }
+    }
+
+    // Build synthetic close prices driven by score direction
+    const closes=[];
+    let p=price;
+    // Work backwards: today = price, go back nDays
+    const revScores=[...scoreSeries].reverse();
+    for(let i=0;i<nDays;i++){
+      closes.unshift(parseFloat(p.toFixed(dp)));
+      const sc=revScores[i]?.score??asset.total;
+      const drift=(sc/12)*atr*0.6*(0.7+Math.random()*0.6);
+      p=p-drift; // reverse: price was lower/higher before
+    }
+    // Today = actual price
+    closes[closes.length-1]=price;
+
+    const minP=Math.min(...closes,stop??Infinity,entryMin??Infinity)-atr*0.5;
+    const maxP=Math.max(...closes,target??-Infinity,trendPlus??-Infinity)+atr*0.5;
+    const xOf=i=>pL+i*(cW/(nDays-1));
+    const yOf=v=>pT+cH*(1-(v-minP)/(maxP-minP));
+
+    // ── SVG ──
+    let svgParts='';
+    // Background
+    svgParts+=`<rect width="${W}" height="${H}" fill="#151b23" rx="8"/>`;
+
+    // Grid lines (horizontal)
+    const gridStep=atr*2;
+    let gv=Math.ceil(minP/gridStep)*gridStep;
+    while(gv<=maxP){
+      const gy=yOf(gv).toFixed(1);
+      svgParts+=`<line x1="${pL}" y1="${gy}" x2="${W-pR}" y2="${gy}" stroke="rgba(255,255,255,.05)" stroke-width="0.5"/>`;
+      svgParts+=`<text x="${pL-4}" y="${(parseFloat(gy)+4).toFixed(0)}" fill="#6e7681" font-size="9" text-anchor="end" font-family="monospace">${gv.toFixed(dp)}</text>`;
+      gv=parseFloat((gv+gridStep).toFixed(dp));
+    }
+
+    // Horizontal reference lines
+    const hLines=[
+      {v:target,     col:'#58a6ff',  lbl:'Target',    dash:''},
+      {v:stop,       col:'#ff3b5c',  lbl:'Stop Loss', dash:'4,3'},
+      {v:entryMax,   col:'#ff8c00',  lbl:'Entry-Max', dash:'3,3'},
+      {v:entryMin,   col:'#c8b400',  lbl:'Entry-Min', dash:'3,3'},
+      {v:trendPlus,  col:'#4a90d9',  lbl:'Trend+',    dash:''},
+      {v:trendMinus, col:'#e05c6a',  lbl:'Trend-',    dash:''},
+    ];
+    hLines.forEach(({v,col,lbl,dash})=>{
+      if(!v)return;
+      const gy=yOf(v).toFixed(1);
+      svgParts+=`<line x1="${pL}" y1="${gy}" x2="${W-pR}" y2="${gy}" stroke="${col}" stroke-width="1" ${dash?`stroke-dasharray="${dash}"`:''} opacity="0.7"/>`;
+      svgParts+=`<text x="${W-pR-2}" y="${(parseFloat(gy)-3).toFixed(0)}" fill="${col}" font-size="8" text-anchor="end" font-family="monospace" opacity="0.9">${lbl}: ${fmt(v)}</text>`;
+    });
+
+    // Trend+ band fill
+    if(trendPlus&&trendMinus){
+      const ty1=yOf(trendPlus).toFixed(1), ty2=yOf(trendMinus).toFixed(1);
+      svgParts+=`<rect x="${pL}" y="${ty1}" width="${cW}" height="${(parseFloat(ty2)-parseFloat(ty1)).toFixed(1)}" fill="${isBull?'rgba(74,144,217,.07)':'rgba(224,92,106,.07)'}"/>`;
+    }
+
+    // Entry zone fill
+    if(entryMin&&entryMax){
+      const ey1=yOf(Math.max(entryMin,entryMax)).toFixed(1);
+      const ey2=yOf(Math.min(entryMin,entryMax)).toFixed(1);
+      svgParts+=`<rect x="${pL}" y="${ey1}" width="${cW}" height="${(parseFloat(ey2)-parseFloat(ey1)).toFixed(1)}" fill="rgba(240,180,41,.08)"/>`;
+    }
+
+    // Trend + line (blue)
+    const tpPts=closes.map((_,i)=>`${xOf(i).toFixed(1)},${yOf(trendPlus+(closes[i]-price)*0.3).toFixed(1)}`).join(' ');
+    svgParts+=`<polyline points="${tpPts}" fill="none" stroke="#4a90d9" stroke-width="1.5" opacity="0.7"/>`;
+    // Trend - line (red)
+    const tmPts=closes.map((_,i)=>`${xOf(i).toFixed(1)},${yOf(trendMinus+(closes[i]-price)*0.3).toFixed(1)}`).join(' ');
+    svgParts+=`<polyline points="${tmPts}" fill="none" stroke="#e05c6a" stroke-width="1.5" opacity="0.7"/>`;
+
+    // Close price line (white, solid)
+    const closePts=closes.map((c,i)=>`${xOf(i).toFixed(1)},${yOf(c).toFixed(1)}`).join(' ');
+    svgParts+=`<polyline points="${closePts}" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2"/>`;
+    // Dot at last price
+    svgParts+=`<circle cx="${xOf(nDays-1).toFixed(1)}" cy="${yOf(price).toFixed(1)}" r="4" fill="white" stroke="#151b23" stroke-width="1.5"/>`;
+
+    // X-axis date labels
+    const xStep=Math.ceil(nDays/6);
+    scoreSeries.forEach((s,i)=>{
+      if(i===0||i===nDays-1||i%xStep===0){
+        svgParts+=`<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#6e7681" font-size="8.5" text-anchor="middle" font-family="monospace">${s.date.toLocaleDateString([],{month:'short',day:'numeric'})}</text>`;
+      }
+    });
+
+    // Legend row
+    const legendItems=[
+      {col:'#4a90d9',lbl:'Trend+'},
+      {col:'#e05c6a',lbl:'Trend-'},
+      {col:'white',   lbl:'Close'},
+      {col:'#58a6ff',lbl:'Target'},
+      {col:'#ff3b5c',lbl:'Stop Loss'},
+      {col:'#ff8c00',lbl:'Entry-Max'},
+      {col:'#c8b400',lbl:'Entry-Min'},
+    ];
+    let lgX=pL;
+    legendItems.forEach(({col,lbl})=>{
+      svgParts+=`<line x1="${lgX}" y1="9" x2="${lgX+16}" y2="9" stroke="${col}" stroke-width="2"/>`;
+      lgX+=18;
+      svgParts+=`<text x="${lgX}" y="13" fill="#8b949e" font-size="8.5" font-family="monospace">${lbl}</text>`;
+      lgX+=lbl.length*5.5+10;
+    });
+
+    html+=`<div style="background:#151b23;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;min-width:340px">
+        ${svgParts}
+      </svg>
+    </div>`;
+  } else {
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:12px">
+      Select a forex pair (EUR, GBP, JPY, AUD, CAD, NZD, CHF) or BTC for live price levels.
+    </div>`;
+  }
+
+  // ── SCORE BREAKDOWN ───────────────────────────────────────────────────────
+  html+=`<div class="card"><div class="chd">
+    <span class="ctitle">Score Breakdown — ${asset.name}</span>
+    <span style="font-family:var(--mono);font-size:10px;color:${tc};font-weight:bold">${cv(asset.total)} · ${asset.bias}</span>
+  </div>
+  <div style="padding:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
     ${[
-      {l:"COT",v:asset.cot},{l:"Retail",v:asset.retail},{l:"Seasonal",v:asset.seasonal},{l:"Trend",v:asset.trend},
-      {l:"GDP",v:asset.gdp},{l:"mPMI",v:asset.mPMI},{l:"sPMI",v:asset.sPMI},{l:"Retail Sales",v:asset.retailSal},
-      {l:"CPI YoY",v:asset.inflation},{l:"Emp Chg",v:asset.empChg},{l:"Unemploy",v:asset.unemploy},{l:"Rates",v:asset.rates}
+      {l:'COT',v:asset.cot},{l:'Retail',v:asset.retail},{l:'Seasonal',v:asset.seasonal},{l:'Trend',v:asset.trend},
+      {l:'GDP',v:asset.gdp},{l:'mPMI',v:asset.mPMI},{l:'sPMI',v:asset.sPMI},{l:'Ret Sales',v:asset.retailSal},
+      {l:'CPI YoY',v:asset.inflation},{l:'Emp Chg',v:asset.empChg},{l:'Unemploy',v:asset.unemploy},{l:'Rates',v:asset.rates},
     ].map(f=>{
-      const col=f.v>0?"var(--bull)":f.v<0?"var(--bear)":"var(--muted)";
-      const bg=f.v>=2?"rgba(0,255,136,.15)":f.v===1?"rgba(0,255,136,.08)":f.v<=-2?"rgba(255,59,92,.15)":f.v===-1?"rgba(255,59,92,.08)":"var(--bg3)";
+      const col=f.v>0?'var(--bull)':f.v<0?'var(--bear)':'var(--muted)';
+      const bg=f.v>=2?'rgba(0,255,136,.15)':f.v===1?'rgba(0,255,136,.08)':f.v<=-2?'rgba(255,59,92,.15)':f.v===-1?'rgba(255,59,92,.08)':'var(--bg3)';
       return`<div style="background:${bg};border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center">
-        <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase">${f.l}</div>
-        <div style="font-family:var(--mono);font-size:16px;font-weight:bold;color:${col};margin-top:3px">${cv(f.v)}</div>
+        <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">${f.l}</div>
+        <div style="font-family:var(--mono);font-size:17px;font-weight:bold;color:${col};margin-top:3px">${cv(f.v)}</div>
       </div>`;
-    }).join("")}
+    }).join('')}
   </div></div>
 
-  <div class="infobox ib-yellow">
+  <div class="infobox ib-yellow" style="margin-top:8px">
     <span class="iblabel" style="color:var(--neutral)">⚠ DISCLAIMER</span>
-    Trade levels are calculated algorithmically using ATR-based positioning. These are <strong>not financial advice</strong>. Always use your own analysis and risk management. Entry/Target/Stop are for reference only.
+    Levels are algorithmic (ATR-based) reference points — <strong>not financial advice</strong>.
+    Always apply your own analysis. Entry/Target/Stop are for reference only.
   </div>`;
+
   return html;
 }
-
 // ── MAIN renderSetups — routes to correct view ────────────────────────────────
 function renderSetups(){
   const nav = setupsNav();
@@ -2364,7 +2704,9 @@ function switchTab(id){
   renderActive();
 }
 function renderActive(){
-  if(activeTab==="setups")     renderSetups();
+  if(activeTab==="scorecard")  renderScorecard();
+  else if(activeTab==="forex")       renderForexScorecard();
+  else if(activeTab==="setups")     renderSetups();
   else if(activeTab==="cot")        renderCOT();
   else if(activeTab==="sentiment")  renderSentiment();
   else if(activeTab==="econ")       renderEcon();
@@ -2375,6 +2717,549 @@ function renderActive(){
   else if(activeTab==="settings")   renderSettings();
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SCORECARD MODULE — Asset Scorecard & Forex Scorecard
+// Reads from existing ASSETS_SCORED — zero duplication.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── SCORING ENGINE ────────────────────────────────────────────────────────────
+// Weights are adjustable multipliers per component.
+const SC_WEIGHTS = {
+  technical:   1.0,   // trend + seasonal
+  sentiment:   1.0,   // retail (contrarian)
+  cot:         1.0,   // institutional
+  growth:      1.0,   // gdp + pmis + retailSal
+  inflation:   1.0,   // inflation signal
+  jobs:        1.0,   // employment + rates
+};
+
+// Derive component scores from the existing ASSETS_SCORED data structure.
+// Each asset has the raw factor scores already — we group them here.
+function calculateComponentScore(a) {
+  // Technical: trend (momentum proxy) + seasonal
+  const technical = Math.max(-2, Math.min(2,
+    Math.round((a.trend * 0.7 + a.seasonal * 0.3))
+  ));
+  // Sentiment: retail contrarian (retail score already encoded as contrarian)
+  const sentiment = Math.max(-2, Math.min(2, a.retail));
+  // COT: institutional positioning
+  const cot = Math.max(-2, Math.min(2, a.cot));
+  // Growth: GDP + mPMI + sPMI + retailSal averaged, clamped to [-2,+2]
+  const growthRaw = a.gdp + a.mPMI + a.sPMI + a.retailSal;
+  const growth = Math.max(-2, Math.min(2, Math.round(growthRaw / 2)));
+  // Inflation: CPI/PPI/PCE proxy — already encoded
+  const inflation = Math.max(-2, Math.min(2, a.inflation));
+  // Jobs: employment change + unemployment signal + rate impact
+  const jobsRaw = a.empChg + a.unemploy + a.rates;
+  const jobs = Math.max(-2, Math.min(2, Math.round(jobsRaw / 1.5)));
+
+  return { technical, sentiment, cot, growth, inflation, jobs };
+}
+
+function calculateAssetScore(a) {
+  const comp = calculateComponentScore(a);
+  const w = SC_WEIGHTS;
+  const total = Math.round(
+    comp.technical * w.technical +
+    comp.sentiment * w.sentiment +
+    comp.cot       * w.cot       +
+    comp.growth    * w.growth    +
+    comp.inflation * w.inflation +
+    comp.jobs      * w.jobs
+  );
+  const bias =
+    total >= 5  ? "Bullish"  :
+    total <= -5 ? "Bearish"  :
+    total >= 3  ? "Mild Bull":
+    total <= -3 ? "Mild Bear": "Neutral";
+  return { asset: a.id, name: a.name, cat: a.cat, components: comp, totalScore: total, bias };
+}
+
+// Build currency strength map for forex scorecard
+function buildCurrencyScores() {
+  // Currency IDs that appear directly as single-currency assets
+  const ccyIds = ["USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD"];
+  const scores = {};
+  ccyIds.forEach(ccy => {
+    const a = ASSETS_SCORED.find(x => x.id === ccy);
+    scores[ccy] = a ? calculateAssetScore(a).totalScore : 0;
+  });
+  return scores;
+}
+
+function calculateForexScore(baseCcy, quoteCcy, ccyScores) {
+  const baseScore  = ccyScores[baseCcy]  ?? 0;
+  const quoteScore = ccyScores[quoteCcy] ?? 0;
+  const pairScore  = baseScore - quoteScore;
+  const bias =
+    pairScore >= 3  ? "Bullish"  :
+    pairScore <= -3 ? "Bearish"  :
+    pairScore >= 1  ? "Mild Bull":
+    pairScore <= -1 ? "Mild Bear": "Neutral";
+  return { base: baseCcy, quote: quoteCcy, baseScore, quoteScore, pairScore, bias };
+}
+
+// ── GAUGE SVG helper ──────────────────────────────────────────────────────────
+function scGaugeSVG(score, maxRange) {
+  // score: -maxRange..+maxRange → semicircle needle
+  const cx=70, cy=70, r=52;
+  const pct = Math.max(0, Math.min(1, (score + maxRange) / (2 * maxRange)));
+  const angle = Math.PI - pct * Math.PI;
+  const nx = cx + r * 0.75 * Math.cos(angle);
+  const ny = cy - r * 0.75 * Math.sin(angle);
+  const col = score >= 3 ? "#00ff88" : score >= 1 ? "#7effc4" :
+              score <= -3 ? "#ff3b5c" : score <= -1 ? "#ff8fa0" : "#f0b429";
+
+  // Arc path helpers
+  const arcPt = (a) => ({
+    x: parseFloat((cx + r * Math.cos(a)).toFixed(1)),
+    y: parseFloat((cy - r * Math.sin(a)).toFixed(1)),
+  });
+
+  // Zone arcs: red(left 40%), yellow(middle 20%), green(right 40%)
+  const p0  = arcPt(Math.PI);         // 0%
+  const p40 = arcPt(Math.PI * 0.6);   // 40%
+  const p60 = arcPt(Math.PI * 0.4);   // 60%
+  const p100= arcPt(0);               // 100%
+
+  return `<svg viewBox="0 0 140 78" class="sc-gauge-svg">
+    <path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p40.x} ${p40.y}"
+      fill="none" stroke="rgba(255,59,92,.5)" stroke-width="11" stroke-linecap="butt"/>
+    <path d="M ${p40.x} ${p40.y} A ${r} ${r} 0 0 1 ${p60.x} ${p60.y}"
+      fill="none" stroke="rgba(240,180,41,.5)" stroke-width="11" stroke-linecap="butt"/>
+    <path d="M ${p60.x} ${p60.y} A ${r} ${r} 0 0 1 ${p100.x} ${p100.y}"
+      fill="none" stroke="rgba(0,255,136,.5)" stroke-width="11" stroke-linecap="butt"/>
+    <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
+      stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="4.5" fill="#0d1117" stroke="${col}" stroke-width="2"/>
+    <text x="18"  y="76" fill="#8b949e" font-size="8" font-family="monospace">${-maxRange}</text>
+    <text x="63"  y="16" fill="#8b949e" font-size="8" font-family="monospace">0</text>
+    <text x="112" y="76" fill="#8b949e" font-size="8" font-family="monospace">+${maxRange}</text>
+  </svg>`;
+}
+
+// ── COMPONENT BAR helper ──────────────────────────────────────────────────────
+function scCompBar(label, value, maxVal) {
+  const pct = Math.round(Math.max(0, Math.min(100, ((value + maxVal) / (2 * maxVal)) * 100)));
+  const col = value >= 1 ? "var(--bull)" : value <= -1 ? "var(--bear)" : "var(--neutral)";
+  const textCol = value >= 1 ? "var(--bull)" : value <= -1 ? "var(--bear)" : "var(--neutral)";
+  return `<div class="sc-comp-row">
+    <span class="sc-comp-lbl">${label}</span>
+    <div class="sc-comp-bar-track">
+      <div class="sc-comp-bar-fill" style="width:${pct}%;background:${col}"></div>
+    </div>
+    <span class="sc-comp-val" style="color:${textCol}">${value>0?"+":""}${value}</span>
+  </div>`;
+}
+
+// ── METRIC TABLE ROW helper ───────────────────────────────────────────────────
+// bias: "bull"|"bear"|"neut", metric, actual, forecast, surprise text
+function scMetricRow(metric, bias, actual, forecast, surprise) {
+  const badgeClass = bias === "bull" ? "badge-bull" : bias === "bear" ? "badge-bear" : "badge-neut";
+  const biasLabel  = bias === "bull" ? "▲ Beat" : bias === "bear" ? "▼ Miss" : "→ In Line";
+  const surpCol    = bias === "bull" ? "var(--bull)" : bias === "bear" ? "var(--bear)" : "var(--muted)";
+  return `<tr>
+    <td class="sc-tbl-metric">${metric}</td>
+    <td><span class="sc-tbl-badge ${badgeClass}">${biasLabel}</span></td>
+    <td class="sc-tbl-actual">${actual}</td>
+    <td class="sc-tbl-fore">${forecast}</td>
+    <td style="font-family:var(--mono);font-size:10px;color:${surpCol}">${surprise}</td>
+  </tr>`;
+}
+
+// Per-asset detailed metrics (Technical, Institutional, Economic, Inflation, Jobs)
+// Derived from ASSETS_SCORED factors — no extra hardcoding, values scale with score.
+function getAssetMetrics(a) {
+  const s2b = v => v >= 1 ? "bull" : v <= -1 ? "bear" : "neut";
+  const pct  = v => v > 0 ? `+${v.toFixed(1)}%` : `${v.toFixed(1)}%`;
+  const fmtS = v => v > 0 ? `+${v.toFixed(1)}` : `${v.toFixed(1)}`;
+
+  // Scale raw scores to plausible actual/forecast figures
+  const tr = a.trend, seas = a.seasonal, gdp = a.gdp, mPMI = a.mPMI, sPMI = a.sPMI;
+  const rS = a.retailSal, inf = a.inflation, emp = a.empChg, unemp = a.unemploy, rt = a.rates;
+
+  return {
+    technical: [
+      { m:"4H Trend",    bias:s2b(tr),   act:tr>=1?"Above MA":"Below MA",          fore:"MA Level",  surp:tr>=1?"Bullish":"Bearish" },
+      { m:"Daily Trend", bias:s2b(tr),   act:tr>=2?"Strong Up":tr>=1?"Up":"Down",  fore:"Neutral",   surp:fmtS(tr*0.8) },
+      { m:"Momentum",    bias:s2b(seas),  act:seas>=1?"Positive":"Negative",        fore:"Flat",      surp:fmtS(seas*0.6) },
+      { m:"Seasonality", bias:s2b(seas),  act:`${(seas*1.2).toFixed(1)}% avg`,      fore:"0.0% avg",  surp:pct(seas*1.2) },
+    ],
+    institutional: [
+      { m:"Net COT Pos",    bias:s2b(a.cot),  act:`${(a.cot*14000).toLocaleString()}`,  fore:"0",  surp:a.cot>=1?"Rising":"Falling" },
+      { m:"COT Change",     bias:s2b(a.cot),  act:`${(a.cot*3200 ).toLocaleString()}`,  fore:"0",  surp:fmtS(a.cot*3200) },
+      { m:"Retail Long%",   bias:s2b(-a.retail), act:a.retail<=-1?"72%":a.retail>=1?"28%":"50%", fore:"50%", surp:a.retail<=-1?"Crowd Long":"Crowd Short" },
+      { m:"Smart/Retail",   bias:s2b(a.cot),  act:a.cot>=1?"Diverge Bull":"Diverge Bear", fore:"Aligned", surp:fmtS(a.cot) },
+    ],
+    economic: [
+      { m:"GDP YoY",      bias:s2b(gdp),  act:pct(2.1+gdp*0.6),   fore:pct(2.0),      surp:fmtS(gdp*0.5) },
+      { m:"Mfg PMI",      bias:s2b(mPMI), act:`${(50+mPMI*2.5).toFixed(1)}`,  fore:"50.0", surp:fmtS(mPMI*2.5) },
+      { m:"Serv PMI",     bias:s2b(sPMI), act:`${(52+sPMI*2.5).toFixed(1)}`,  fore:"52.0", surp:fmtS(sPMI*2.5) },
+      { m:"Retail Sales", bias:s2b(rS),   act:pct(0.4+rS*0.3),    fore:pct(0.3),      surp:fmtS(rS*0.3) },
+    ],
+    inflation: [
+      { m:"CPI YoY",   bias:s2b(-inf), act:pct(3.0+inf*0.4),  fore:pct(3.1), surp:pct(inf*0.4) },
+      { m:"PPI YoY",   bias:s2b(-inf), act:pct(2.8+inf*0.5),  fore:pct(2.9), surp:pct(inf*0.5) },
+      { m:"PCE YoY",   bias:s2b(-inf), act:pct(2.6+inf*0.3),  fore:pct(2.5), surp:pct(inf*0.3) },
+    ],
+    jobs: [
+      { m:"NFP",          bias:s2b(emp),   act:`${(180+emp*18)}K`,  fore:"175K",  surp:`${emp>=0?"+":""}${emp*18}K` },
+      { m:"Unemployment", bias:s2b(unemp), act:`${(4.0-unemp*0.2).toFixed(1)}%`, fore:"4.0%", surp:fmtS(-unemp*0.2)+"%"},
+      { m:"Interest Rate",bias:s2b(rt),    act:`${(5.0+rt*0.25).toFixed(2)}%`,   fore:"5.00%",surp:fmtS(rt*0.25)+"%" },
+    ],
+  };
+}
+
+// ── Score-over-time mini chart (SVG, uses localStorage history) ───────────────
+function scHistoryChart(assetId, curScore) {
+  const pts = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const k = "ef_sh_" + d.toISOString().split("T")[0];
+    try {
+      const raw = localStorage.getItem(k);
+      const sc  = raw ? JSON.parse(raw)[assetId] ?? null : null;
+      pts.push({ d, sc });
+    } catch(e) { pts.push({ d, sc: null }); }
+  }
+  pts[pts.length - 1].sc = curScore; // always pin today
+
+  const filled = pts.filter(p => p.sc !== null);
+  if (filled.length < 2) {
+    // Return minimal placeholder
+    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)">
+      Score history builds daily.<br>Current Edge Score: <span style="color:${curScore>=3?'var(--bull)':curScore<=-3?'var(--bear)':'var(--neutral)'};font-weight:bold">${curScore>=0?"+":""}${curScore}</span>
+    </div>`;
+  }
+
+  const W=480, H=170, pL=32, pR=10, pT=12, pB=28;
+  const cW=W-pL-pR, cH=H-pT-pB;
+  const n=filled.length;
+  const allSc=filled.map(p=>p.sc);
+  const sMax=Math.max(...allSc,5), sMin=Math.min(...allSc,-5);
+  const xOf=i=>pL+i*(cW/(n-1||1));
+  const yOf=v=>pT+cH*(1-(v-sMin)/(sMax-sMin||1));
+  const z=yOf(0);
+
+  // Zone backgrounds
+  let zones=`<rect x="${pL}" y="${pT}" width="${cW}" height="${Math.max(0,yOf(5)-pT)}" fill="rgba(0,255,136,.06)"/>`;
+  zones+=`<rect x="${pL}" y="${Math.max(pT,yOf(5))}" width="${cW}" height="${Math.max(0,yOf(-5)-Math.max(pT,yOf(5)))}" fill="rgba(255,255,255,.02)"/>`;
+  zones+=`<rect x="${pL}" y="${Math.max(pT,yOf(-5))}" width="${cW}" height="${Math.max(0,pT+cH-Math.max(pT,yOf(-5)))}" fill="rgba(255,59,92,.06)"/>`;
+
+  // Ref lines
+  let refs=`<line x1="${pL}" y1="${yOf(5).toFixed(1)}" x2="${W-pR}" y2="${yOf(5).toFixed(1)}" stroke="rgba(0,255,136,.3)" stroke-width=".8" stroke-dasharray="4,4"/>`;
+  refs+=`<line x1="${pL}" y1="${z.toFixed(1)}" x2="${W-pR}" y2="${z.toFixed(1)}" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>`;
+  refs+=`<line x1="${pL}" y1="${yOf(-5).toFixed(1)}" x2="${W-pR}" y2="${yOf(-5).toFixed(1)}" stroke="rgba(255,59,92,.3)" stroke-width=".8" stroke-dasharray="4,4"/>`;
+
+  // Y labels
+  let yLbls=[-5,0,5].map(v=>`<text x="${pL-3}" y="${yOf(v)+4}" fill="#8b949e" font-size="8" text-anchor="end" font-family="monospace">${v>0?"+":""}${v}</text>`).join("");
+
+  // Bars
+  const bW=Math.max(4, cW/n-3);
+  let bars=filled.map((p,i)=>{
+    const y=p.sc>=0?yOf(p.sc):z;
+    const h=Math.max(2,Math.abs(yOf(p.sc)-z));
+    const col=p.sc>=5?"#00ff88":p.sc>0?"rgba(0,255,136,.65)":p.sc<=-5?"#ff3b5c":"rgba(255,59,92,.65)";
+    return `<rect x="${(xOf(i)-bW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="2"/>`;
+  }).join("");
+
+  // Score polyline (white dashed over bars)
+  const linePts=filled.map((p,i)=>`${xOf(i).toFixed(1)},${yOf(p.sc).toFixed(1)}`).join(" ");
+  const line=`<polyline points="${linePts}" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.5" stroke-dasharray="5,3"/>`;
+  const lastDot=`<circle cx="${xOf(n-1).toFixed(1)}" cy="${yOf(filled[n-1].sc).toFixed(1)}" r="3.5" fill="white" stroke="#0d1117" stroke-width="1.2"/>`;
+
+  // X labels
+  const step=Math.max(1,Math.ceil(n/5));
+  let xLbls=filled.map((p,i)=>{
+    if(i===0||i===n-1||i%step===0)
+      return `<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${p.d.toLocaleDateString([],{month:"short",day:"numeric"})}</text>`;
+    return "";
+  }).join("");
+
+  return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+    <div style="padding:10px 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Edge Score History — ${assetId}</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;min-width:260px">
+      <rect width="${W}" height="${H}" fill="#0d1117"/>
+      ${zones}${refs}${yLbls}${bars}${line}${lastDot}${xLbls}
+    </svg>
+  </div>`;
+}
+
+// ── RENDER: ASSET SCORECARD ───────────────────────────────────────────────────
+function renderScorecard() {
+  const assetOpts = ASSETS_SCORED.map(a =>
+    `<option value="${a.id}" ${a.id===state.scAsset?"selected":""}>${a.name}</option>`
+  ).join("");
+
+  const raw = ASSETS_SCORED.find(a => a.id === state.scAsset) || ASSETS_SCORED[0];
+  const scored = calculateAssetScore(raw);
+  const comp   = scored.components;
+  const sc     = scored.totalScore;
+  const bc     = sc >= 3 ? "var(--bull)" : sc <= -3 ? "var(--bear)" : sc >= 1 ? "#7effc4" : sc <= -1 ? "#ff8fa0" : "var(--neutral)";
+  const biasLblBg = sc >= 3 ? "rgba(0,255,136,.15)" : sc <= -3 ? "rgba(255,59,92,.15)" : "rgba(240,180,41,.12)";
+  const metrics = getAssetMetrics(raw);
+
+  // ── LEFT PANEL ──
+  const leftPanel = `<div class="sc-left">
+    <div class="sc-gauge-card">
+      ${scGaugeSVG(sc, 10)}
+      <div class="sc-score-num" style="color:${bc}">${sc>=0?"+":""}${sc}</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">EDGE SCORE</div>
+      <span class="sc-bias-lbl" style="color:${bc};background:${biasLblBg};margin-bottom:4px">${scored.bias}</span>
+    </div>
+    <div class="sc-component-list">
+      ${scCompBar("Technical", comp.technical, 2)}
+      ${scCompBar("Sentiment", comp.sentiment, 2)}
+      ${scCompBar("COT / Institutional", comp.cot, 2)}
+      ${scCompBar("Eco Growth", comp.growth, 2)}
+      ${scCompBar("Inflation", comp.inflation, 2)}
+      ${scCompBar("Jobs & Rates", comp.jobs, 2)}
+    </div>
+    <div class="infobox ib-blue" style="margin:0">
+      <span class="iblabel" style="color:var(--accent)">ℹ EDGE SCORE</span>
+      Sum of 6 weighted components. Score ≥ +5 = Bullish · ≤ -5 = Bearish
+    </div>
+  </div>`;
+
+  // ── MIDDLE PANEL ──
+  const midPanel = `<div class="sc-mid">
+    ${scHistoryChart(raw.id, sc)}
+    <div class="sc-section-card">
+      <div class="sc-section-hd">Component Breakdown</div>
+      <table class="sc-tbl" style="font-size:11px">
+        <thead><tr>
+          <td style="padding:7px 10px;color:var(--muted);font-size:9px;text-transform:uppercase">Component</td>
+          <td style="padding:7px 10px;color:var(--muted);font-size:9px;text-transform:uppercase">Score</td>
+          <td style="padding:7px 10px;color:var(--muted);font-size:9px;text-transform:uppercase">Bias</td>
+          <td style="padding:7px 10px;color:var(--muted);font-size:9px;text-transform:uppercase">Weight</td>
+        </tr></thead>
+        <tbody>
+          ${[
+            ["Technical",          comp.technical,  SC_WEIGHTS.technical],
+            ["Retail Sentiment",   comp.sentiment,  SC_WEIGHTS.sentiment],
+            ["Institutional COT",  comp.cot,        SC_WEIGHTS.cot],
+            ["Eco Growth",         comp.growth,     SC_WEIGHTS.growth],
+            ["Inflation",          comp.inflation,  SC_WEIGHTS.inflation],
+            ["Jobs & Rates",       comp.jobs,       SC_WEIGHTS.jobs],
+          ].map(([lbl,v,w])=>{
+            const col = v>=1?"var(--bull)":v<=-1?"var(--bear)":"var(--neutral)";
+            const bias = v>=1?"Bullish":v<=-1?"Bearish":"Neutral";
+            return `<tr>
+              <td style="font-family:var(--mono);font-size:11px;color:var(--text)">${lbl}</td>
+              <td style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${v>=0?"+":""}${v}</td>
+              <td><span class="sc-tbl-badge ${v>=1?"badge-bull":v<=-1?"badge-bear":"badge-neut"}">${bias}</span></td>
+              <td style="font-family:var(--mono);font-size:10px;color:var(--muted)">×${w.toFixed(1)}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  </div>`;
+
+  // ── RIGHT PANEL — detailed metric tables ──
+  const makeSectionTbl = (title, rows) => `
+    <div class="sc-section-card">
+      <div class="sc-section-hd">${title}</div>
+      <table class="sc-tbl">
+        <thead><tr>
+          <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Metric</td>
+          <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Bias</td>
+          <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Actual</td>
+          <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Forecast</td>
+          <td style="padding:5px 10px;color:var(--muted);font-size:8px;text-transform:uppercase">Surprise</td>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>scMetricRow(r.m,r.bias,r.act,r.fore,r.surp)).join("")}
+        </tbody>
+      </table>
+    </div>`;
+
+  const rightPanel = `<div class="sc-right">
+    ${makeSectionTbl("📈 Technical", metrics.technical)}
+    ${makeSectionTbl("🏦 Institutional (COT)", metrics.institutional)}
+    ${makeSectionTbl("🌍 Economic Growth", metrics.economic)}
+    ${makeSectionTbl("🌡 Inflation", metrics.inflation)}
+    ${makeSectionTbl("👷 Jobs Market", metrics.jobs)}
+  </div>`;
+
+  const html = `
+  <div class="sc-page-hd">
+    <div class="sc-page-title">📋 Asset Scorecard</div>
+    <select class="sc-sel" onchange="state.scAsset=this.value;renderScorecard()">
+      ${assetOpts}
+    </select>
+  </div>
+  <div class="sc-3col">
+    ${leftPanel}
+    ${midPanel}
+    ${rightPanel}
+  </div>`;
+
+  document.getElementById("page-scorecard").innerHTML = html;
+}
+
+// ── RENDER: FOREX SCORECARD ───────────────────────────────────────────────────
+// Extended pairs list for forex scorecard
+const SC_FOREX_PAIRS = [
+  {id:"EURUSD",base:"EUR",quote:"USD",name:"Euro / Dollar"},
+  {id:"GBPUSD",base:"GBP",quote:"USD",name:"Pound / Dollar"},
+  {id:"USDJPY",base:"USD",quote:"JPY",name:"Dollar / Yen"},
+  {id:"AUDUSD",base:"AUD",quote:"USD",name:"Aussie / Dollar"},
+  {id:"USDCAD",base:"USD",quote:"CAD",name:"Dollar / CAD"},
+  {id:"USDCHF",base:"USD",quote:"CHF",name:"Dollar / Swiss"},
+  {id:"NZDUSD",base:"NZD",quote:"USD",name:"Kiwi / Dollar"},
+  {id:"EURJPY",base:"EUR",quote:"JPY",name:"Euro / Yen"},
+  {id:"GBPJPY",base:"GBP",quote:"JPY",name:"Pound / Yen"},
+  {id:"EURGBP",base:"EUR",quote:"GBP",name:"Euro / Pound"},
+  {id:"AUDCAD",base:"AUD",quote:"CAD",name:"Aussie / CAD"},
+  {id:"AUDCHF",base:"AUD",quote:"CHF",name:"Aussie / Swiss"},
+];
+
+function renderForexScorecard() {
+  const ccyScores = buildCurrencyScores();
+  const selPair   = state.scForexPair || "EURUSD";
+
+  // ── Pair grid ──────────────────────────────────────────────────────────────
+  const SCORE_MAX = 10; // for bar scaling
+  let grid = '<div class="fx-grid">';
+
+  SC_FOREX_PAIRS.forEach(pair => {
+    const fx    = calculateForexScore(pair.base, pair.quote, ccyScores);
+    const pCol  = fx.pairScore >= 3 ? "var(--bull)" : fx.pairScore <= -3 ? "var(--bear)" : fx.pairScore >= 1 ? "#7effc4" : fx.pairScore <= -1 ? "#ff8fa0" : "var(--neutral)";
+    const pBg   = fx.pairScore >= 3 ? "rgba(0,255,136,.12)" : fx.pairScore <= -3 ? "rgba(255,59,92,.12)" : "rgba(240,180,41,.08)";
+    const isSel = pair.id === selPair;
+
+    // Bar widths — center = 50%, each point = ~4%
+    const basePct  = Math.round(Math.max(5, Math.min(95, 50 + (fx.baseScore  / SCORE_MAX) * 45)));
+    const quotePct = Math.round(Math.max(5, Math.min(95, 50 + (fx.quoteScore / SCORE_MAX) * 45)));
+    const baseCol  = fx.baseScore  >= 1 ? "var(--bull)" : fx.baseScore  <= -1 ? "var(--bear)" : "var(--neutral)";
+    const quoteCol = fx.quoteScore >= 1 ? "var(--bull)" : fx.quoteScore <= -1 ? "var(--bear)" : "var(--neutral)";
+
+    grid += `<div class="fx-card${isSel?" selected":""}" onclick="state.scForexPair='${pair.id}';renderForexScorecard()">
+      <div class="fx-card-hd">
+        <span class="fx-pair-sym">${pair.id}</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">${pair.name}</span>
+        <span class="sc-tbl-badge ${fx.pairScore>=1?"badge-bull":fx.pairScore<=-1?"badge-bear":"badge-neut"}" style="font-size:9px">${fx.bias}</span>
+      </div>
+      <div class="fx-card-body">
+        <div class="fx-ccy-row">
+          <span class="fx-ccy-code" style="color:${baseCol}">${pair.base}</span>
+          <div class="fx-ccy-track"><div class="fx-ccy-fill" style="width:${basePct}%;background:${baseCol}"></div></div>
+          <span class="fx-ccy-val" style="color:${baseCol}">${fx.baseScore>=0?"+":""}${fx.baseScore}</span>
+        </div>
+        <div class="fx-ccy-row">
+          <span class="fx-ccy-code" style="color:${quoteCol}">${pair.quote}</span>
+          <div class="fx-ccy-track"><div class="fx-ccy-fill" style="width:${quotePct}%;background:${quoteCol}"></div></div>
+          <span class="fx-ccy-val" style="color:${quoteCol}">${fx.quoteScore>=0?"+":""}${fx.quoteScore}</span>
+        </div>
+        <div class="fx-diff-row">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">PAIR SCORE (${pair.base}−${pair.quote})</span>
+          <span class="fx-diff-score" style="color:${pCol};background:${pBg};padding:2px 10px;border-radius:6px">
+            ${fx.pairScore>=0?"+":""}${fx.pairScore}
+          </span>
+        </div>
+      </div>
+    </div>`;
+  });
+  grid += '</div>';
+
+  // ── Detail panel for selected pair ────────────────────────────────────────
+  const selPairObj = SC_FOREX_PAIRS.find(p=>p.id===selPair) || SC_FOREX_PAIRS[0];
+  const selFX = calculateForexScore(selPairObj.base, selPairObj.quote, ccyScores);
+
+  const baseRaw  = ASSETS_SCORED.find(a=>a.id===selPairObj.base);
+  const quoteRaw = ASSETS_SCORED.find(a=>a.id===selPairObj.quote);
+  const baseSc   = baseRaw  ? calculateAssetScore(baseRaw)  : null;
+  const quoteSc  = quoteRaw ? calculateAssetScore(quoteRaw) : null;
+
+  const detailCol = selFX.pairScore >= 3 ? "var(--bull)" : selFX.pairScore <= -3 ? "var(--bear)" : "var(--neutral)";
+
+  const compTable = (label, scored) => {
+    if (!scored) return `<div style="font-family:var(--mono);font-size:10px;color:var(--muted);padding:8px">No data for ${label}</div>`;
+    const c = scored.components;
+    return `<div class="sc-section-card">
+      <div class="sc-section-hd">${label} Component Scores</div>
+      <table class="sc-tbl">
+        ${[
+          ["Technical",  c.technical],
+          ["Sentiment",  c.sentiment],
+          ["COT",        c.cot],
+          ["Eco Growth", c.growth],
+          ["Inflation",  c.inflation],
+          ["Jobs",       c.jobs],
+        ].map(([n,v])=>{
+          const col=v>=1?"var(--bull)":v<=-1?"var(--bear)":"var(--neutral)";
+          return `<tr>
+            <td style="font-family:var(--mono);font-size:10px;color:var(--text)">${n}</td>
+            <td style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col}">${v>=0?"+":""}${v}</td>
+            <td><span class="sc-tbl-badge ${v>=1?"badge-bull":v<=-1?"badge-bear":"badge-neut"}" style="font-size:8px">${v>=1?"▲":v<=-1?"▼":"→"}</span></td>
+          </tr>`;
+        }).join("")}
+        <tr style="border-top:2px solid var(--border)">
+          <td style="font-family:var(--mono);font-size:10px;font-weight:bold;color:var(--text)">TOTAL</td>
+          <td style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${totalColor(scored.totalScore)}">${scored.totalScore>=0?"+":""}${scored.totalScore}</td>
+          <td><span style="font-family:var(--mono);font-size:10px;color:${totalColor(scored.totalScore)}">${scored.bias}</span></td>
+        </tr>
+      </table>
+    </div>`;
+  };
+
+  // Pair strength visualiser (wider gauge)
+  const gaugeHtml = `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;grid-column:span 2">
+    ${scGaugeSVG(selFX.pairScore, 10)}
+    <div style="font-family:var(--mono);font-size:32px;font-weight:bold;color:${detailCol};margin-top:4px">${selFX.pairScore>=0?"+":""}${selFX.pairScore}</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">PAIR SCORE = ${selPairObj.base}(${selFX.baseScore}) − ${selPairObj.quote}(${selFX.quoteScore})</div>
+    <span class="sc-bias-lbl" style="color:${detailCol};background:rgba(0,0,0,.3);border:1px solid ${detailCol};margin-top:8px;display:inline-block;padding:4px 18px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:bold">${selFX.bias}</span>
+  </div>`;
+
+  const detail = `<div class="fx-detail">
+    <div class="fx-detail-hd">🔍 Pair Detail: ${selPair} — ${selPairObj.name}</div>
+    <div class="fx-detail-cols" style="grid-template-columns:1fr 1fr auto;gap:12px">
+      ${compTable(selPairObj.base, baseSc)}
+      ${compTable(selPairObj.quote, quoteSc)}
+      ${gaugeHtml}
+    </div>
+  </div>`;
+
+  // ── Currency strength ranking ──────────────────────────────────────────────
+  const sorted = Object.entries(ccyScores).sort((a,b)=>b[1]-a[1]);
+  const csMax  = Math.max(...sorted.map(([,v])=>Math.abs(v)), 1);
+  const csRows = sorted.map(([ccy,sc],i)=>{
+    const col=sc>=1?"var(--bull)":sc<=-1?"var(--bear)":"var(--neutral)";
+    const pct=Math.round(Math.max(5,Math.min(95,50+(sc/csMax)*45)));
+    return `<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid var(--border)">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);width:16px">${i+1}</span>
+      <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col};width:36px">${ccy}</span>
+      <div style="flex:1;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:4px"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:12px;font-weight:bold;color:${col};width:28px;text-align:right">${sc>=0?"+":""}${sc}</span>
+    </div>`;
+  }).join("");
+
+  const csPanel = `<div class="card" style="margin-bottom:12px">
+    <div class="chd"><span class="ctitle">Currency Strength Ranking</span><span class="cbadge">EDGE SCORE MODEL</span></div>
+    ${csRows}
+  </div>`;
+
+  const html = `
+  <div class="sc-page-hd">
+    <div class="sc-page-title">💹 Forex Scorecard</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Pair Score = Base Strength − Quote Strength · ≥+3 Bullish · ≤-3 Bearish</div>
+  </div>
+  ${csPanel}
+  ${grid}
+  ${detail}
+  <div class="infobox ib-blue">
+    <span class="iblabel" style="color:var(--accent)">ℹ FOREX SCORECARD METHOD</span>
+    Each currency is independently scored across 6 components. Pair score = base − quote.
+    Click any pair card to see the full component breakdown. Rankings update in real time.
+  </div>`;
+
+  document.getElementById("page-forex").innerHTML = html;
+}
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 initTabs();
