@@ -601,6 +601,15 @@ const ASSETS_SCORED=[
   {id:"US10T",  name:"US10T",  cat:"Index",    cot:-2,retail:0,seasonal:-1,trend:-2,gdp:1, mPMI:0, sPMI:0, retailSal:0, inflation:-1,empChg:0, unemploy:0, rates:-1},
   {id:"GBPJPY", name:"GBPJPY", cat:"Forex",    cot:1,retail:-1,seasonal:0, trend:1, gdp:0, mPMI:0, sPMI:1, retailSal:0, inflation:-1,empChg:0, unemploy:0, rates:1},
   {id:"AUDCHF", name:"AUDCHF", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:0, gdp:0, mPMI:0, sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
+  // ── Additional instruments ────────────────────────────────────────────────
+  {id:"ETH",   name:"ETHUSD", cat:"Crypto",   cot:-1,retail:0,seasonal:0, trend:-1,gdp:0, mPMI:0, sPMI:0, retailSal:0, inflation:0, empChg:0, unemploy:0, rates:-1},
+  {id:"NZDUSD",name:"NZDUSD", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:-1,gdp:0, mPMI:-1,sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:0},
+  {id:"EURJPY",name:"EURJPY", cat:"Forex",    cot:0,retail:-1,seasonal:0, trend:-1,gdp:-1,mPMI:-1,sPMI:0, retailSal:-1,inflation:0, empChg:0, unemploy:-1,rates:-2},
+  {id:"AUDJPY",name:"AUDJPY", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:-1,gdp:0, mPMI:0, sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:-1},
+  {id:"NZDJPY",name:"NZDJPY", cat:"Forex",    cot:0,retail:0, seasonal:-1,trend:-1,gdp:0, mPMI:-1,sPMI:-1,retailSal:0, inflation:0, empChg:0, unemploy:0, rates:-2},
+  {id:"EURGBP",name:"EURGBP", cat:"Forex",    cot:0,retail:1, seasonal:0, trend:-1,gdp:-1,mPMI:-1,sPMI:0, retailSal:-1,inflation:0, empChg:0, unemploy:-1,rates:0},
+  {id:"EURAUD",name:"EURAUD", cat:"Forex",    cot:0,retail:0, seasonal:0, trend:1, gdp:-1,mPMI:-1,sPMI:0, retailSal:-1,inflation:0, empChg:0, unemploy:0, rates:0},
+  {id:"GBPAUD",name:"GBPAUD", cat:"Forex",    cot:1,retail:-1,seasonal:0, trend:2, gdp:1, mPMI:0, sPMI:1, retailSal:0, inflation:-1,empChg:0, unemploy:0, rates:0},
 ].map(a=>{
   a.total=a.cot+a.retail+a.seasonal+a.trend+a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
   a.bias=a.total>=8?"Very Bullish":a.total>=5?"Bullish":a.total>=2?"Mild Bullish":a.total<=-8?"Very Bearish":a.total<=-5?"Bearish":a.total<=-2?"Mild Bearish":"Neutral";
@@ -3404,130 +3413,161 @@ function getAssetMetrics(a) {
   };
 }
 
+// ── SCORE HISTORY HISTOGRAM ───────────────────────────────────────────────────
+// Design contract:
+//   • SAME dataset regardless of screen width (viewBox scales via CSS width:100%)
+//   • Pure histogram tiling: bars fill exactly left→right with 1px gap
+//   • Zero-anchored: bars grow up (positive) or down (negative) from zero line
+//   • Color polarity: emerald = bull, red = bear, two-tone opacity by magnitude
+//   • Consistent on every device — SVG viewBox handles all responsiveness
 function scHistoryChart(assetId, curScore, opts={}) {
-  // opts: { height, showLabel, labelSuffix }
-  const H_TOTAL = opts.height || 140;
-  const label   = opts.showLabel !== false;
-  const suffix  = opts.labelSuffix || assetId;
+  const CHART_H  = opts.height      || 140;
+  const showHdr  = opts.showLabel   !== false;
+  const hdrLabel = opts.labelSuffix || assetId;
+  const N_DAYS   = 30; // always 30 bars, no slicing
 
-  // Build 30-day history
+  // ── 1. Build dataset (always N_DAYS entries, null = no data yet) ──────────
   const pts = [];
-  for (let i = 29; i >= 0; i--) {
+  for (let i = N_DAYS - 1; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    const k = "ef_sh_" + d.toISOString().split("T")[0];
+    const key = "ef_sh_" + d.toISOString().split("T")[0];
     try {
-      const raw = localStorage.getItem(k);
+      const raw = localStorage.getItem(key);
       const sc  = raw ? (JSON.parse(raw)[assetId] ?? null) : null;
       pts.push({ d, sc });
     } catch(e) { pts.push({ d, sc: null }); }
   }
-  pts[pts.length-1].sc = curScore;
+  // Pin today's score regardless of storage
+  pts[pts.length - 1].sc = curScore;
+
+  // Filled = has a value; gaps shown as hairline
   const filled = pts.filter(p => p.sc !== null);
 
+  // ── 2. Placeholder when history is brand new ──────────────────────────────
   if (filled.length < 2) {
-    return `<div style="display:flex;align-items:center;justify-content:center;height:${H_TOTAL}px;background:var(--sc-bg1);font-size:11px;color:var(--sc-t3)">
-      History builds daily — current score:
-      <strong style="color:${curScore>=1?"#34d399":curScore<=-1?"#f87171":"#9ca3af"};margin-left:6px">${curScore>=0?"+":""}${curScore}</strong>
+    const col = curScore >= 1 ? "#34d399" : curScore <= -1 ? "#f87171" : "#9ca3af";
+    return `<div class="sc-history-card">
+      ${showHdr ? `<div class="sc-history-hd"><span class="sc-history-title">Score History — ${hdrLabel}</span></div>` : ''}
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:${CHART_H}px;gap:6px">
+        <div style="font-size:9px;font-weight:600;letter-spacing:1px;color:var(--sc-t3);text-transform:uppercase">History builds daily</div>
+        <div style="font-size:28px;font-weight:800;color:${col}">${curScore>=0?"+":""}${curScore}</div>
+      </div>
     </div>`;
   }
 
-  // SVG dimensions — high density bar layout
-  const W = 560;
-  const pL = 32, pR = 10, pT = 14, pB = 26;
-  const cW = W - pL - pR, cH = H_TOTAL - pT - pB;
-  const n  = filled.length;
+  // ── 3. SVG geometry — FIXED viewBox, CSS scales it ────────────────────────
+  // viewBox is always 560×CHART_H. CSS width:100% handles responsive scaling.
+  // No device-specific branching. No min-width hacks.
+  const VW = 560; // viewBox width — never changes
+  const pL = 34, pR = 8, pT = 12, pB = 24;
+  const cW = VW - pL - pR;  // chart drawable width
+  const cH = CHART_H - pT - pB;
 
-  // Y scale — always centered on 0, at least ±6
+  // ── 4. Y scale — zero-anchored, symmetric enough to show polarity ─────────
   const allSc = filled.map(p => p.sc);
-  const rawMax = Math.max(...allSc, 6), rawMin = Math.min(...allSc, -6);
-  const pad = Math.max(1, (rawMax - rawMin) * 0.1);
-  const yMax = rawMax + pad, yMin = rawMin - pad;
+  const rawMax = Math.max(...allSc, 5);
+  const rawMin = Math.min(...allSc, -5);
+  // Add 15% headroom so bars don't touch edges
+  const headroom = Math.max(1.5, (rawMax - rawMin) * 0.12);
+  const yMax = rawMax + headroom;
+  const yMin = rawMin - headroom;
+  const yRange = yMax - yMin;
 
-  const xOf = i  => pL + i * (cW / (n - 1 || 1));
-  const yOf = v  => pT + cH * (1 - (v - yMin) / (yMax - yMin));
-  const z   = yOf(0);
+  // Map value → SVG Y coordinate (top = pT when v=yMax)
+  const yOf = v => pT + cH * (1 - (v - yMin) / yRange);
+  const z   = yOf(0); // zero baseline Y
 
-  // ── Zone backgrounds ──
-  // Above zero: very subtle green gradient fill using clipPath
-  const bullH = Math.max(0, z - pT);
-  const bearH = Math.max(0, pT + cH - z);
-  const zones = `
-    <rect x="${pL}" y="${pT}"       width="${cW}" height="${bullH.toFixed(1)}" fill="rgba(52,211,153,.04)"/>
-    <rect x="${pL}" y="${z.toFixed(1)}" width="${cW}" height="${bearH.toFixed(1)}" fill="rgba(248,113,113,.04)"/>`;
+  // ── 5. Pure histogram tiling ──────────────────────────────────────────────
+  // Each of the N_DAYS slots gets exactly cW/N_DAYS width.
+  // Bars are 1px narrower on each side → 1px gap between all bars.
+  const slotW = cW / N_DAYS;
+  const barW  = Math.max(2, slotW - 2); // minimum 2px, 1px gap each side
+  // Map day index → left edge of slot
+  const xLeft = i => pL + i * slotW + (slotW - barW) / 2;
 
-  // ── Reference lines ──
-  // Draw lines at meaningful score levels
-  const refLevels = [...new Set([-5, 0, 5].filter(v => v >= yMin-1 && v <= yMax+1))];
-  let refs = refLevels.map(v => {
-    const y   = yOf(v).toFixed(1);
+  // ── 6. Zone fills (subtle gradient feel using two rects) ──────────────────
+  const bullZoneH = Math.max(0, z - pT);
+  const bearZoneH = Math.max(0, pT + cH - z);
+  const zones =
+    `<rect x="${pL}" y="${pT}"           width="${cW}" height="${bullZoneH.toFixed(1)}" fill="rgba(52,211,153,.03)"/>` +
+    `<rect x="${pL}" y="${z.toFixed(1)}" width="${cW}" height="${bearZoneH.toFixed(1)}" fill="rgba(248,113,113,.03)"/>`;
+
+  // ── 7. Reference lines (+5, 0, -5) ───────────────────────────────────────
+  const refLines = [-5, 0, 5].filter(v => v > yMin && v < yMax).map(v => {
+    const ry  = yOf(v).toFixed(1);
     const isZ = v === 0;
-    const col = isZ ? "rgba(255,255,255,.18)" : v > 0 ? "rgba(52,211,153,.22)" : "rgba(248,113,113,.22)";
-    const lbl = v === 0 ? "0" : (v > 0 ? `+${v}` : `${v}`);
-    return `<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}"
-              stroke="${col}" stroke-width="${isZ?1:.7}" ${isZ?'':`stroke-dasharray="3,4"`}/>
-            <text x="${pL-3}" y="${(parseFloat(y)+3.5).toFixed(0)}" fill="rgba(255,255,255,.2)"
-              font-size="7.5" text-anchor="end" font-family="monospace">${lbl}</text>`;
+    const lc  = isZ ? "rgba(255,255,255,.2)" : v > 0 ? "rgba(52,211,153,.2)" : "rgba(248,113,113,.2)";
+    const lbl = v > 0 ? `+${v}` : `${v}`;
+    return (
+      `<line x1="${pL}" y1="${ry}" x2="${VW-pR}" y2="${ry}" stroke="${lc}" stroke-width="${isZ?1:.6}" ${isZ?'':'stroke-dasharray="3,3"'}/>` +
+      `<text x="${pL-2}" y="${(parseFloat(ry)+3.5).toFixed(0)}" fill="${lc}" font-size="7" text-anchor="end" font-family="monospace">${lbl}</text>`
+    );
   }).join("");
 
-  // ── Histogram bars — compact with 1px gap ──
-  const bSlot = cW / n;
-  const bW    = Math.max(3, Math.min(bSlot * 0.78, 16));
-  let bars = filled.map((p, i) => {
-    const sc  = p.sc;
-    const bH  = Math.max(2, Math.abs(yOf(sc) - z));
-    const by  = sc >= 0 ? yOf(sc) : z;
-    const bx  = xOf(i) - bW / 2;
+  // ── 8. Bars — N_DAYS slots, gap for nulls ────────────────────────────────
+  let bars = "";
+  pts.forEach((p, i) => {
+    if (p.sc === null) return; // leave gap for missing days
+    const sc    = p.sc;
+    const barH  = Math.max(1.5, Math.abs(yOf(sc) - z));
+    const barY  = sc >= 0 ? yOf(sc) : z;
+    const barX  = xLeft(i);
+    const isLast = i === pts.length - 1;
 
-    // Color by magnitude — two-tone opacity
-    const strong = Math.abs(sc) >= 5;
-    const mid    = Math.abs(sc) >= 3;
-    const col = sc > 0
-      ? (strong ? "#34d399" : mid ? "rgba(52,211,153,.75)" : "rgba(52,211,153,.45)")
+    // Color: magnitude-based opacity + full color for strong signals
+    const abs   = Math.abs(sc);
+    const alpha = abs >= 5 ? 1 : abs >= 3 ? 0.78 : abs >= 1 ? 0.5 : 0.3;
+    const col   = sc > 0
+      ? `rgba(52,211,153,${alpha})`
       : sc < 0
-        ? (strong ? "#f87171" : mid ? "rgba(248,113,113,.75)" : "rgba(248,113,113,.45)")
+        ? `rgba(248,113,113,${alpha})`
         : "rgba(156,163,175,.3)";
 
-    // Highlight today's bar with a brighter border
-    const isLast = i === n - 1;
-    const extra  = isLast ? ` stroke="${sc>=0?"#34d399":"#f87171"}" stroke-width="1"` : "";
+    // Today's bar: full opacity + bright stroke highlight
+    const lastAttrs = isLast
+      ? ` stroke="${sc>0?'#34d399':sc<0?'#f87171':'#9ca3af'}" stroke-width="1.5"`
+      : "";
 
-    return `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bW.toFixed(1)}" height="${bH.toFixed(1)}"
-      fill="${col}" rx="1"${extra}/>`;
-  }).join("");
+    bars += `<rect x="${barX.toFixed(1)}" y="${barY.toFixed(1)}"
+      width="${barW.toFixed(1)}" height="${barH.toFixed(1)}"
+      fill="${isLast?(sc>0?'#34d399':sc<0?'#f87171':'#9ca3af'):col}" rx="1"${lastAttrs}/>`;
+  });
 
-  // ── Zero baseline as a crisp 1px line ──
-  const baseline = `<line x1="${pL}" y1="${z.toFixed(1)}" x2="${W-pR}" y2="${z.toFixed(1)}"
-    stroke="rgba(255,255,255,.22)" stroke-width="1"/>`;
+  // ── 9. Zero baseline ──────────────────────────────────────────────────────
+  const baseline = `<line x1="${pL}" y1="${z.toFixed(1)}" x2="${VW-pR}" y2="${z.toFixed(1)}"
+    stroke="rgba(255,255,255,.25)" stroke-width="1"/>`;
 
-  // ── X-axis date labels — sparse (max 6 labels) ──
-  const step = Math.max(1, Math.ceil(n / 6));
-  let xLbls = filled.map((p, i) => {
-    if (i !== 0 && i !== n-1 && i % step !== 0) return "";
-    return `<text x="${xOf(i).toFixed(1)}" y="${H_TOTAL - 5}" fill="rgba(255,255,255,.2)"
-      font-size="7.5" text-anchor="middle" font-family="monospace">
+  // ── 10. X-axis labels — always 5 labels across all N_DAYS ────────────────
+  // Positions at 0%, 25%, 50%, 75%, 100% of timeline
+  const labelIdxs = [0, 7, 14, 21, 29];
+  const xLabels = labelIdxs.map(i => {
+    const p = pts[i];
+    if (!p) return "";
+    const lx = (pL + i * slotW + slotW / 2).toFixed(1);
+    return `<text x="${lx}" y="${CHART_H - 5}" fill="rgba(255,255,255,.2)"
+      font-size="7" text-anchor="middle" font-family="monospace">
       ${p.d.toLocaleDateString([], {month:"short", day:"numeric"})}
     </text>`;
   }).join("");
 
-  // ── Last score annotation dot ──
-  const last    = filled[n-1];
+  // ── 11. Current score annotation ─────────────────────────────────────────
+  const last    = pts[pts.length - 1];
   const lastCol = last.sc >= 1 ? "#34d399" : last.sc <= -1 ? "#f87171" : "#9ca3af";
-  const lastDot = `<circle cx="${xOf(n-1).toFixed(1)}" cy="${yOf(last.sc).toFixed(1)}"
-    r="3" fill="${lastCol}" stroke="#0d1117" stroke-width="1"/>`;
+  const annot   = `<circle cx="${(xLeft(N_DAYS-1)+barW/2).toFixed(1)}" cy="${yOf(last.sc).toFixed(1)}"
+    r="3" fill="${lastCol}" stroke="#0d1117" stroke-width="1.2"/>`;
 
-  const svgContent = `${zones}${refs}${bars}${baseline}${lastDot}${xLbls}`;
-
-  const hdrHTML = label ? `
+  const hdrHTML = showHdr ? `
     <div class="sc-history-hd">
-      <span class="sc-history-title">Score History — ${suffix}</span>
-      <span style="font-size:10px;font-weight:700;color:${lastCol}">${last.sc>=0?"+":""}${last.sc}</span>
-    </div>` : '';
+      <span class="sc-history-title">${hdrLabel}</span>
+      <span style="font-size:10px;font-weight:800;color:${lastCol}">${last.sc>=0?"+":""}${last.sc}</span>
+    </div>` : "";
 
   return `<div class="sc-history-card">
     ${hdrHTML}
-    <svg viewBox="0 0 ${W} ${H_TOTAL}" style="width:100%;height:auto;display:block;min-width:220px">
-      <rect width="${W}" height="${H_TOTAL}" fill="#0d1117"/>
-      ${svgContent}
+    <svg viewBox="0 0 ${VW} ${CHART_H}" preserveAspectRatio="none"
+      style="width:100%;height:${CHART_H}px;display:block">
+      <rect width="${VW}" height="${CHART_H}" fill="#0b0f17"/>
+      ${zones}${refLines}${bars}${baseline}${annot}${xLabels}
     </svg>
   </div>`;
 }
@@ -3543,9 +3583,34 @@ function scBiasInfo(sc){
 }
 
 function renderScorecard() {
-  const assetOpts = ASSETS_SCORED.map(a =>
-    `<option value="${a.id}" ${a.id===state.scAsset?"selected":""}>${a.name}</option>`
-  ).join("");
+  // Structured grouped dropdown — one selection method only
+  const SC_GROUPS = [
+    { label:"Indices",    cats:["Index"],     ids:["SPX500","NASDAQ","DOW","RUSSELL","US10T"] },
+    { label:"Commodities",cats:["Commodity"],ids:["Gold","SILVER","USOIL","COPPER"] },
+    { label:"Crypto",     cats:["Crypto"],    ids:["BTC","ETH"] },
+    { label:"Macro / FX", cats:["Forex"],     ids:["USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD"] },
+    { label:"FX Crosses", cats:["Forex"],     ids:["GBPJPY","EURJPY","GBPAUD","AUDCHF","NZDUSD","AUDCHF","EURGBP","EURAUD","GBPAUD","NZDJPY","AUDJPY"] },
+  ];
+  const SC_LABELS = {
+    SPX500:"SPX500 — S&P 500", NASDAQ:"NAS100 — Nasdaq 100", DOW:"US30 — Dow Jones",
+    RUSSELL:"RUSSELL — Russell 2000", US10T:"US10T — 10Y Treasury",
+    Gold:"XAUUSD — Gold", SILVER:"XAGUSD — Silver", USOIL:"USOIL — Crude Oil", COPPER:"COPPER — Copper",
+    BTC:"BTCUSD — Bitcoin", ETH:"ETHUSD — Ethereum",
+    USD:"DXY — Dollar Index", EUR:"EURUSD — Euro", GBP:"GBPUSD — Pound",
+    JPY:"USDJPY — Yen", AUD:"AUDUSD — Aussie", CAD:"USDCAD — CAD", CHF:"USDCHF — Swiss", NZD:"NZDUSD — Kiwi",
+    GBPJPY:"GBPJPY", EURJPY:"EURJPY", GBPAUD:"GBPAUD", AUDCHF:"AUDCHF",
+    EURGBP:"EURGBP", EURAUD:"EURAUD", NZDJPY:"NZDJPY", AUDJPY:"AUDJPY",
+  };
+  let assetOpts = "";
+  SC_GROUPS.forEach(g => {
+    const options = g.ids.map(id => {
+      const a = ASSETS_SCORED.find(x => x.id === id);
+      if (!a) return "";
+      const lbl = SC_LABELS[id] || a.name;
+      return `<option value="${id}" ${id===state.scAsset?"selected":""}>${lbl}</option>`;
+    }).filter(Boolean).join("");
+    if (options) assetOpts += `<optgroup label="${g.label}">${options}</optgroup>`;
+  });
   const liveData = state.scLiveData || null;
   const raw    = ASSETS_SCORED.find(a => a.id === state.scAsset) || ASSETS_SCORED[0];
   const scored = state.scAllScores?.[raw.id] || calculateAssetScore(raw, liveData);
@@ -3663,18 +3728,23 @@ function renderScorecard() {
 
 // ── RENDER: FOREX SCORECARD ────────────────────────────────────────────────────
 const SC_FOREX_PAIRS = [
-  {id:"EURUSD",base:"EUR",quote:"USD",name:"Euro / Dollar"},
-  {id:"GBPUSD",base:"GBP",quote:"USD",name:"Pound / Dollar"},
-  {id:"USDJPY",base:"USD",quote:"JPY",name:"Dollar / Yen"},
-  {id:"AUDUSD",base:"AUD",quote:"USD",name:"Aussie / Dollar"},
-  {id:"USDCAD",base:"USD",quote:"CAD",name:"Dollar / CAD"},
-  {id:"USDCHF",base:"USD",quote:"CHF",name:"Dollar / Swiss"},
-  {id:"NZDUSD",base:"NZD",quote:"USD",name:"Kiwi / Dollar"},
-  {id:"EURJPY",base:"EUR",quote:"JPY",name:"Euro / Yen"},
-  {id:"GBPJPY",base:"GBP",quote:"JPY",name:"Pound / Yen"},
-  {id:"EURGBP",base:"EUR",quote:"GBP",name:"Euro / Pound"},
-  {id:"AUDCAD",base:"AUD",quote:"CAD",name:"Aussie / CAD"},
-  {id:"AUDCHF",base:"AUD",quote:"CHF",name:"Aussie / Swiss"},
+  // ── USD Quote (Majors) ──
+  {id:"EURUSD",base:"EUR",quote:"USD",name:"Euro / Dollar",    group:"Majors"},
+  {id:"GBPUSD",base:"GBP",quote:"USD",name:"Pound / Dollar",  group:"Majors"},
+  {id:"AUDUSD",base:"AUD",quote:"USD",name:"Aussie / Dollar",  group:"Majors"},
+  {id:"NZDUSD",base:"NZD",quote:"USD",name:"Kiwi / Dollar",    group:"Majors"},
+  // ── USD Base (Majors) ──
+  {id:"USDJPY",base:"USD",quote:"JPY",name:"Dollar / Yen",     group:"Majors"},
+  {id:"USDCAD",base:"USD",quote:"CAD",name:"Dollar / CAD",     group:"Majors"},
+  {id:"USDCHF",base:"USD",quote:"CHF",name:"Dollar / Swiss",   group:"Majors"},
+  // ── Crosses ──
+  {id:"EURJPY",base:"EUR",quote:"JPY",name:"Euro / Yen",       group:"Crosses"},
+  {id:"GBPJPY",base:"GBP",quote:"JPY",name:"Pound / Yen",      group:"Crosses"},
+  {id:"AUDJPY",base:"AUD",quote:"JPY",name:"Aussie / Yen",     group:"Crosses"},
+  {id:"NZDJPY",base:"NZD",quote:"JPY",name:"Kiwi / Yen",       group:"Crosses"},
+  {id:"EURGBP",base:"EUR",quote:"GBP",name:"Euro / Pound",     group:"Crosses"},
+  {id:"EURAUD",base:"EUR",quote:"AUD",name:"Euro / Aussie",    group:"Crosses"},
+  {id:"GBPAUD",base:"GBP",quote:"AUD",name:"Pound / Aussie",   group:"Crosses"},
 ];
 
 function renderForexScorecard() {
@@ -3696,7 +3766,7 @@ function renderForexScorecard() {
   const baseSc   = baseRaw  ? calculateAssetScore(baseRaw,  liveData) : null;
   const quoteSc  = quoteRaw ? calculateAssetScore(quoteRaw, liveData) : null;
 
-  // ── Pair pills — coloured by bias ──────────────────────────────────────────
+  // ── Pair pills grouped ──────────────────────────────────────────────────────
   const pillNav = pairs.map(fx => {
     const fi   = scBiasInfo(fx.pairScore);
     const isSel = fx.id === selPairId;
@@ -3713,8 +3783,16 @@ function renderForexScorecard() {
   }).join("");
 
   // ── Pair dropdown (single source of truth) ──────────────────────────────────
-  const dropdown = SC_FOREX_PAIRS.map(p=>
-    `<option value="${p.id}" ${p.id===selPairId?"selected":""}>${p.id} — ${p.name}</option>`
+  // Grouped dropdown — single source of truth
+  const fxByGroup = {};
+  SC_FOREX_PAIRS.forEach(p => {
+    if (!fxByGroup[p.group]) fxByGroup[p.group] = [];
+    fxByGroup[p.group].push(p);
+  });
+  const dropdown = Object.entries(fxByGroup).map(([grp, ps]) =>
+    `<optgroup label="${grp}">${ps.map(p =>
+      `<option value="${p.id}" ${p.id===selPairId?"selected":""}>${p.id} — ${p.name}</option>`
+    ).join("")}</optgroup>`
   ).join("");
 
   // ── Section 1: Score header ─────────────────────────────────────────────────
