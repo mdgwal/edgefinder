@@ -3952,5 +3952,37 @@ setInterval(refreshAll,15*60*1000);
 setTimeout(runEngine, 2000);
 setInterval(runEngine, 5*60*1000);
 </script>
+  <script>
+async function loadForexData() {
+  try {
+    const res = await fetch("http://localhost:3000/forex");
+    const data = await res.json();
+
+    console.log("Forex Data:", data);
+
+    // Example: update UI
+    for (const pair in data) {
+      const price = data[pair]?.price || "N/A";
+
+      // Find element with id like EURUSD, GBPUSD etc.
+      const id = pair.replace("/", "");
+      const el = document.getElementById(id);
+
+      if (el) {
+        el.innerText = price;
+      }
+    }
+
+  } catch (err) {
+    console.error("Error loading forex:", err);
+  }
+}
+
+// run once
+loadForexData();
+
+// refresh every 10 seconds
+setInterval(loadForexData, 10000);
+</script>
 </body>
 </html>
