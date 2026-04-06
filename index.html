@@ -3955,7 +3955,7 @@ setInterval(runEngine, 5*60*1000);
   <script>
 async function loadForexData() {
   try {
-    const res = await fetch("https://edgefinder-backend.onrender.com") ;
+    const res = await fetch("https://edgefinder-backend.onrender.com/forex");
     const data = await res.json();
 
     console.log("Forex Data:", data);
