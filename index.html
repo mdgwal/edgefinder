@@ -239,107 +239,212 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .trade-level-sub{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;}
 
 
-/* ══════════════════════════════════════════════════
-   ASSET SCORECARD & FOREX SCORECARD — PREMIUM UI
-   ══════════════════════════════════════════════════ */
-/* Design tokens */
+/* ═══════════════════════════════════════════════════
+   SCORECARD — INSTITUTIONAL TRADING TERMINAL THEME
+   ═══════════════════════════════════════════════════ */
 :root{
-  --sc-bull:#22c55e;--sc-bear:#ef4444;--sc-neut:#9ca3af;
-  --sc-bull-bg:rgba(34,197,94,.1);--sc-bear-bg:rgba(239,68,68,.1);--sc-neut-bg:rgba(156,163,175,.08);
-  --sc-bull-border:rgba(34,197,94,.25);--sc-bear-border:rgba(239,68,68,.25);--sc-neut-border:rgba(156,163,175,.2);
-  --sc-card:#111827;--sc-card2:#1a2332;--sc-card-border:rgba(255,255,255,.07);
-  --sc-text:#f1f5f9;--sc-muted:#64748b;--sc-subtle:#374151;
-  --sc-radius:14px;--sc-shadow:0 2px 16px rgba(0,0,0,.35);
+  /* Signal palette — muted, professional */
+  --sc-bull:#34d399;   /* emerald-400: readable, not neon */
+  --sc-bull-dim:#059669; /* emerald-600 for zones */
+  --sc-bear:#f87171;   /* red-400 */
+  --sc-bear-dim:#dc2626;
+  --sc-neut:#6b7280;   /* gray-500 */
+  --sc-amber:#fbbf24;
+
+  /* Surface hierarchy */
+  --sc-bg0:#080c10;    /* page base */
+  --sc-bg1:#0d1117;    /* primary card */
+  --sc-bg2:#111827;    /* secondary card */
+  --sc-bg3:#1a2335;    /* inset / hover */
+  --sc-border:rgba(255,255,255,.06);
+  --sc-border2:rgba(255,255,255,.10);
+
+  /* Typography */
+  --sc-t1:#e2e8f0;     /* headings */
+  --sc-t2:#94a3b8;     /* body */
+  --sc-t3:#4b5563;     /* muted */
+
+  /* Spacing & geometry */
+  --sc-r:6px;          /* card radius — tight institutional feel */
+  --sc-r2:8px;
 }
-/* ── SHARED ── */
-.sc-page{padding:0;}
-.sc-topbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
-.sc-title{font-size:16px;font-weight:700;color:var(--sc-text);letter-spacing:-.3px;}
-.sc-subtitle{font-size:11px;color:var(--sc-muted);margin-top:2px;}
-.sc-sel{background:#1e293b;border:1px solid rgba(255,255,255,.12);color:var(--sc-text);font-size:12px;padding:8px 14px;border-radius:8px;outline:none;cursor:pointer;min-width:160px;transition:border-color .2s;}
-.sc-sel:hover{border-color:rgba(255,255,255,.25);}
-.sc-badge-live{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px;background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.2);}
-.sc-badge-static{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:3px 10px;border-radius:6px;background:rgba(156,163,175,.08);color:#9ca3af;border:1px solid rgba(156,163,175,.15);}
-/* ── ASSET SCORECARD LAYOUT ── */
-.sc-layout{display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start;}
-@media(max-width:800px){.sc-layout{grid-template-columns:1fr;}}
-/* Left column */
-.sc-panel-left{display:flex;flex-direction:column;gap:12px;}
-.sc-gauge-card{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:var(--sc-radius);padding:24px 20px;text-align:center;box-shadow:var(--sc-shadow);}
-.sc-gauge-svg{width:160px;height:90px;display:block;margin:0 auto 4px;}
-.sc-score-num{font-size:52px;font-weight:800;line-height:1;letter-spacing:-2px;margin:8px 0 2px;}
-.sc-edge-lbl{font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--sc-muted);text-transform:uppercase;margin-bottom:10px;}
-.sc-bias-pill{display:inline-block;font-size:12px;font-weight:700;padding:5px 18px;border-radius:20px;letter-spacing:.3px;}
-/* Component mini cards grid */
-.sc-comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.sc-comp-card{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:10px;padding:12px 14px;transition:border-color .2s,background .2s;}
-.sc-comp-card:hover{border-color:rgba(255,255,255,.14);background:var(--sc-card2);}
-.sc-comp-card-lbl{font-size:9px;font-weight:600;letter-spacing:.8px;color:var(--sc-muted);text-transform:uppercase;margin-bottom:6px;}
-.sc-comp-card-val{font-size:22px;font-weight:800;line-height:1;letter-spacing:-1px;margin-bottom:4px;}
-.sc-comp-card-bias{font-size:10px;font-weight:600;}
-.sc-comp-bar{height:3px;border-radius:2px;background:rgba(255,255,255,.06);margin-top:8px;overflow:hidden;}
-.sc-comp-bar-fill{height:100%;border-radius:2px;transition:width .5s ease;}
-/* Right column — detail panel */
-.sc-panel-right{display:flex;flex-direction:column;gap:12px;}
-.sc-detail-card{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:var(--sc-radius);overflow:hidden;box-shadow:var(--sc-shadow);}
-.sc-detail-hd{padding:12px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--sc-card-border);display:flex;align-items:center;justify-content:space-between;}
-.sc-detail-hd-title{font-size:11px;font-weight:700;color:var(--sc-text);letter-spacing:.3px;}
-.sc-detail-hd-score{font-size:13px;font-weight:800;}
-.sc-metric-list{padding:0;}
-.sc-metric-row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04);}
-.sc-metric-row:last-child{border-bottom:none;}
-.sc-metric-name{font-size:11px;color:var(--sc-text);}
-.sc-metric-badge{font-size:9px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap;}
-.sc-metric-surp{font-size:11px;font-weight:600;text-align:right;}
-/* History chart wrapper */
-.sc-history-card{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:var(--sc-radius);overflow:hidden;box-shadow:var(--sc-shadow);}
-.sc-history-hd{padding:12px 16px;border-bottom:1px solid var(--sc-card-border);font-size:10px;font-weight:600;letter-spacing:.8px;color:var(--sc-muted);text-transform:uppercase;}
-/* ── FOREX SCORECARD LAYOUT ── */
-.fx-layout{display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start;}
-@media(max-width:800px){.fx-layout{grid-template-columns:1fr;}}
-.fx-gauge-card{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:var(--sc-radius);padding:24px 20px;text-align:center;box-shadow:var(--sc-shadow);}
-.fx-pair-name{font-size:28px;font-weight:800;letter-spacing:-1px;color:var(--sc-text);margin-bottom:2px;}
-.fx-pair-full{font-size:11px;color:var(--sc-muted);margin-bottom:12px;}
-.fx-pair-score{font-size:52px;font-weight:800;line-height:1;letter-spacing:-2px;margin:8px 0 2px;}
-/* Currency strength bars inside gauge card */
-.fx-ccy-section{background:rgba(255,255,255,.03);border:1px solid var(--sc-card-border);border-radius:10px;padding:14px;margin-top:14px;}
-.fx-ccy-section-title{font-size:9px;font-weight:600;letter-spacing:.8px;color:var(--sc-muted);text-transform:uppercase;margin-bottom:10px;}
-.fx-ccy-row2{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.fx-ccy-row2:last-child{margin-bottom:0;}
-.fx-ccy-tag{font-size:11px;font-weight:700;width:32px;flex-shrink:0;}
-.fx-ccy-bar-track{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;}
-.fx-ccy-bar-fill{height:100%;border-radius:3px;transition:width .6s ease;}
-.fx-ccy-score-val{font-size:11px;font-weight:700;min-width:28px;text-align:right;}
-/* Right side: component mini-cards */
-.fx-right{display:flex;flex-direction:column;gap:12px;}
-.fx-comp-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-@media(min-width:1100px){.fx-comp-grid{grid-template-columns:repeat(3,1fr);}}
-.fx-comp-mini{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:10px;padding:14px;transition:border-color .2s,background .2s;}
-.fx-comp-mini:hover{border-color:rgba(255,255,255,.14);background:var(--sc-card2);}
-.fx-comp-mini-lbl{font-size:9px;font-weight:600;letter-spacing:.8px;color:var(--sc-muted);text-transform:uppercase;margin-bottom:6px;}
-.fx-comp-mini-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
-.fx-comp-mini-ccy{font-size:10px;font-weight:700;color:var(--sc-muted);}
-.fx-comp-mini-val{font-size:14px;font-weight:800;}
-.fx-comp-mini-diff{font-size:10px;color:var(--sc-muted);text-align:center;padding:4px 0 0;}
-/* Pair selector row */
-.fx-pair-selector{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
-.fx-pair-btn{font-size:11px;font-weight:600;padding:6px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--sc-muted);cursor:pointer;transition:all .15s;}
-.fx-pair-btn:hover{border-color:rgba(255,255,255,.2);color:var(--sc-text);}
-.fx-pair-btn.active{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#22c55e;}
-.fx-pair-btn.active-bear{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.35);color:#ef4444;}
-.fx-pair-btn.active-neut{background:rgba(156,163,175,.1);border-color:rgba(156,163,175,.25);color:#9ca3af;}
+
+/* ── SHARED LAYOUT ─────────────────────────────────────────────── */
+.sc-page { padding:0; }
+.sc-topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  flex-wrap:wrap; gap:10px; margin-bottom:18px;
+  padding-bottom:14px; border-bottom:1px solid var(--sc-border);
+}
+.sc-title    { font-size:15px; font-weight:700; color:var(--sc-t1); letter-spacing:-.2px; }
+.sc-subtitle { font-size:11px; color:var(--sc-t3); margin-top:2px; }
+
+.sc-sel {
+  background:var(--sc-bg2); border:1px solid var(--sc-border2);
+  color:var(--sc-t1); font-size:12px; padding:7px 12px;
+  border-radius:var(--sc-r); outline:none; cursor:pointer;
+  min-width:150px; transition:border-color .15s;
+}
+.sc-sel:hover { border-color:rgba(255,255,255,.2); }
+
+/* Status chips */
+.sc-chip-live   { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; background:rgba(52,211,153,.08); color:var(--sc-bull); border:1px solid rgba(52,211,153,.18); }
+.sc-chip-static { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; background:rgba(107,114,128,.08); color:var(--sc-neut); border:1px solid rgba(107,114,128,.15); }
+
+/* Badge system */
+.sc-badge { display:inline-block; padding:1px 7px; border-radius:3px; font-size:9px; font-weight:700; letter-spacing:.3px; }
+.badge-bull,.pm-bull { background:rgba(52,211,153,.1); color:var(--sc-bull); border:1px solid rgba(52,211,153,.2); }
+.badge-bear,.pm-bear { background:rgba(248,113,113,.1); color:var(--sc-bear); border:1px solid rgba(248,113,113,.2); }
+.badge-neut,.pm-neut { background:rgba(107,114,128,.08); color:var(--sc-neut); border:1px solid rgba(107,114,128,.15); }
+.sc-tbl-badge { display:inline-block; padding:1px 7px; border-radius:3px; font-size:9px; font-weight:700; }
+
+/* ── ASSET SCORECARD ───────────────────────────────────────────── */
+/* Two-column master layout: 240px left / fluid right */
+.sc-layout {
+  display:grid; grid-template-columns:240px 1fr;
+  gap:14px; align-items:start;
+}
+@media(max-width:780px){ .sc-layout{ grid-template-columns:1fr; } }
+
+/* Left panel */
+.sc-panel-left { display:flex; flex-direction:column; gap:10px; }
+
+.sc-gauge-card {
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r2); padding:20px 16px;
+  text-align:center;
+}
+.sc-gauge-svg   { width:154px; height:88px; display:block; margin:0 auto 2px; }
+.sc-score-num   { font-size:48px; font-weight:800; line-height:1; letter-spacing:-2px; margin:6px 0 2px; }
+.sc-edge-lbl    { font-size:9px; font-weight:600; letter-spacing:1.8px; color:var(--sc-t3); text-transform:uppercase; margin-bottom:8px; }
+.sc-bias-pill   { display:inline-block; font-size:11px; font-weight:700; padding:4px 16px; border-radius:4px; letter-spacing:.2px; }
+
+/* Component 2×3 grid */
+.sc-comp-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.sc-comp-card {
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r); padding:10px 12px;
+  transition:border-color .15s, background .15s;
+}
+.sc-comp-card:hover { border-color:var(--sc-border2); background:var(--sc-bg3); }
+.sc-comp-card-lbl  { font-size:8px; font-weight:700; letter-spacing:1px; color:var(--sc-t3); text-transform:uppercase; margin-bottom:5px; }
+.sc-comp-card-val  { font-size:20px; font-weight:800; line-height:1; letter-spacing:-1px; margin-bottom:3px; }
+.sc-comp-card-bias { font-size:9px; font-weight:600; }
+.sc-comp-bar       { height:2px; border-radius:1px; background:rgba(255,255,255,.05); margin-top:7px; overflow:hidden; }
+.sc-comp-bar-fill  { height:100%; border-radius:1px; transition:width .5s ease; }
+
+/* Right panel */
+.sc-panel-right { display:flex; flex-direction:column; gap:10px; }
+
+/* History chart card */
+.sc-history-card {
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r2); overflow:hidden;
+}
+.sc-history-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 14px; border-bottom:1px solid var(--sc-border);
+}
+.sc-history-title { font-size:10px; font-weight:700; letter-spacing:.5px; color:var(--sc-t2); text-transform:uppercase; }
+
+/* Detail cards */
+.sc-detail-card {
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r2); overflow:hidden;
+}
+.sc-detail-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 14px; background:rgba(255,255,255,.02);
+  border-bottom:1px solid var(--sc-border);
+}
+.sc-detail-hd-title { font-size:10px; font-weight:700; color:var(--sc-t2); letter-spacing:.3px; }
+.sc-detail-hd-score { font-size:12px; font-weight:800; }
+.sc-metric-row {
+  display:grid; grid-template-columns:1fr auto auto;
+  gap:10px; align-items:center;
+  padding:8px 14px; border-bottom:1px solid rgba(255,255,255,.03);
+}
+.sc-metric-row:last-child { border-bottom:none; }
+.sc-metric-name { font-size:11px; color:var(--sc-t1); }
+.sc-metric-surp { font-size:11px; font-weight:600; text-align:right; }
+
+/* Weight bar (compact) */
+.sc-wt-bar { display:flex; align-items:center; gap:8px; padding:7px 14px; border-bottom:1px solid rgba(255,255,255,.03); }
+.sc-wt-bar:last-child { border-bottom:none; }
+.sc-wt-label { font-size:10px; color:var(--sc-t2); flex:1; }
+.sc-wt-track { width:80px; height:3px; background:rgba(255,255,255,.06); border-radius:1px; overflow:hidden; }
+.sc-wt-fill  { height:100%; border-radius:1px; transition:width .4s ease; }
+.sc-wt-val   { font-size:11px; font-weight:700; min-width:26px; text-align:right; }
+
+/* ── FOREX SCORECARD ───────────────────────────────────────────── */
+/* Single-column flow: selector → score header → history → comps → ranking */
+.fx-page { display:flex; flex-direction:column; gap:14px; }
+
+/* Score header row */
+.fx-score-header {
+  display:grid; grid-template-columns:auto 1fr auto;
+  gap:16px; align-items:center;
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r2); padding:16px 20px;
+}
+@media(max-width:600px){ .fx-score-header{ grid-template-columns:1fr; gap:10px; text-align:center; } }
+.fx-pair-big  { font-size:32px; font-weight:800; letter-spacing:-1.5px; color:var(--sc-t1); line-height:1; }
+.fx-pair-sub  { font-size:10px; color:var(--sc-t3); margin-top:2px; }
+.fx-score-big { font-size:48px; font-weight:800; letter-spacing:-2px; line-height:1; }
+.fx-score-lbl { font-size:9px; font-weight:700; letter-spacing:1.5px; color:var(--sc-t3); text-transform:uppercase; margin-top:3px; }
+
+/* Currency bars inside header */
+.fx-ccy-section { display:flex; flex-direction:column; gap:8px; min-width:160px; }
+.fx-ccy-row2    { display:flex; align-items:center; gap:8px; }
+.fx-ccy-tag     { font-size:10px; font-weight:700; width:30px; flex-shrink:0; }
+.fx-ccy-track   { flex:1; height:5px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
+.fx-ccy-fill    { height:100%; border-radius:2px; transition:width .5s ease; }
+.fx-ccy-val     { font-size:11px; font-weight:700; min-width:26px; text-align:right; }
+
+/* Pair pill nav */
+.fx-pair-nav    { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.fx-pair-pill   {
+  font-size:10px; font-weight:600; padding:5px 12px; border-radius:4px;
+  border:1px solid var(--sc-border2); background:transparent;
+  color:var(--sc-t3); cursor:pointer; transition:all .12s;
+  letter-spacing:.2px;
+}
+.fx-pair-pill:hover { color:var(--sc-t1); border-color:rgba(255,255,255,.2); background:rgba(255,255,255,.03); }
+.fx-pair-pill.p-bull { background:rgba(52,211,153,.08); border-color:rgba(52,211,153,.25); color:var(--sc-bull); }
+.fx-pair-pill.p-bear { background:rgba(248,113,113,.08); border-color:rgba(248,113,113,.25); color:var(--sc-bear); }
+.fx-pair-pill.p-neut { background:rgba(107,114,128,.06); border-color:rgba(107,114,128,.2); color:var(--sc-neut); }
+
+/* Component breakdown grid */
+.fx-comp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+@media(max-width:600px){ .fx-comp-grid{ grid-template-columns:repeat(2,1fr); } }
+.fx-comp-mini {
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r); padding:12px 14px;
+  transition:border-color .15s;
+}
+.fx-comp-mini:hover { border-color:var(--sc-border2); }
+.fx-comp-mini-lbl   { font-size:8px; font-weight:700; letter-spacing:1px; color:var(--sc-t3); text-transform:uppercase; margin-bottom:8px; }
+.fx-comp-mini-row   { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.fx-comp-mini-ccy   { font-size:9px; font-weight:600; color:var(--sc-t3); }
+.fx-comp-mini-val   { font-size:13px; font-weight:800; }
+.fx-comp-divider    { height:1px; background:rgba(255,255,255,.05); margin:6px 0; }
+.fx-comp-diff       { font-size:9px; font-weight:700; text-align:center; letter-spacing:.2px; }
+
 /* Currency ranking */
-.sc-ranking-card{background:var(--sc-card);border:1px solid var(--sc-card-border);border-radius:var(--sc-radius);overflow:hidden;box-shadow:var(--sc-shadow);}
-.sc-ranking-hd{padding:12px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid var(--sc-card-border);display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;color:var(--sc-text);}
-/* Badge helpers */
-.pm-bull{background:var(--sc-bull-bg);color:var(--sc-bull);border:1px solid var(--sc-bull-border);}
-.pm-bear{background:var(--sc-bear-bg);color:var(--sc-bear);border:1px solid var(--sc-bear-border);}
-.pm-neut{background:var(--sc-neut-bg);color:var(--sc-neut);border:1px solid var(--sc-neut-border);}
-/* Override old badge classes to use new tokens */
-.badge-bull{background:var(--sc-bull-bg);color:var(--sc-bull);border:1px solid var(--sc-bull-border);}
-.badge-bear{background:var(--sc-bear-bg);color:var(--sc-bear);border:1px solid var(--sc-bear-border);}
-.badge-neut{background:var(--sc-neut-bg);color:var(--sc-neut);border:1px solid var(--sc-neut-border);}
-.sc-tbl-badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:9px;font-weight:700;}
+.sc-ranking-card {
+  background:var(--sc-bg1); border:1px solid var(--sc-border);
+  border-radius:var(--sc-r2); overflow:hidden;
+}
+.sc-ranking-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:9px 14px; border-bottom:1px solid var(--sc-border);
+  font-size:10px; font-weight:700; color:var(--sc-t2); text-transform:uppercase; letter-spacing:.5px;
+}
+.sc-rank-row {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 14px; border-bottom:1px solid rgba(255,255,255,.03);
+}
+.sc-rank-row:last-child { border-bottom:none; }
 
 </style>
 </head>
@@ -3149,33 +3254,73 @@ async function runEngine() {
 
 // ── HELPERS: retained + kept identical ───────────────────────────────────────
 function scGaugeSVG(score, maxRange) {
-  const cx=70, cy=70, r=52;
+  // Semicircle gauge — institutional style: muted zones, precise needle
+  const cx=77, cy=76, r=58;
   const pct = Math.max(0, Math.min(1, (score + maxRange) / (2 * maxRange)));
   const angle = Math.PI - pct * Math.PI;
-  const nx = cx + r * 0.75 * Math.cos(angle);
-  const ny = cy - r * 0.75 * Math.sin(angle);
-  const col = score >= 3 ? "#00ff88" : score >= 1 ? "#7effc4" :
-              score <= -3 ? "#ff3b5c" : score <= -1 ? "#ff8fa0" : "#f0b429";
+  const nx = cx + r * 0.72 * Math.cos(angle);
+  const ny = cy - r * 0.72 * Math.sin(angle);
+  const col = score >= 3 ? "#34d399" : score >= 1 ? "#6ee7b7"
+            : score <= -3 ? "#f87171" : score <= -1 ? "#fca5a5" : "#9ca3af";
+
   const arcPt = a => ({
-    x: parseFloat((cx + r * Math.cos(a)).toFixed(1)),
-    y: parseFloat((cy - r * Math.sin(a)).toFixed(1)),
+    x: parseFloat((cx + r * Math.cos(a)).toFixed(2)),
+    y: parseFloat((cy - r * Math.sin(a)).toFixed(2)),
   });
-  const p0=arcPt(Math.PI), p40=arcPt(Math.PI*0.6), p60=arcPt(Math.PI*0.4), p100=arcPt(0);
-  return `<svg viewBox="0 0 140 78" class="sc-gauge-svg">
-    <path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p40.x} ${p40.y}"
-      fill="none" stroke="rgba(255,59,92,.5)" stroke-width="11" stroke-linecap="butt"/>
-    <path d="M ${p40.x} ${p40.y} A ${r} ${r} 0 0 1 ${p60.x} ${p60.y}"
-      fill="none" stroke="rgba(240,180,41,.5)" stroke-width="11" stroke-linecap="butt"/>
-    <path d="M ${p60.x} ${p60.y} A ${r} ${r} 0 0 1 ${p100.x} ${p100.y}"
-      fill="none" stroke="rgba(0,255,136,.5)" stroke-width="11" stroke-linecap="butt"/>
+  const p0   = arcPt(Math.PI);
+  const p33  = arcPt(Math.PI * 0.67);
+  const p67  = arcPt(Math.PI * 0.33);
+  const p100 = arcPt(0);
+
+  // Thin tick marks at 25% intervals
+  const ticks = [0.25, 0.5, 0.75].map(f => {
+    const a = Math.PI - f * Math.PI;
+    const r1 = r + 3, r2 = r + 9;
+    return `<line x1="${(cx+r1*Math.cos(a)).toFixed(1)}" y1="${(cy-r1*Math.sin(a)).toFixed(1)}"
+              x2="${(cx+r2*Math.cos(a)).toFixed(1)}" y2="${(cy-r2*Math.sin(a)).toFixed(1)}"
+              stroke="rgba(255,255,255,.15)" stroke-width="1"/>`;
+  }).join("");
+
+  return `<svg viewBox="0 0 154 88" class="sc-gauge-svg">
+    <defs>
+      <linearGradient id="gBull" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="rgba(52,211,153,.08)"/>
+        <stop offset="100%" stop-color="rgba(52,211,153,.25)"/>
+      </linearGradient>
+      <linearGradient id="gBear" x1="100%" y1="0%" x2="0%" y2="0%">
+        <stop offset="0%" stop-color="rgba(248,113,113,.08)"/>
+        <stop offset="100%" stop-color="rgba(248,113,113,.25)"/>
+      </linearGradient>
+    </defs>
+    <!-- Track -->
+    <path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p100.x} ${p100.y}"
+      fill="none" stroke="rgba(255,255,255,.06)" stroke-width="10" stroke-linecap="butt"/>
+    <!-- Bear zone -->
+    <path d="M ${p0.x} ${p0.y} A ${r} ${r} 0 0 1 ${p33.x} ${p33.y}"
+      fill="none" stroke="rgba(248,113,113,.3)" stroke-width="10" stroke-linecap="butt"/>
+    <!-- Neutral zone -->
+    <path d="M ${p33.x} ${p33.y} A ${r} ${r} 0 0 1 ${p67.x} ${p67.y}"
+      fill="none" stroke="rgba(156,163,175,.2)" stroke-width="10" stroke-linecap="butt"/>
+    <!-- Bull zone -->
+    <path d="M ${p67.x} ${p67.y} A ${r} ${r} 0 0 1 ${p100.x} ${p100.y}"
+      fill="none" stroke="rgba(52,211,153,.3)" stroke-width="10" stroke-linecap="butt"/>
+    <!-- Tick marks -->
+    ${ticks}
+    <!-- Needle shadow -->
+    <line x1="${cx}" y1="${cy}" x2="${(nx+0.5).toFixed(1)}" y2="${(ny+0.5).toFixed(1)}"
+      stroke="rgba(0,0,0,.5)" stroke-width="3" stroke-linecap="round"/>
+    <!-- Needle -->
     <line x1="${cx}" y1="${cy}" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}"
-      stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>
-    <circle cx="${cx}" cy="${cy}" r="4.5" fill="#0d1117" stroke="${col}" stroke-width="2"/>
-    <text x="18"  y="76" fill="#8b949e" font-size="8" font-family="monospace">${-maxRange}</text>
-    <text x="63"  y="16" fill="#8b949e" font-size="8" font-family="monospace">0</text>
-    <text x="112" y="76" fill="#8b949e" font-size="8" font-family="monospace">+${maxRange}</text>
+      stroke="${col}" stroke-width="2" stroke-linecap="round"/>
+    <!-- Hub -->
+    <circle cx="${cx}" cy="${cy}" r="5" fill="#0d1117" stroke="${col}" stroke-width="1.5"/>
+    <!-- Labels -->
+    <text x="14" y="83" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="monospace">${-maxRange}</text>
+    <text x="${cx-5}" y="16" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="monospace">0</text>
+    <text x="126" y="83" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="monospace">+${maxRange}</text>
   </svg>`;
 }
+
 
 function scCompBar(label, value, maxVal, compKey) {
   const pct = Math.round(Math.max(0, Math.min(100, ((value + maxVal) / (2 * maxVal)) * 100)));
@@ -3259,65 +3404,142 @@ function getAssetMetrics(a) {
   };
 }
 
-function scHistoryChart(assetId, curScore) {
+function scHistoryChart(assetId, curScore, opts={}) {
+  // opts: { height, showLabel, labelSuffix }
+  const H_TOTAL = opts.height || 140;
+  const label   = opts.showLabel !== false;
+  const suffix  = opts.labelSuffix || assetId;
+
+  // Build 30-day history
   const pts = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
     const k = "ef_sh_" + d.toISOString().split("T")[0];
     try {
       const raw = localStorage.getItem(k);
-      const sc  = raw ? JSON.parse(raw)[assetId] ?? null : null;
+      const sc  = raw ? (JSON.parse(raw)[assetId] ?? null) : null;
       pts.push({ d, sc });
     } catch(e) { pts.push({ d, sc: null }); }
   }
-  pts[pts.length - 1].sc = curScore;
+  pts[pts.length-1].sc = curScore;
   const filled = pts.filter(p => p.sc !== null);
+
   if (filled.length < 2) {
-    return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--muted)">
-      Score history builds daily. Current Edge Score: <span style="color:${curScore>=3?"var(--bull)":curScore<=-3?"var(--bear)":"var(--neutral)"};font-weight:bold">${curScore>=0?"+":""}${curScore}</span>
+    return `<div style="display:flex;align-items:center;justify-content:center;height:${H_TOTAL}px;background:var(--sc-bg1);font-size:11px;color:var(--sc-t3)">
+      History builds daily — current score:
+      <strong style="color:${curScore>=1?"#34d399":curScore<=-1?"#f87171":"#9ca3af"};margin-left:6px">${curScore>=0?"+":""}${curScore}</strong>
     </div>`;
   }
-  const W=480,H=170,pL=32,pR=10,pT=12,pB=28,cW=W-pL-pR,cH=H-pT-pB;
-  const n=filled.length;
-  const allSc=filled.map(p=>p.sc);
-  const sMax=Math.max(...allSc,5),sMin=Math.min(...allSc,-5);
-  const xOf=i=>pL+i*(cW/(n-1||1));
-  const yOf=v=>pT+cH*(1-(v-sMin)/(sMax-sMin||1));
-  const z=yOf(0);
-  let zones=`<rect x="${pL}" y="${pT}" width="${cW}" height="${Math.max(0,yOf(5)-pT)}" fill="rgba(0,255,136,.06)"/>`;
-  zones+=`<rect x="${pL}" y="${Math.max(pT,yOf(5))}" width="${cW}" height="${Math.max(0,yOf(-5)-Math.max(pT,yOf(5)))}" fill="rgba(255,255,255,.02)"/>`;
-  zones+=`<rect x="${pL}" y="${Math.max(pT,yOf(-5))}" width="${cW}" height="${Math.max(0,pT+cH-Math.max(pT,yOf(-5)))}" fill="rgba(255,59,92,.06)"/>`;
-  let refs=`<line x1="${pL}" y1="${yOf(5).toFixed(1)}" x2="${W-pR}" y2="${yOf(5).toFixed(1)}" stroke="rgba(0,255,136,.3)" stroke-width=".8" stroke-dasharray="4,4"/>`;
-  refs+=`<line x1="${pL}" y1="${z.toFixed(1)}" x2="${W-pR}" y2="${z.toFixed(1)}" stroke="rgba(255,255,255,.15)" stroke-width=".8"/>`;
-  refs+=`<line x1="${pL}" y1="${yOf(-5).toFixed(1)}" x2="${W-pR}" y2="${yOf(-5).toFixed(1)}" stroke="rgba(255,59,92,.3)" stroke-width=".8" stroke-dasharray="4,4"/>`;
-  let yLbls=[-5,0,5].map(v=>`<text x="${pL-3}" y="${yOf(v)+4}" fill="#8b949e" font-size="8" text-anchor="end" font-family="monospace">${v>0?"+":""}${v}</text>`).join("");
-  const bW=Math.max(4,cW/n-3);
-  let bars=filled.map((p,i)=>{
-    const y=p.sc>=0?yOf(p.sc):z;const h=Math.max(2,Math.abs(yOf(p.sc)-z));
-    const col=p.sc>=5?"#00ff88":p.sc>0?"rgba(0,255,136,.65)":p.sc<=-5?"#ff3b5c":"rgba(255,59,92,.65)";
-    return `<rect x="${(xOf(i)-bW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bW.toFixed(1)}" height="${h.toFixed(1)}" fill="${col}" rx="2"/>`;
+
+  // SVG dimensions — high density bar layout
+  const W = 560;
+  const pL = 32, pR = 10, pT = 14, pB = 26;
+  const cW = W - pL - pR, cH = H_TOTAL - pT - pB;
+  const n  = filled.length;
+
+  // Y scale — always centered on 0, at least ±6
+  const allSc = filled.map(p => p.sc);
+  const rawMax = Math.max(...allSc, 6), rawMin = Math.min(...allSc, -6);
+  const pad = Math.max(1, (rawMax - rawMin) * 0.1);
+  const yMax = rawMax + pad, yMin = rawMin - pad;
+
+  const xOf = i  => pL + i * (cW / (n - 1 || 1));
+  const yOf = v  => pT + cH * (1 - (v - yMin) / (yMax - yMin));
+  const z   = yOf(0);
+
+  // ── Zone backgrounds ──
+  // Above zero: very subtle green gradient fill using clipPath
+  const bullH = Math.max(0, z - pT);
+  const bearH = Math.max(0, pT + cH - z);
+  const zones = `
+    <rect x="${pL}" y="${pT}"       width="${cW}" height="${bullH.toFixed(1)}" fill="rgba(52,211,153,.04)"/>
+    <rect x="${pL}" y="${z.toFixed(1)}" width="${cW}" height="${bearH.toFixed(1)}" fill="rgba(248,113,113,.04)"/>`;
+
+  // ── Reference lines ──
+  // Draw lines at meaningful score levels
+  const refLevels = [...new Set([-5, 0, 5].filter(v => v >= yMin-1 && v <= yMax+1))];
+  let refs = refLevels.map(v => {
+    const y   = yOf(v).toFixed(1);
+    const isZ = v === 0;
+    const col = isZ ? "rgba(255,255,255,.18)" : v > 0 ? "rgba(52,211,153,.22)" : "rgba(248,113,113,.22)";
+    const lbl = v === 0 ? "0" : (v > 0 ? `+${v}` : `${v}`);
+    return `<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}"
+              stroke="${col}" stroke-width="${isZ?1:.7}" ${isZ?'':`stroke-dasharray="3,4"`}/>
+            <text x="${pL-3}" y="${(parseFloat(y)+3.5).toFixed(0)}" fill="rgba(255,255,255,.2)"
+              font-size="7.5" text-anchor="end" font-family="monospace">${lbl}</text>`;
   }).join("");
-  const linePts=filled.map((p,i)=>`${xOf(i).toFixed(1)},${yOf(p.sc).toFixed(1)}`).join(" ");
-  const line=`<polyline points="${linePts}" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.5" stroke-dasharray="5,3"/>`;
-  const lastDot=`<circle cx="${xOf(n-1).toFixed(1)}" cy="${yOf(filled[n-1].sc).toFixed(1)}" r="3.5" fill="white" stroke="#0d1117" stroke-width="1.2"/>`;
-  const step=Math.max(1,Math.ceil(n/5));
-  let xLbls=filled.map((p,i)=>i===0||i===n-1||i%step===0?`<text x="${xOf(i).toFixed(1)}" y="${H-5}" fill="#8b949e" font-size="8" text-anchor="middle" font-family="monospace">${p.d.toLocaleDateString([],{month:"short",day:"numeric"})}</text>`:"").join("");
-  return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
-    <div style="padding:10px 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">Edge Score History — ${assetId}</div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;min-width:260px">
-      <rect width="${W}" height="${H}" fill="#0d1117"/>
-      ${zones}${refs}${yLbls}${bars}${line}${lastDot}${xLbls}
+
+  // ── Histogram bars — compact with 1px gap ──
+  const bSlot = cW / n;
+  const bW    = Math.max(3, Math.min(bSlot * 0.78, 16));
+  let bars = filled.map((p, i) => {
+    const sc  = p.sc;
+    const bH  = Math.max(2, Math.abs(yOf(sc) - z));
+    const by  = sc >= 0 ? yOf(sc) : z;
+    const bx  = xOf(i) - bW / 2;
+
+    // Color by magnitude — two-tone opacity
+    const strong = Math.abs(sc) >= 5;
+    const mid    = Math.abs(sc) >= 3;
+    const col = sc > 0
+      ? (strong ? "#34d399" : mid ? "rgba(52,211,153,.75)" : "rgba(52,211,153,.45)")
+      : sc < 0
+        ? (strong ? "#f87171" : mid ? "rgba(248,113,113,.75)" : "rgba(248,113,113,.45)")
+        : "rgba(156,163,175,.3)";
+
+    // Highlight today's bar with a brighter border
+    const isLast = i === n - 1;
+    const extra  = isLast ? ` stroke="${sc>=0?"#34d399":"#f87171"}" stroke-width="1"` : "";
+
+    return `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bW.toFixed(1)}" height="${bH.toFixed(1)}"
+      fill="${col}" rx="1"${extra}/>`;
+  }).join("");
+
+  // ── Zero baseline as a crisp 1px line ──
+  const baseline = `<line x1="${pL}" y1="${z.toFixed(1)}" x2="${W-pR}" y2="${z.toFixed(1)}"
+    stroke="rgba(255,255,255,.22)" stroke-width="1"/>`;
+
+  // ── X-axis date labels — sparse (max 6 labels) ──
+  const step = Math.max(1, Math.ceil(n / 6));
+  let xLbls = filled.map((p, i) => {
+    if (i !== 0 && i !== n-1 && i % step !== 0) return "";
+    return `<text x="${xOf(i).toFixed(1)}" y="${H_TOTAL - 5}" fill="rgba(255,255,255,.2)"
+      font-size="7.5" text-anchor="middle" font-family="monospace">
+      ${p.d.toLocaleDateString([], {month:"short", day:"numeric"})}
+    </text>`;
+  }).join("");
+
+  // ── Last score annotation dot ──
+  const last    = filled[n-1];
+  const lastCol = last.sc >= 1 ? "#34d399" : last.sc <= -1 ? "#f87171" : "#9ca3af";
+  const lastDot = `<circle cx="${xOf(n-1).toFixed(1)}" cy="${yOf(last.sc).toFixed(1)}"
+    r="3" fill="${lastCol}" stroke="#0d1117" stroke-width="1"/>`;
+
+  const svgContent = `${zones}${refs}${bars}${baseline}${lastDot}${xLbls}`;
+
+  const hdrHTML = label ? `
+    <div class="sc-history-hd">
+      <span class="sc-history-title">Score History — ${suffix}</span>
+      <span style="font-size:10px;font-weight:700;color:${lastCol}">${last.sc>=0?"+":""}${last.sc}</span>
+    </div>` : '';
+
+  return `<div class="sc-history-card">
+    ${hdrHTML}
+    <svg viewBox="0 0 ${W} ${H_TOTAL}" style="width:100%;height:auto;display:block;min-width:220px">
+      <rect width="${W}" height="${H_TOTAL}" fill="#0d1117"/>
+      ${svgContent}
     </svg>
   </div>`;
 }
 
+
 // ── RENDER: ASSET SCORECARD (adds stable IDs for updateAssetUI) ───────────────
 function scBiasInfo(sc){
-  if(sc>=3) return{col:"#22c55e",bg:"rgba(34,197,94,.1)",border:"rgba(34,197,94,.25)",text:"Bullish"};
-  if(sc<=-3)return{col:"#ef4444",bg:"rgba(239,68,68,.1)", border:"rgba(239,68,68,.25)", text:"Bearish"};
-  if(sc>=1) return{col:"#4ade80",bg:"rgba(74,222,128,.08)",border:"rgba(74,222,128,.2)",text:"Mild Bull"};
-  if(sc<=-1)return{col:"#f87171",bg:"rgba(248,113,113,.08)",border:"rgba(248,113,113,.2)",text:"Mild Bear"};
-  return{col:"#9ca3af",bg:"rgba(156,163,175,.08)",border:"rgba(156,163,175,.2)",text:"Neutral"};
+  if(sc>=5) return{col:"#34d399",bg:"rgba(52,211,153,.1)", border:"rgba(52,211,153,.22)", text:"Bullish"};
+  if(sc<=-5)return{col:"#f87171",bg:"rgba(248,113,113,.1)",border:"rgba(248,113,113,.22)",text:"Bearish"};
+  if(sc>=2) return{col:"#6ee7b7",bg:"rgba(110,231,183,.07)",border:"rgba(110,231,183,.18)",text:"Mild Bull"};
+  if(sc<=-2)return{col:"#fca5a5",bg:"rgba(252,165,165,.07)",border:"rgba(252,165,165,.18)",text:"Mild Bear"};
+  return{col:"#6b7280",bg:"rgba(107,114,128,.06)",border:"rgba(107,114,128,.15)","text":"Neutral"};
 }
 
 function renderScorecard() {
@@ -3333,91 +3555,95 @@ function renderScorecard() {
   const metrics = getAssetMetrics(raw);
   const isLive  = state.cotLive || state.sentimentLive || state.econLive;
 
-  // Component cards config
-  const compCards = [
-    {key:"technical",  lbl:"Technical",    v:comp.technical,  icon:"📈"},
-    {key:"sentiment",  lbl:"Sentiment",    v:comp.sentiment,  icon:"😊"},
-    {key:"cot",        lbl:"COT",          v:comp.cot,        icon:"🏦"},
-    {key:"growth",     lbl:"Growth",       v:comp.growth,     icon:"📊"},
-    {key:"inflation",  lbl:"Inflation",    v:comp.inflation,  icon:"🌡"},
-    {key:"jobs",       lbl:"Jobs",         v:comp.jobs,       icon:"👷"},
+  // ── COMPONENT CARDS ──────────────────────────────────────────────────────────
+  const compItems = [
+    {key:"technical", lbl:"Technical",  v:comp.technical},
+    {key:"sentiment", lbl:"Sentiment",  v:comp.sentiment},
+    {key:"cot",       lbl:"COT",        v:comp.cot},
+    {key:"growth",    lbl:"Growth",     v:comp.growth},
+    {key:"inflation", lbl:"Inflation",  v:comp.inflation},
+    {key:"jobs",      lbl:"Jobs",       v:comp.jobs},
   ];
+  const compCards = compItems.map(c => {
+    const ci  = scBiasInfo(c.v*2);  // ×2 so ±1 still has color
+    const pct = Math.round(Math.max(4, Math.min(96, ((c.v + 2) / 4) * 100)));
+    return `<div class="sc-comp-card" data-sc-comp="${c.key}">
+      <div class="sc-comp-card-lbl">${c.lbl}</div>
+      <div class="sc-comp-card-val" style="color:${ci.col}">${c.v >= 0 ? "+" : ""}${c.v}</div>
+      <div class="sc-comp-card-bias" style="color:${ci.col}">${ci.text}</div>
+      <div class="sc-comp-bar"><div class="sc-comp-bar-fill" style="width:${pct}%;background:${ci.col}"></div></div>
+    </div>`;
+  }).join("");
 
-  // ── LEFT PANEL ──────────────────────────────────────────────────────────────
+  // ── DETAIL SECTION BUILDER ───────────────────────────────────────────────────
+  const makeSection = (icon, title, compScore, rows) => {
+    const si = scBiasInfo(compScore * 2);
+    return `<div class="sc-detail-card">
+      <div class="sc-detail-hd">
+        <span class="sc-detail-hd-title">${icon} ${title}</span>
+        <span class="sc-detail-hd-score" style="color:${si.col}">${compScore>=0?"+":""}${compScore} · ${si.text}</span>
+      </div>
+      ${rows.map(r => {
+        const rc = r.bias==="bull"?"#34d399":r.bias==="bear"?"#f87171":"#6b7280";
+        const rb = r.bias==="bull"?"badge-bull":r.bias==="bear"?"badge-bear":"badge-neut";
+        const rl = r.bias==="bull"?"▲ Beat":r.bias==="bear"?"▼ Miss":"→ Inline";
+        return `<div class="sc-metric-row">
+          <span class="sc-metric-name">${r.m}</span>
+          <span class="sc-tbl-badge ${rb}">${rl}</span>
+          <span class="sc-metric-surp" style="color:${rc}">${r.surp}</span>
+        </div>`;
+      }).join("")}
+    </div>`;
+  };
+
+  // ── LEFT PANEL ────────────────────────────────────────────────────────────────
   const leftPanel = `<div class="sc-panel-left">
-    <!-- Gauge card -->
+    <!-- Main gauge card -->
     <div class="sc-gauge-card">
       <div id="sc-gauge-wrap">${scGaugeSVG(sc, 10)}</div>
       <div id="sc-score-num" class="sc-score-num" style="color:${bi.col}">${sc>=0?"+":""}${sc}</div>
       <div class="sc-edge-lbl">Edge Score</div>
       <span id="sc-bias-lbl" class="sc-bias-pill" style="color:${bi.col};background:${bi.bg};border:1px solid ${bi.border}">${bi.text}</span>
-      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:#64748b">
-        Tech×0.30 · Sent×0.20 · COT×0.20 · Macro×0.30
-      </div>
-      <div style="margin-top:8px">
-        <span id="sc-status" class="${isLive?"sc-badge-live":"sc-badge-static"}">
-          ${isLive?"● Live Data":"◌ Static Data"}
-        </span>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:9px;color:var(--sc-t3)">T·30% S·20% C·20% M·30%</span>
+        <span id="sc-status" class="${isLive?"sc-chip-live":"sc-chip-static"}">${isLive?"● Live":"◌ Static"}</span>
       </div>
     </div>
+    <!-- 2×3 component mini-cards -->
+    <div class="sc-comp-grid">${compCards}</div>
+  </div>`;
 
-    <!-- Component mini-cards -->
-    <div class="sc-comp-grid">
-      ${compCards.map(c=>{
-        const ci=scBiasInfo(c.v);
-        const pct=Math.round(Math.max(3,Math.min(97,((c.v+2)/4)*100)));
-        return `<div class="sc-comp-card" data-sc-comp="${c.key}">
-          <div class="sc-comp-card-lbl">${c.lbl}</div>
-          <div class="sc-comp-card-val" style="color:${ci.col}">${c.v>=0?"+":""}${c.v}</div>
-          <div class="sc-comp-card-bias" style="color:${ci.col}">${ci.text}</div>
-          <div class="sc-comp-bar">
-            <div class="sc-comp-bar-fill" style="width:${pct}%;background:${ci.col}"></div>
-          </div>
+  // ── RIGHT PANEL ───────────────────────────────────────────────────────────────
+  const rightPanel = `<div class="sc-panel-right">
+    <!-- Score history chart -->
+    ${scHistoryChart(raw.id, sc)}
+
+    <!-- Weight breakdown (compact bar list) -->
+    <div class="sc-detail-card">
+      <div class="sc-detail-hd">
+        <span class="sc-detail-hd-title">⚖ Component Weights</span>
+        <span style="font-size:9px;color:var(--sc-t3)">Σ = ${sc>=0?"+":""}${sc}</span>
+      </div>
+      ${compItems.map(c => {
+        const ci  = scBiasInfo(c.v*2);
+        const pct = Math.round(Math.max(2, Math.min(98, ((c.v + 2) / 4) * 100)));
+        return `<div class="sc-wt-bar">
+          <span class="sc-wt-label">${c.lbl}</span>
+          <div class="sc-wt-track"><div class="sc-wt-fill" style="width:${pct}%;background:${ci.col}"></div></div>
+          <span class="sc-wt-val" style="color:${ci.col}">${c.v>=0?"+":""}${c.v}</span>
         </div>`;
       }).join("")}
     </div>
-  </div>`;
 
-  // ── RIGHT PANEL ──────────────────────────────────────────────────────────────
-  // History chart
-  const histSection = `<div class="sc-history-card">
-    <div class="sc-history-hd">Score History — ${raw.name}</div>
-    <div style="padding:0">${scHistoryChart(raw.id, sc)}</div>
-  </div>`;
-
-  // Section detail builder
-  const makeDetail = (icon, title, score, rows) => {
-    const si = scBiasInfo(score);
-    return `<div class="sc-detail-card">
-      <div class="sc-detail-hd">
-        <span class="sc-detail-hd-title">${icon} ${title}</span>
-        <span class="sc-detail-hd-score" style="color:${si.col}">${score>=0?"+":""}${score} <span style="font-size:10px;font-weight:600">${si.text}</span></span>
-      </div>
-      <div class="sc-metric-list">
-        ${rows.map(r=>{
-          const mc=r.bias==="bull"?"var(--sc-bull)":r.bias==="bear"?"var(--sc-bear)":"var(--sc-neut)";
-          const bc=r.bias==="bull"?"pm-bull":r.bias==="bear"?"pm-bear":"pm-neut";
-          const bl=r.bias==="bull"?"▲ Beat":r.bias==="bear"?"▼ Miss":"→ In Line";
-          return `<div class="sc-metric-row">
-            <span class="sc-metric-name">${r.m}</span>
-            <span class="sc-tbl-badge ${bc}">${bl}</span>
-            <span class="sc-metric-surp" style="color:${mc}">${r.surp}</span>
-          </div>`;
-        }).join("")}
-      </div>
-    </div>`;
-  };
-
-  const rightPanel = `<div class="sc-panel-right">
-    ${histSection}
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      ${makeDetail("📈","Technical",   comp.technical,  metrics.technical)}
-      ${makeDetail("🏦","Institutional",comp.cot,       metrics.institutional)}
+    <!-- Detail tables: 2-up then 3-up -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${makeSection("📈","Technical",   comp.technical,  metrics.technical.slice(0,3))}
+      ${makeSection("🏦","COT",         comp.cot,        metrics.institutional.slice(0,3))}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
-      ${makeDetail("🌍","Growth",    comp.growth,    metrics.economic)}
-      ${makeDetail("🌡","Inflation", comp.inflation, metrics.inflation)}
-      ${makeDetail("👷","Jobs",      comp.jobs,      metrics.jobs)}
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      ${makeSection("🌍","Growth",    comp.growth,    metrics.economic.slice(0,3))}
+      ${makeSection("🌡","Inflation", comp.inflation, metrics.inflation)}
+      ${makeSection("👷","Jobs",      comp.jobs,      metrics.jobs)}
     </div>
   </div>`;
 
@@ -3425,8 +3651,8 @@ function renderScorecard() {
   <div class="sc-page">
     <div class="sc-topbar">
       <div>
-        <div class="sc-title">📋 Asset Scorecard</div>
-        <div class="sc-subtitle">Weighted multi-factor edge score analysis</div>
+        <div class="sc-title">Asset Scorecard</div>
+        <div class="sc-subtitle">Multi-factor edge score · 6 components · auto-refreshes every 5 min</div>
       </div>
       <select class="sc-sel" onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
     </div>
@@ -3452,149 +3678,190 @@ const SC_FOREX_PAIRS = [
 ];
 
 function renderForexScorecard() {
-  const liveData  = state.scLiveData || null;
-  const ccyScores = state.scCcyScores || buildCurrencyScores(liveData);
-  const pairs     = state.scFxPairs   || SC_FOREX_PAIRS.map(p=>({...p,...calculateForexScore(p.base,p.quote,ccyScores)}));
-  const selPair   = state.scForexPair || "EURUSD";
-  const SCORE_MAX = 10;
-  const isLive    = state.cotLive || state.sentimentLive || state.econLive;
+  const liveData   = state.scLiveData || null;
+  const ccyScores  = state.scCcyScores || buildCurrencyScores(liveData);
+  const pairs      = state.scFxPairs   || SC_FOREX_PAIRS.map(p=>({...p,...calculateForexScore(p.base,p.quote,ccyScores)}));
+  const selPairId  = state.scForexPair || "EURUSD";
+  const isLive     = state.cotLive || state.sentimentLive || state.econLive;
+  const SCORE_MAX  = 10;
 
-  // Selected pair data
-  const selPairObj = SC_FOREX_PAIRS.find(p=>p.id===selPair) || SC_FOREX_PAIRS[0];
-  const selFX  = pairs.find(p=>p.id===selPair) || calculateForexScore(selPairObj.base,selPairObj.quote,ccyScores);
-  const baseRaw  = ASSETS_SCORED.find(a=>a.id===selPairObj.base);
-  const quoteRaw = ASSETS_SCORED.find(a=>a.id===selPairObj.quote);
+  // Resolve selected pair
+  const selObj  = SC_FOREX_PAIRS.find(p=>p.id===selPairId) || SC_FOREX_PAIRS[0];
+  const selFX   = pairs.find(p=>p.id===selPairId) || calculateForexScore(selObj.base, selObj.quote, ccyScores);
+  const pi      = scBiasInfo(selFX.pairScore);
+  const baseI   = scBiasInfo(selFX.baseScore);
+  const quoteI  = scBiasInfo(selFX.quoteScore);
+  const baseRaw  = ASSETS_SCORED.find(a=>a.id===selObj.base);
+  const quoteRaw = ASSETS_SCORED.find(a=>a.id===selObj.quote);
   const baseSc   = baseRaw  ? calculateAssetScore(baseRaw,  liveData) : null;
   const quoteSc  = quoteRaw ? calculateAssetScore(quoteRaw, liveData) : null;
-  const pi   = scBiasInfo(selFX.pairScore);
-  const baseI = scBiasInfo(selFX.baseScore);
-  const quoteI= scBiasInfo(selFX.quoteScore);
 
-  // ── Pair selector buttons ──
-  const pairBtns = pairs.map(fx=>{
-    const fi=scBiasInfo(fx.pairScore);
-    const isSel=fx.id===selPair;
-    const btnCls=isSel?(fi.col==="#22c55e"?"fx-pair-btn active":fi.col==="#ef4444"?"fx-pair-btn active-bear":"fx-pair-btn active-neut"):"fx-pair-btn";
-    return `<button class="${btnCls}" data-fx-pair="${fx.id}" onclick="state.scForexPair='${fx.id}';renderForexScorecard()">${fx.id}</button>`;
+  // ── Pair pills — coloured by bias ──────────────────────────────────────────
+  const pillNav = pairs.map(fx => {
+    const fi   = scBiasInfo(fx.pairScore);
+    const isSel = fx.id === selPairId;
+    const cls  = isSel
+      ? (fi.col==="rgba(52,211,153,.3)"||fi.col==="#34d399"||fi.col==="#6ee7b7"?"fx-pair-pill p-bull"
+        :fi.col==="#f87171"||fi.col==="#fca5a5"?"fx-pair-pill p-bear":"fx-pair-pill p-neut")
+      : "fx-pair-pill";
+    // Simplified: check pairScore
+    const actCls = isSel
+      ? (fx.pairScore>=2?"fx-pair-pill p-bull":fx.pairScore<=-2?"fx-pair-pill p-bear":"fx-pair-pill p-neut")
+      : "fx-pair-pill";
+    return `<button class="${actCls}" data-fx-pair="${fx.id}"
+      onclick="state.scForexPair='${fx.id}';renderForexScorecard()">${fx.id}</button>`;
   }).join("");
 
-  // ── LEFT: Gauge card ──
+  // ── Pair dropdown (single source of truth) ──────────────────────────────────
+  const dropdown = SC_FOREX_PAIRS.map(p=>
+    `<option value="${p.id}" ${p.id===selPairId?"selected":""}>${p.id} — ${p.name}</option>`
+  ).join("");
+
+  // ── Section 1: Score header ─────────────────────────────────────────────────
   const basePct  = Math.round(Math.max(5,Math.min(95,50+(selFX.baseScore/SCORE_MAX)*45)));
   const quotePct = Math.round(Math.max(5,Math.min(95,50+(selFX.quoteScore/SCORE_MAX)*45)));
 
-  const leftPanel = `<div class="fx-gauge-card">
-    <div class="fx-pair-name">${selPair}</div>
-    <div class="fx-pair-full">${selPairObj.name}</div>
-    <div id="sc-gauge-wrap">${scGaugeSVG(selFX.pairScore, 10)}</div>
-    <div id="sc-score-num" class="fx-pair-score" style="color:${pi.col}">${selFX.pairScore>=0?"+":""}${selFX.pairScore}</div>
-    <div class="sc-edge-lbl">Pair Score</div>
-    <span id="sc-bias-lbl" class="sc-bias-pill" style="color:${pi.col};background:${pi.bg};border:1px solid ${pi.border}">${pi.text}</span>
-
-    <!-- Currency strength bars -->
-    <div class="fx-ccy-section" style="margin-top:16px">
-      <div class="fx-ccy-section-title">Currency Strength</div>
-      <div class="fx-ccy-row2" style="margin-bottom:8px">
-        <span class="fx-ccy-tag" style="color:${baseI.col}">${selPairObj.base}</span>
-        <div class="fx-ccy-bar-track"><div class="fx-ccy-bar-fill" data-fx-bar="base" style="width:${basePct}%;background:${baseI.col}"></div></div>
-        <span class="fx-ccy-score-val" data-fx-val="base" style="color:${baseI.col}">${selFX.baseScore>=0?"+":""}${selFX.baseScore}</span>
-      </div>
-      <div class="fx-ccy-row2">
-        <span class="fx-ccy-tag" style="color:${quoteI.col}">${selPairObj.quote}</span>
-        <div class="fx-ccy-bar-track"><div class="fx-ccy-bar-fill" data-fx-bar="quote" style="width:${quotePct}%;background:${quoteI.col}"></div></div>
-        <span class="fx-ccy-score-val" data-fx-val="quote" style="color:${quoteI.col}">${selFX.quoteScore>=0?"+":""}${selFX.quoteScore}</span>
-      </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:#64748b;text-align:center">
-        Pair = ${selPairObj.base}(${selFX.baseScore>=0?"+":""}${selFX.baseScore}) − ${selPairObj.quote}(${selFX.quoteScore>=0?"+":""}${selFX.quoteScore})
-      </div>
-    </div>
-
-    <div style="margin-top:12px">
-      <span id="fx-status" class="${isLive?"sc-badge-live":"sc-badge-static"}">${isLive?"● Live Data":"◌ Static Data"}</span>
-    </div>
-  </div>`;
-
-  // ── RIGHT: Component mini-cards + rankings ──
-  const compItems = [
-    {lbl:"Technical",  base:baseSc?.components?.technical ??0, quote:quoteSc?.components?.technical ??0},
-    {lbl:"Sentiment",  base:baseSc?.components?.sentiment ??0, quote:quoteSc?.components?.sentiment ??0},
-    {lbl:"COT",        base:baseSc?.components?.cot       ??0, quote:quoteSc?.components?.cot       ??0},
-    {lbl:"Growth",     base:baseSc?.components?.growth    ??0, quote:quoteSc?.components?.growth    ??0},
-    {lbl:"Inflation",  base:baseSc?.components?.inflation ??0, quote:quoteSc?.components?.inflation ??0},
-    {lbl:"Jobs",       base:baseSc?.components?.jobs      ??0, quote:quoteSc?.components?.jobs      ??0},
-  ];
-
-  const compMiniCards = compItems.map(ci=>{
-    const diff = ci.base - ci.quote;
-    const bi2  = scBiasInfo(diff*1.5); // amplify to get color signal
-    const baseI2  = scBiasInfo(ci.base);
-    const quoteI2 = scBiasInfo(ci.quote);
-    return `<div class="fx-comp-mini" data-fx-comp="${ci.lbl.toLowerCase()}">
-      <div class="fx-comp-mini-lbl">${ci.lbl}</div>
-      <div class="fx-comp-mini-row">
-        <span class="fx-comp-mini-ccy">${selPairObj.base}</span>
-        <span class="fx-comp-mini-val" style="color:${baseI2.col}">${ci.base>=0?"+":""}${ci.base}</span>
-      </div>
-      <div class="fx-comp-mini-row">
-        <span class="fx-comp-mini-ccy">${selPairObj.quote}</span>
-        <span class="fx-comp-mini-val" style="color:${quoteI2.col}">${ci.quote>=0?"+":""}${ci.quote}</span>
-      </div>
-      <div class="fx-comp-mini-diff" style="color:${bi2.col}">${diff>=0?"+":""}${diff} ${bi2.text}</div>
-    </div>`;
-  }).join("");
-
-  // Currency ranking
-  const sorted = Object.entries(ccyScores).sort((a,b)=>b[1]-a[1]);
-  const csMax  = Math.max(...sorted.map(([,v])=>Math.abs(v)),1);
-  const rankingRows = sorted.map(([ccy,sc2],i)=>{
-    const ri=scBiasInfo(sc2*1.5);
-    const pct=Math.round(Math.max(5,Math.min(95,50+(sc2/csMax)*45)));
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
-      <span style="font-size:10px;color:#64748b;width:16px">${i+1}</span>
-      <span style="font-size:12px;font-weight:700;color:${ri.col};width:36px">${ccy}</span>
-      <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${ri.col};border-radius:3px;transition:width .5s"></div>
-      </div>
-      <span style="font-size:12px;font-weight:700;color:${ri.col};min-width:28px;text-align:right">${sc2>=0?"+":""}${sc2}</span>
-    </div>`;
-  }).join("");
-
-  const rightPanel = `<div class="fx-right">
-    <!-- Component mini-grid for selected pair -->
+  const scoreHeader = `<div class="fx-score-header" data-fx-pair="${selPairId}">
+    <!-- Pair identity -->
     <div>
-      <div style="font-size:10px;font-weight:600;letter-spacing:.8px;color:#64748b;text-transform:uppercase;margin-bottom:10px">Component Breakdown — ${selPair}</div>
-      <div class="fx-comp-grid">${compMiniCards}</div>
+      <div class="fx-pair-big">${selPairId}</div>
+      <div class="fx-pair-sub">${selObj.name}</div>
+      <span class="sc-bias-pill" id="sc-bias-lbl" style="color:${pi.col};background:${pi.bg};border:1px solid ${pi.border};margin-top:8px;display:inline-block">
+        ${pi.text}
+      </span>
     </div>
-
-    <!-- Currency strength ranking -->
-    <div class="sc-ranking-card">
-      <div class="sc-ranking-hd">
-        <span>Currency Strength Ranking</span>
-        <span id="sc-ccy-ranking-badge" style="font-size:9px;font-weight:600;color:#64748b">EDGE SCORE MODEL</span>
+    <!-- Gauge + score -->
+    <div style="text-align:center">
+      <div id="sc-gauge-wrap">${scGaugeSVG(selFX.pairScore, 10)}</div>
+      <div id="sc-score-num" class="fx-score-big" style="color:${pi.col}">${selFX.pairScore>=0?"+":""}${selFX.pairScore}</div>
+      <div class="fx-score-lbl">Pair Score</div>
+    </div>
+    <!-- Currency strength bars -->
+    <div class="fx-ccy-section">
+      <div style="font-size:8px;font-weight:700;letter-spacing:1px;color:var(--sc-t3);text-transform:uppercase;margin-bottom:10px">Strength</div>
+      <div class="fx-ccy-row2">
+        <span class="fx-ccy-tag" style="color:${baseI.col}">${selObj.base}</span>
+        <div class="fx-ccy-track"><div class="fx-ccy-fill" data-fx-bar="base" style="width:${basePct}%;background:${baseI.col}"></div></div>
+        <span class="fx-ccy-val" data-fx-val="base" style="color:${baseI.col}">${selFX.baseScore>=0?"+":""}${selFX.baseScore}</span>
       </div>
-      <div id="sc-ccy-ranking">${rankingRows}</div>
+      <div class="fx-ccy-row2" style="margin-top:0">
+        <span class="fx-ccy-tag" style="color:${quoteI.col}">${selObj.quote}</span>
+        <div class="fx-ccy-track"><div class="fx-ccy-fill" data-fx-bar="quote" style="width:${quotePct}%;background:${quoteI.col}"></div></div>
+        <span class="fx-ccy-val" data-fx-val="quote" style="color:${quoteI.col}">${selFX.quoteScore>=0?"+":""}${selFX.quoteScore}</span>
+      </div>
+      <div style="font-size:9px;color:var(--sc-t3);margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)">
+        ${selObj.base}(${selFX.baseScore>=0?"+":""}${selFX.baseScore}) − ${selObj.quote}(${selFX.quoteScore>=0?"+":""}${selFX.quoteScore})
+        <span id="fx-status" class="${isLive?"sc-chip-live":"sc-chip-static"}" style="margin-left:8px">${isLive?"● Live":"◌ Static"}</span>
+      </div>
     </div>
   </div>`;
 
+  // ── Section 2: Score history (NEW) ─────────────────────────────────────────
+  // Use the base currency's score history as proxy for the pair
+  const histSection = scHistoryChart(
+    selObj.base, selFX.baseScore,
+    { height: 130, showLabel: true, labelSuffix: `${selPairId} (${selObj.base} strength)` }
+  );
+
+  // ── Section 3: Component breakdown ─────────────────────────────────────────
+  const compKeys = [
+    {key:"technical", lbl:"Technical"},
+    {key:"sentiment", lbl:"Sentiment"},
+    {key:"cot",       lbl:"COT"},
+    {key:"growth",    lbl:"Growth"},
+    {key:"inflation", lbl:"Inflation"},
+    {key:"jobs",      lbl:"Jobs"},
+  ];
+  const compMinis = compKeys.map(ck => {
+    const bv  = baseSc?.components?.[ck.key]  ?? 0;
+    const qv  = quoteSc?.components?.[ck.key] ?? 0;
+    const diff = bv - qv;
+    const bI2  = scBiasInfo(bv * 2);
+    const qI2  = scBiasInfo(qv * 2);
+    const dI   = scBiasInfo(diff * 2);
+    return `<div class="fx-comp-mini" data-fx-comp="${ck.key}">
+      <div class="fx-comp-mini-lbl">${ck.lbl}</div>
+      <div class="fx-comp-mini-row">
+        <span class="fx-comp-mini-ccy">${selObj.base}</span>
+        <span class="fx-comp-mini-val" style="color:${bI2.col}">${bv>=0?"+":""}${bv}</span>
+      </div>
+      <div class="fx-comp-mini-row">
+        <span class="fx-comp-mini-ccy">${selObj.quote}</span>
+        <span class="fx-comp-mini-val" style="color:${qI2.col}">${qv>=0?"+":""}${qv}</span>
+      </div>
+      <div class="fx-comp-divider"></div>
+      <div class="fx-comp-diff" style="color:${dI.col}">${diff>=0?"+":""}${diff} ${dI.text}</div>
+    </div>`;
+  }).join("");
+
+  // ── Section 4: Currency ranking ─────────────────────────────────────────────
+  const sorted  = Object.entries(ccyScores).sort((a,b)=>b[1]-a[1]);
+  const csMax   = Math.max(...sorted.map(([,v])=>Math.abs(v)), 1);
+  const rankRows = sorted.map(([ccy, sc2], i) => {
+    const ri  = scBiasInfo(sc2 * 1.5);
+    const pct = Math.round(Math.max(4, Math.min(96, 50 + (sc2/csMax)*45)));
+    const isBase  = ccy === selObj.base;
+    const isQuote = ccy === selObj.quote;
+    const hlStyle = isBase||isQuote ? `background:rgba(255,255,255,.025)` : "";
+    return `<div class="sc-rank-row" style="${hlStyle}">
+      <span style="font-size:9px;color:var(--sc-t3);width:14px">${i+1}</span>
+      <span style="font-size:11px;font-weight:700;color:${ri.col};width:34px">
+        ${ccy}${isBase?" *":isQuote?" ·":""}
+      </span>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${ri.col};border-radius:2px;transition:width .5s"></div>
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${ri.col};min-width:26px;text-align:right">${sc2>=0?"+":""}${sc2}</span>
+    </div>`;
+  }).join("");
+
+  // ── ASSEMBLE ─────────────────────────────────────────────────────────────────
   document.getElementById("page-forex").innerHTML = `
   <div class="sc-page">
     <div class="sc-topbar">
       <div>
-        <div class="sc-title">💹 Forex Scorecard</div>
-        <div class="sc-subtitle">Pair Score = Base Currency Strength − Quote Currency Strength</div>
+        <div class="sc-title">Forex Scorecard</div>
+        <div class="sc-subtitle">Pair Score = Base Strength − Quote Strength · ≥+2 Bullish · ≤-2 Bearish</div>
       </div>
-      <select class="sc-sel" onchange="state.scForexPair=this.value;renderForexScorecard()">${
-        SC_FOREX_PAIRS.map(p=>`<option value="${p.id}" ${p.id===selPair?"selected":""}>${p.id} — ${p.name}</option>`).join("")
-      }</select>
+      <select class="sc-sel" onchange="state.scForexPair=this.value;renderForexScorecard()">${dropdown}</select>
     </div>
 
-    <!-- Pair quick-select pills -->
-    <div class="fx-pair-selector">${pairBtns}</div>
+    <!-- Quick-select pills -->
+    <div class="fx-pair-nav" style="margin-bottom:14px">${pillNav}</div>
 
-    <!-- Main layout -->
-    <div class="fx-layout">${leftPanel}${rightPanel}</div>
+    <!-- § 1 Score header -->
+    ${scoreHeader}
+
+    <!-- § 2 Score history -->
+    <div style="margin-top:10px">${histSection}</div>
+
+    <!-- § 3 Component breakdown -->
+    <div style="margin-top:10px">
+      <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--sc-t3);text-transform:uppercase;margin-bottom:8px">
+        Component Breakdown · ${selPairId}
+      </div>
+      <div class="fx-comp-grid">${compMinis}</div>
+    </div>
+
+    <!-- § 4 Currency ranking -->
+    <div style="margin-top:10px">
+      <div class="sc-ranking-card">
+        <div class="sc-ranking-hd">
+          Currency Strength Ranking
+          <span id="sc-ccy-ranking-badge" style="font-size:9px;color:var(--sc-t3);font-weight:500">
+            * = base · · = quote
+          </span>
+        </div>
+        <div id="sc-ccy-ranking">${rankRows}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:10px;padding:10px 14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:6px;font-size:10px;color:var(--sc-t3);line-height:1.7">
+      Scores derived from COT (CFTC), retail sentiment (Myfxbook), economic data (FRED), Put/Call and AAII.
+      Auto-refreshes every 5 min. Not financial advice.
+    </div>
   </div>`;
 
-  // Sync updateForexUI with data-* attrs
   updateForexUI(pairs, ccyScores);
 }
 
