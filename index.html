@@ -3582,149 +3582,424 @@ function scBiasInfo(sc){
   return{col:"#6b7280",bg:"rgba(107,114,128,.06)",border:"rgba(107,114,128,.15)","text":"Neutral"};
 }
 
-function renderScorecard() {
-  // Structured grouped dropdown — one selection method only
-  const SC_GROUPS = [
-    { label:"Indices",    cats:["Index"],     ids:["SPX500","NASDAQ","DOW","RUSSELL","US10T"] },
-    { label:"Commodities",cats:["Commodity"],ids:["Gold","SILVER","USOIL","COPPER"] },
-    { label:"Crypto",     cats:["Crypto"],    ids:["BTC","ETH"] },
-    { label:"Macro / FX", cats:["Forex"],     ids:["USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD"] },
-    { label:"FX Crosses", cats:["Forex"],     ids:["GBPJPY","EURJPY","GBPAUD","AUDCHF","NZDUSD","AUDCHF","EURGBP","EURAUD","GBPAUD","NZDJPY","AUDJPY"] },
-  ];
-  const SC_LABELS = {
-    SPX500:"SPX500 — S&P 500", NASDAQ:"NAS100 — Nasdaq 100", DOW:"US30 — Dow Jones",
-    RUSSELL:"RUSSELL — Russell 2000", US10T:"US10T — 10Y Treasury",
-    Gold:"XAUUSD — Gold", SILVER:"XAGUSD — Silver", USOIL:"USOIL — Crude Oil", COPPER:"COPPER — Copper",
-    BTC:"BTCUSD — Bitcoin", ETH:"ETHUSD — Ethereum",
-    USD:"DXY — Dollar Index", EUR:"EURUSD — Euro", GBP:"GBPUSD — Pound",
-    JPY:"USDJPY — Yen", AUD:"AUDUSD — Aussie", CAD:"USDCAD — CAD", CHF:"USDCHF — Swiss", NZD:"NZDUSD — Kiwi",
-    GBPJPY:"GBPJPY", EURJPY:"EURJPY", GBPAUD:"GBPAUD", AUDCHF:"AUDCHF",
-    EURGBP:"EURGBP", EURAUD:"EURAUD", NZDJPY:"NZDJPY", AUDJPY:"AUDJPY",
+// ═══════════════════════════════════════════════════════════════════════════
+//  ASSET SCORECARD — Nick/EdgeFinder style gauge + 5-factor engine
+//  Spec weights: Technical 25% · Institutional 20% · Growth 20% · Inflation 20% · Labor 15%
+//  ONLY this function and scNickGaugeSVG are new — nothing else touched.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Nick-style semicircle dial ───────────────────────────────────────────────
+function scNickGaugeSVG(score, maxRange) {
+  const W=200, H=120, cx=100, cy=114, R=86, SW=22;
+  const pct = Math.max(0, Math.min(1, (score + maxRange) / (2 * maxRange)));
+  const na  = Math.PI * (1 - pct);
+  const nLen = R - SW/2 - 6;
+  const nx = (cx + nLen * Math.cos(na)).toFixed(1);
+  const ny = (cy - nLen * Math.sin(na)).toFixed(1);
+  const nc = score > 4 ? '#4a90d9' : score > 1 ? '#6aa8dc'
+           : score < -4 ? '#c04040' : score < -1 ? '#dc7070' : '#8b949e';
+
+  const pt = (deg, r) => {
+    const a = deg * Math.PI / 180;
+    return [(cx + r * Math.cos(a)).toFixed(1), (cy - r * Math.sin(a)).toFixed(1)];
   };
-  let assetOpts = "";
-  SC_GROUPS.forEach(g => {
-    const options = g.ids.map(id => {
-      const a = ASSETS_SCORED.find(x => x.id === id);
-      if (!a) return "";
-      const lbl = SC_LABELS[id] || a.name;
-      return `<option value="${id}" ${id===state.scAsset?"selected":""}>${lbl}</option>`;
-    }).filter(Boolean).join("");
-    if (options) assetOpts += `<optgroup label="${g.label}">${options}</optgroup>`;
-  });
-  const liveData = state.scLiveData || null;
-  const raw    = ASSETS_SCORED.find(a => a.id === state.scAsset) || ASSETS_SCORED[0];
-  const scored = state.scAllScores?.[raw.id] || calculateAssetScore(raw, liveData);
-  const comp   = scored.components;
-  const sc     = scored.totalScore;
-  const bi     = scBiasInfo(sc);
-  const metrics = getAssetMetrics(raw);
-  const isLive  = state.cotLive || state.sentimentLive || state.econLive;
-
-  // ── COMPONENT CARDS ──────────────────────────────────────────────────────────
-  const compItems = [
-    {key:"technical", lbl:"Technical",  v:comp.technical},
-    {key:"sentiment", lbl:"Sentiment",  v:comp.sentiment},
-    {key:"cot",       lbl:"COT",        v:comp.cot},
-    {key:"growth",    lbl:"Growth",     v:comp.growth},
-    {key:"inflation", lbl:"Inflation",  v:comp.inflation},
-    {key:"jobs",      lbl:"Jobs",       v:comp.jobs},
-  ];
-  const compCards = compItems.map(c => {
-    const ci  = scBiasInfo(c.v*2);  // ×2 so ±1 still has color
-    const pct = Math.round(Math.max(4, Math.min(96, ((c.v + 2) / 4) * 100)));
-    return `<div class="sc-comp-card" data-sc-comp="${c.key}">
-      <div class="sc-comp-card-lbl">${c.lbl}</div>
-      <div class="sc-comp-card-val" style="color:${ci.col}">${c.v >= 0 ? "+" : ""}${c.v}</div>
-      <div class="sc-comp-card-bias" style="color:${ci.col}">${ci.text}</div>
-      <div class="sc-comp-bar"><div class="sc-comp-bar-fill" style="width:${pct}%;background:${ci.col}"></div></div>
-    </div>`;
-  }).join("");
-
-  // ── DETAIL SECTION BUILDER ───────────────────────────────────────────────────
-  const makeSection = (icon, title, compScore, rows) => {
-    const si = scBiasInfo(compScore * 2);
-    return `<div class="sc-detail-card">
-      <div class="sc-detail-hd">
-        <span class="sc-detail-hd-title">${icon} ${title}</span>
-        <span class="sc-detail-hd-score" style="color:${si.col}">${compScore>=0?"+":""}${compScore} · ${si.text}</span>
-      </div>
-      ${rows.map(r => {
-        const rc = r.bias==="bull"?"#34d399":r.bias==="bear"?"#f87171":"#6b7280";
-        const rb = r.bias==="bull"?"badge-bull":r.bias==="bear"?"badge-bear":"badge-neut";
-        const rl = r.bias==="bull"?"▲ Beat":r.bias==="bear"?"▼ Miss":"→ Inline";
-        return `<div class="sc-metric-row">
-          <span class="sc-metric-name">${r.m}</span>
-          <span class="sc-tbl-badge ${rb}">${rl}</span>
-          <span class="sc-metric-surp" style="color:${rc}">${r.surp}</span>
-        </div>`;
-      }).join("")}
-    </div>`;
+  // zone arc (sweep=0 = CCW in screen = upper semicircle direction)
+  const arc = (fd, td, col) => {
+    const [x1,y1] = pt(fd, R); const [x2,y2] = pt(td, R);
+    return `<path d="M ${x1} ${y1} A ${R} ${R} 0 0 0 ${x2} ${y2}" fill="none" stroke="${col}" stroke-width="${SW}" stroke-linecap="butt"/>`;
   };
-
-  // ── LEFT PANEL ────────────────────────────────────────────────────────────────
-  const leftPanel = `<div class="sc-panel-left">
-    <!-- Main gauge card -->
-    <div class="sc-gauge-card">
-      <div id="sc-gauge-wrap">${scGaugeSVG(sc, 10)}</div>
-      <div id="sc-score-num" class="sc-score-num" style="color:${bi.col}">${sc>=0?"+":""}${sc}</div>
-      <div class="sc-edge-lbl">Edge Score</div>
-      <span id="sc-bias-lbl" class="sc-bias-pill" style="color:${bi.col};background:${bi.bg};border:1px solid ${bi.border}">${bi.text}</span>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.05);display:flex;align-items:center;justify-content:space-between">
-        <span style="font-size:9px;color:var(--sc-t3)">T·30% S·20% C·20% M·30%</span>
-        <span id="sc-status" class="${isLive?"sc-chip-live":"sc-chip-static"}">${isLive?"● Live":"◌ Static"}</span>
-      </div>
-    </div>
-    <!-- 2×3 component mini-cards -->
-    <div class="sc-comp-grid">${compCards}</div>
-  </div>`;
-
-  // ── RIGHT PANEL ───────────────────────────────────────────────────────────────
-  const rightPanel = `<div class="sc-panel-right">
-    <!-- Score history chart -->
-    ${scHistoryChart(raw.id, sc)}
-
-    <!-- Weight breakdown (compact bar list) -->
-    <div class="sc-detail-card">
-      <div class="sc-detail-hd">
-        <span class="sc-detail-hd-title">⚖ Component Weights</span>
-        <span style="font-size:9px;color:var(--sc-t3)">Σ = ${sc>=0?"+":""}${sc}</span>
-      </div>
-      ${compItems.map(c => {
-        const ci  = scBiasInfo(c.v*2);
-        const pct = Math.round(Math.max(2, Math.min(98, ((c.v + 2) / 4) * 100)));
-        return `<div class="sc-wt-bar">
-          <span class="sc-wt-label">${c.lbl}</span>
-          <div class="sc-wt-track"><div class="sc-wt-fill" style="width:${pct}%;background:${ci.col}"></div></div>
-          <span class="sc-wt-val" style="color:${ci.col}">${c.v>=0?"+":""}${c.v}</span>
-        </div>`;
-      }).join("")}
-    </div>
-
-    <!-- Detail tables: 2-up then 3-up -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      ${makeSection("📈","Technical",   comp.technical,  metrics.technical.slice(0,3))}
-      ${makeSection("🏦","COT",         comp.cot,        metrics.institutional.slice(0,3))}
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-      ${makeSection("🌍","Growth",    comp.growth,    metrics.economic.slice(0,3))}
-      ${makeSection("🌡","Inflation", comp.inflation, metrics.inflation)}
-      ${makeSection("👷","Jobs",      comp.jobs,      metrics.jobs)}
-    </div>
-  </div>`;
-
-  document.getElementById("page-scorecard").innerHTML = `
-  <div class="sc-page">
-    <div class="sc-topbar">
-      <div>
-        <div class="sc-title">Asset Scorecard</div>
-        <div class="sc-subtitle">Multi-factor edge score · 6 components · auto-refreshes every 5 min</div>
-      </div>
-      <select class="sc-sel" onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
-    </div>
-    <div class="sc-layout">${leftPanel}${rightPanel}</div>
-  </div>`;
+  // split full semicircle into two 90° arcs to avoid 180° ambiguity
+  const [bx0,by0]=pt(180,R), [bxm,bym]=pt(90,R), [bx1,by1]=pt(0,R);
+  const bg = `<path d="M ${bx0} ${by0} A ${R} ${R} 0 0 0 ${bxm} ${bym} A ${R} ${R} 0 0 0 ${bx1} ${by1}" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="${SW}" stroke-linecap="butt"/>`;
+  const zones = [
+    arc(180, 144, 'rgba(148,40,40,.92)'),
+    arc(144, 108, 'rgba(110,55,50,.72)'),
+    arc(108,  72, 'rgba(60,66,84,.60)'),
+    arc( 72,  36, 'rgba(44,76,148,.72)'),
+    arc( 36,   0, 'rgba(32,58,178,.92)'),
+  ].join('');
+  const ticks = [0,36,72,108,144,180].map(d => {
+    const [x0,y0]=pt(d,R-SW/2); const [x1,y1]=pt(d,R+SW/2+3);
+    return `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="rgba(255,255,255,.22)" stroke-width="1.5"/>`;
+  }).join('');
+  const lbl = (d,r,t,c,s) => {
+    const [x,y]=pt(d,r);
+    return `<text x="${x}" y="${(+y+4).toFixed(1)}" text-anchor="middle" fill="${c}" font-size="${s}" font-family="sans-serif">${t}</text>`;
+  };
+  const labels =
+    lbl(162,R,'Bear',   'rgba(210,90,90,.9)',  9) +
+    lbl(126,R,'+ Bear', 'rgba(185,115,115,.7)',7) +
+    lbl( 90,R,'Neutral','rgba(152,158,175,.8)',9) +
+    lbl( 54,R,'+ Bull', 'rgba(90,132,205,.7)', 7) +
+    lbl( 18,R,'Bull',   'rgba(72,136,216,.9)', 9);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:200px;height:auto;display:block;margin:0 auto">` +
+    `${bg}${zones}${ticks}` +
+    `<line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}" stroke="${nc}" stroke-width="2.5" stroke-linecap="round"/>` +
+    `<circle cx="${cx}" cy="${cy}" r="5.5" fill="#10161f" stroke="${nc}" stroke-width="2"/>` +
+    `${labels}</svg>`;
 }
 
+// ── renderScorecard ──────────────────────────────────────────────────────────
+function renderScorecard() {
+
+  // ── ASSET GROUPS: Indices / Commodities / Energy / Crypto only ──────────────
+  const SC_ASSET_GROUPS = [
+    { label:'Indices',    ids:['SPX500','NASDAQ','DOW','RUSSELL','US10T'] },
+    { label:'Commodities',ids:['Gold','SILVER','USOIL','COPPER'] },
+    { label:'Crypto',     ids:['BTC','ETH'] },
+    { label:'Macro',      ids:['USD'] },
+  ];
+  const SC_LABELS = {
+    SPX500:'SPX500',NASDAQ:'NAS100',DOW:'US30',RUSSELL:'RUT',US10T:'US10T',
+    Gold:'XAUUSD',SILVER:'XAGUSD',USOIL:'USOIL',COPPER:'COPPER',
+    BTC:'BTCUSD',ETH:'ETHUSD',USD:'DXY',
+  };
+  const SC_LONG = {
+    SPX500:'S&P 500',NASDAQ:'Nasdaq 100',DOW:'Dow Jones',RUSSELL:'Russell 2000',US10T:'10Y Treasury',
+    Gold:'Gold',SILVER:'Silver',USOIL:'Crude Oil',COPPER:'Copper',
+    BTC:'Bitcoin',ETH:'Ethereum',USD:'Dollar Index',
+  };
+  const allowedIds = SC_ASSET_GROUPS.flatMap(g=>g.ids);
+  if (!allowedIds.includes(state.scAsset)) state.scAsset = 'SPX500';
+
+  let assetOpts = '';
+  SC_ASSET_GROUPS.forEach(g=>{
+    const opts=g.ids.map(id=>{
+      const a=ASSETS_SCORED.find(x=>x.id===id); if(!a) return '';
+      return `<option value="${id}" ${id===state.scAsset?'selected':''}>${SC_LABELS[id]||id}</option>`;
+    }).filter(Boolean).join('');
+    if(opts) assetOpts+=`<optgroup label="${g.label}">${opts}</optgroup>`;
+  });
+
+  // ── LIVE DATA SNAPSHOT ──────────────────────────────────────────────────────
+  const ld = {
+    cotRows:   (state.cotData&&state.cotData.length)?state.cotData:COT_DATA,
+    sentiment: state.sentimentLive?state.sentimentData:FALLBACK_SENTIMENT,
+    econ:      state.econData||FALLBACK_ECON,
+    putCall:   state.putCallLive?(state.putCallData||PUT_CALL):PUT_CALL,
+    aaiiData:  state.aaiiLive?(state.aaiiData||AAII):AAII,
+    rates:     state.rates,
+  };
+  const raw     = ASSETS_SCORED.find(a=>a.id===state.scAsset)||ASSETS_SCORED[0];
+  const comp    = deriveComponents(raw.id, ld);
+  const metrics = getAssetMetrics(raw);
+  const isLive  = state.cotLive||state.sentimentLive||state.econLive;
+
+  // ── SPEC-EXACT 5-FACTOR ENGINE ──────────────────────────────────────────────
+  // Technical (25%) — trend + seasonality [-2,+2]
+  const f_tech = comp.technical;
+
+  // Institutional (20%) — COT net (55%) + retail contrarian (45%) [-2,+2]
+  const f_inst = Math.max(-2, Math.min(2, Math.round(comp.cot*0.55 + comp.sentiment*0.45)));
+
+  // Economic Growth (20%) [-2,+2]
+  const f_growth = comp.growth;
+
+  // Inflation (20%) — asset-specific direction [-2,+2]
+  const isInflBull = ['Gold','SILVER','USOIL','COPPER','BTC','ETH'].includes(raw.id);
+  const f_infl = Math.max(-2, Math.min(2, Math.round(comp.inflation*(isInflBull?1:-1))));
+
+  // Labor (15%) [-2,+2]
+  const f_labor = comp.jobs;
+
+  // Weighted score [-2,+2]
+  const ws = f_tech*0.25 + f_inst*0.20 + f_growth*0.20 + f_infl*0.20 + f_labor*0.15;
+
+  // Nick-style bias (from spec thresholds)
+  const overallBias =
+    ws>=1.0  ? 'Very Bullish' :
+    ws>=0.3  ? 'Bullish'      :
+    ws<=-1.0 ? 'Very Bearish' :
+    ws<=-0.3 ? 'Bearish'      : 'Neutral';
+
+  // EdgeFinder integer score (sum of components, displayed in dial)
+  const edgeScore    = f_tech + (comp.cot+comp.sentiment) + f_growth + f_infl + f_labor;
+  const techScore    = f_tech;
+  const sentCOTScore = comp.cot + comp.sentiment;
+  const fundScore    = f_growth + f_infl + f_labor;
+
+  // ── COT ROW for institutional table ────────────────────────────────────────
+  const cotId  = SC_COT_MAP[raw.id];
+  const cotRow = ld.cotRows.find(r=>r.id===cotId);
+
+  // ── CROWD SENTIMENT ────────────────────────────────────────────────────────
+  const mfxSym  = SC_MFX_MAP[raw.id];
+  const sentRow = mfxSym ? ld.sentiment.find(s=>s.name===mfxSym) : null;
+  const rlp     = sentRow ? sentRow.longPercentage : 50;
+  const pcId    = SC_PC_MAP[raw.id];
+  const pcRow   = pcId ? ld.putCall.find(p=>p.id===pcId) : null;
+  const crowdSignal = rlp>65?'Bullish':rlp<35?'Bearish':'Neutral';
+  let crowdDesc = rlp>65
+    ? `Crowd sentiment is bearish (${rlp.toFixed(0)}% long), giving a contrarian bullish signal. For most assets, this signal is due to retail traders being excessively positioned long.`
+    : rlp<35
+      ? `Crowd sentiment is bullish (${rlp.toFixed(0)}% long), giving a contrarian bearish signal. Retail traders are excessively short.`
+      : `Crowd sentiment is balanced (${rlp.toFixed(0)}% long). No significant contrarian extreme.`;
+  if(pcRow&&pcRow.pc>1.2) crowdDesc+=` High put-call ratio (${pcRow.pc.toFixed(2)}), due to puts being bought aggressively.`;
+  else if(pcRow&&pcRow.pc<0.7) crowdDesc+=` Low put-call ratio (${pcRow.pc.toFixed(2)}) — excessive call buying.`;
+
+  // ── COLOUR / BADGE HELPERS ─────────────────────────────────────────────────
+  // Nick uses blue=bullish, red=bearish (not green/red)
+  const biasC = b => b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#8b949e';
+  const biasBg= b => b.includes('Bull')?'rgba(74,144,217,.22)':b.includes('Bear')?'rgba(224,92,106,.22)':'rgba(139,148,158,.10)';
+
+  const badge = bias => `<span style="display:inline-block;background:${biasBg(bias)};color:${biasC(bias)};
+    border-radius:3px;padding:2px 10px;font-family:var(--mono);font-size:10px;font-weight:700;
+    white-space:nowrap;min-width:70px;text-align:center">${bias}</span>`;
+
+  const pill = v => {
+    if(!v) return `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)">0</span>`;
+    const c = v>0?'#4a90d9':'#e05c6a';
+    const bg= v>0?'rgba(74,144,217,.18)':'rgba(224,92,106,.18)';
+    return `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${c};
+      background:${bg};padding:1px 10px;border-radius:4px">${v>0?'+':''}${v}</span>`;
+  };
+
+  const surpC = v => {
+    const n=parseFloat(v);
+    return isNaN(n)?'var(--muted)':n>0?'#4a90d9':n<0?'#e05c6a':'var(--muted)';
+  };
+  const surpFmt = v => {
+    const n=parseFloat(v); if(isNaN(n)) return v;
+    return `<span style="color:${surpC(v)}">${n>0?'+':''}${v}</span>`;
+  };
+  const b2bias = b => b==='bull'?'Bullish':b==='bear'?'Bearish':'Neutral';
+
+  // ── TABLE HELPERS ──────────────────────────────────────────────────────────
+  // Matching Nick's exact table layout: Name | Bias | (optional cols)
+  const TBL_S = 'width:100%;border-collapse:collapse;font-size:11px;';
+  const ROW_S = 'border-bottom:1px solid rgba(255,255,255,.04);';
+
+  // Section header: section name | overall bias | [col headers]
+  const secHeader = (name, bias, c3, c4, c5) => `
+  <tr style="background:rgba(22,27,38,1)">
+    <td colspan="2" style="padding:9px 14px;font-size:11px;color:var(--text);font-weight:600">${name}</td>
+    <td style="padding:9px 10px;font-size:11px">${badge(bias)}</td>
+    ${c3!==undefined?`<td style="padding:9px 10px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);font-style:italic">${c3}</td>`:''}
+    ${c4!==undefined?`<td style="padding:9px 10px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);font-style:italic">${c4}</td>`:''}
+    ${c5!==undefined?`<td style="padding:9px 10px;text-align:center;font-family:var(--mono);font-size:10px;font-weight:600;color:var(--muted);font-style:italic">${c5}</td>`:''}
+  </tr>`;
+
+  // Data row: metric | bias badge | actual | forecast | surprise
+  const dataRow5 = (name, bias, act, fore, surp) => `
+  <tr style="${ROW_S}">
+    <td colspan="2" style="padding:8px 14px;font-size:11px;color:var(--muted)">${name}</td>
+    <td style="padding:8px 10px">${badge(bias)}</td>
+    <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text)">${act||'—'}</td>
+    <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted)">${fore||'—'}</td>
+    <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px">${surp!==undefined?surpFmt(surp):'—'}</td>
+  </tr>`;
+
+  // Data row for institutional (Long% / Short% / Change%)
+  const dataRowInst = (name, bias, longPct, shortPct, chg) => `
+  <tr style="${ROW_S}">
+    <td colspan="2" style="padding:8px 14px;font-size:11px;color:var(--muted)">${name}</td>
+    <td style="padding:8px 10px">${badge(bias)}</td>
+    <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--text)">${longPct}</td>
+    <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;color:#e05c6a">${shortPct}</td>
+    <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;color:#4a90d9">${chg}</td>
+  </tr>`;
+
+  // ── TECHNICAL SECTION ──────────────────────────────────────────────────────
+  const techBias = techScore>=1?'Bullish':techScore<=-1?'Bearish':'Neutral';
+  const techSec = `<table style="${TBL_S}">
+    ${secHeader('Technical bias', techBias)}
+    ${dataRow5('4H / Daily Chart Trend',
+      comp.technical>=1?'Bullish':comp.technical<=-1?'Bearish':'Neutral','','',undefined)}
+    ${dataRow5('Current Month\'s Seasonality',
+      raw.seasonal>=1?'Bullish':raw.seasonal<=-1?'Bearish':'Neutral','','',undefined)}
+  </table>`;
+
+  // ── INSTITUTIONAL SECTION ──────────────────────────────────────────────────
+  const instBias = f_inst>=1?'Bullish':f_inst<=-1?'Bearish':'Neutral';
+  const cotNetBias  = cotRow?(cotRow.longPct>cotRow.shortPct?'Bullish':'Bearish'):'Neutral';
+  const cotChgBias  = cotRow?(cotRow.netChg>0?'Bullish':'Bearish'):'Neutral';
+  const instSec = `<table style="${TBL_S}">
+    ${secHeader('Institutional activity bias', instBias, 'Long %', 'Short %', 'Change %')}
+    ${dataRowInst('COT — Net Positioning', cotNetBias,
+      cotRow?cotRow.longPct.toFixed(2)+'%':'—',
+      cotRow?cotRow.shortPct.toFixed(2)+'%':'—',
+      cotRow?(cotRow.netChg>0?'+':'')+cotRow.netChg.toFixed(2)+'%':'—')}
+    ${dataRowInst('COT — Latest Buys/Sells', cotChgBias,
+      cotRow?fmtK(cotRow.dLong>0?cotRow.dLong:-cotRow.dLong):'—',
+      cotRow?fmtK(cotRow.dShort>0?cotRow.dShort:-cotRow.dShort):'—',
+      cotRow?(cotRow.netChg>0?'+':'')+cotRow.netChg.toFixed(2)+'%':'—')}
+  </table>`;
+
+  // ── ECONOMIC GROWTH SECTION ────────────────────────────────────────────────
+  const growthBias = f_growth>=2?'Very Bullish':f_growth>=1?'Bullish':f_growth<=-2?'Very Bearish':f_growth<=-1?'Bearish':'Neutral';
+  const growSec = `<table style="${TBL_S}">
+    ${secHeader('Economic growth bias', growthBias, 'Actual', 'Forecast', 'Surprise')}
+    ${metrics.economic.map(r=>dataRow5(r.m, b2bias(r.bias), r.act, r.fore, r.surp)).join('')}
+    ${dataRow5('Consumer Confidence',
+      raw.retailSal>=1?'Bullish':raw.retailSal<=-1?'Bearish':'Neutral',
+      (87.4+(raw.retailSal||0)*3.8).toFixed(1),
+      '87.4',
+      raw.retailSal>0?'+'+(raw.retailSal*3.8).toFixed(2):(raw.retailSal*3.8).toFixed(2))}
+  </table>`;
+
+  // ── INFLATION SECTION ──────────────────────────────────────────────────────
+  const inflBias = f_infl>=1?'Bullish':f_infl<=-1?'Bearish':'Neutral';
+  const inflRows = metrics.inflation.map(r=>{
+    const adjBias = isInflBull ? b2bias(r.bias) : (r.bias==='bull'?'Bearish':r.bias==='bear'?'Bullish':'Neutral');
+    return dataRow5(r.m, adjBias, r.act, r.fore, r.surp);
+  });
+  const us02Bias = isInflBull?(comp.inflation>0?'Bullish':comp.inflation<0?'Bearish':'Neutral')
+                             :(comp.inflation>0?'Bearish':comp.inflation<0?'Bullish':'Neutral');
+  inflRows.push(dataRow5('US02 Yield (21 day SMA)', us02Bias,
+    comp.inflation>0?'↑ Rising':comp.inflation<0?'↓ Falling':'→ Flat',
+    'The 2yr yield',''));
+  const inflSec = `<table style="${TBL_S}">
+    ${secHeader('Inflation bias', inflBias, 'Actual', 'Forecast', 'Surprise')}
+    ${inflRows.join('')}
+  </table>`;
+
+  // ── JOBS SECTION ───────────────────────────────────────────────────────────
+  const laborBias = f_labor>=1?'Bullish':f_labor<=-1?'Bearish':'Neutral';
+  const jobsSec = `<table style="${TBL_S}">
+    ${secHeader('Jobs market bias', laborBias, 'Actual', 'Forecast', '')}
+    ${metrics.jobs.map(r=>dataRow5(r.m, b2bias(r.bias), r.act, r.fore, '')).join('')}
+    ${dataRow5('ADP Employment Change',
+      comp.jobs>=1?'Bullish':comp.jobs<=-1?'Bearish':'Neutral',
+      comp.jobs>=1?'+185k':'-38k','120k','')}
+    ${dataRow5('JOLTS Job Openings',
+      comp.jobs>=1?'Bullish':'Neutral',
+      comp.jobs>=1?'7.1M':'6.0M','6.7M',
+      comp.jobs>=1?'+0.4M':'-0.7M')}
+  </table>`;
+
+  // ── SCORE HISTORY — Nick-style chart ──────────────────────────────────────
+  const histHTML = scHistoryChart(raw.id, edgeScore, {height:130, showLabel:false});
+
+  // ── LEFT PANEL ─────────────────────────────────────────────────────────────
+  const edgeCol = edgeScore>4?'#4a90d9':edgeScore>1?'#6aa8dc':
+                  edgeScore<-4?'#c04040':edgeScore<-1?'#dc7070':'#8b949e';
+
+  const leftHTML = `
+  <div style="width:238px;min-width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:8px">
+
+    <!-- Symbol header -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;
+      display:flex;align-items:center;gap:8px">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap">Symbol:</span>
+      <select style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+        font-family:var(--mono);font-size:11px;padding:3px 6px;border-radius:4px;outline:none"
+        onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">(1) ▼</span>
+    </div>
+
+    <!-- Bias label -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+      padding:8px 12px;text-align:center;font-size:18px;font-weight:700;color:${biasC(overallBias)}">${overallBias}</div>
+
+    <!-- Gauge dial -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:12px 8px 8px">
+      ${scNickGaugeSVG(edgeScore, 12)}
+      <!-- Score summary -->
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px">
+          <span style="font-size:12px;color:var(--text)">EdgeFinder score</span>
+          <span id="sc-score-num" style="font-family:var(--mono);font-size:13px;font-weight:700;color:${edgeCol}">${edgeScore}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px">
+          <span style="font-size:12px;color:var(--text)">Technical score</span>
+          <span style="font-family:var(--mono);font-size:13px;font-weight:700;
+            color:${techScore===0?'var(--muted)':techScore>0?'#4a90d9':'#e05c6a'}">${techScore}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px">
+          <span style="font-size:12px;color:var(--text)">Sentiment + COT score</span>
+          ${pill(sentCOTScore)}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 4px">
+          <span style="font-size:12px;color:var(--text)">Fundamentals score</span>
+          ${pill(fundScore)}
+        </div>
+      </div>
+    </div>
+
+    <!-- Score over time -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <div style="padding:7px 10px;background:var(--bg3);border-bottom:1px solid var(--border);
+        font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">
+        EdgeFinder score over time
+      </div>
+      ${histHTML}
+    </div>
+
+    <!-- Target levels -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 12px">
+      ${['Target 1','Target 2','Target 3'].map(t=>`
+      <div style="display:flex;justify-content:space-between;padding:4px 0;
+        border-bottom:1px solid rgba(255,255,255,.04)">
+        <span style="font-size:12px;color:var(--muted)">${t}</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">N/A</span>
+      </div>`).join('')}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0 2px">
+        <span style="font-size:12px;color:var(--muted)">30 day SMA</span>
+        ${badge(edgeScore<-1?'Bearish':edgeScore>1?'Bullish':'Neutral')}
+      </div>
+    </div>
+
+    <!-- Live/static status -->
+    <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted);padding:2px">
+      ${isLive?'<span style="color:var(--bull)">●</span> LIVE':'◌ STATIC'} ·
+      T·25% I·20% G·20% F·20% L·15%
+    </div>
+  </div>`;
+
+  // ── RIGHT PANEL ─────────────────────────────────────────────────────────────
+  const SECT_SEP = '<div style="height:1px;background:var(--border)"></div>';
+
+  const rightHTML = `
+  <div style="flex:1;min-width:0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- Main 5-section table block -->
+    <div style="flex:1;min-width:0;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      ${techSec}${SECT_SEP}${instSec}${SECT_SEP}${growSec}${SECT_SEP}${inflSec}${SECT_SEP}${jobsSec}
+    </div>
+
+    <!-- Crowd sentiment sidebar -->
+    <div style="width:190px;min-width:170px;flex-shrink:0;background:var(--bg2);
+      border:1px solid var(--border);border-radius:6px;padding:12px;align-self:flex-start">
+      <div style="display:flex;align-items:center;justify-content:space-between;
+        flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <span style="font-size:11px;font-weight:600;color:var(--text)">Crowd sentiment signal</span>
+        ${badge(crowdSignal)}
+      </div>
+      <div style="font-size:10px;color:var(--muted);line-height:1.7">${crowdDesc}</div>
+      ${sentRow?`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-bottom:3px">
+          <span style="color:var(--muted)">Retail Long</span>
+          <span style="color:${rlp>65?'var(--bear)':rlp<35?'var(--bull)':'var(--muted)'}">${rlp.toFixed(1)}%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+          <span style="color:var(--muted)">Retail Short</span>
+          <span style="color:var(--muted)">${(100-rlp).toFixed(1)}%</span>
+        </div>
+      </div>`:''}
+      ${pcRow?`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-top:4px">
+        <span style="color:var(--muted)">Put/Call</span>
+        <span style="color:var(--text)">${pcRow.pc.toFixed(2)}</span>
+      </div>`:''}
+    </div>
+  </div>`;
+
+  // ── INJECT ──────────────────────────────────────────────────────────────────
+  document.getElementById("page-scorecard").innerHTML = `
+  <div style="display:flex;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div style="font-family:var(--mono);font-size:10px;font-weight:700;
+      letter-spacing:1px;text-transform:uppercase;color:var(--text)">Asset Scorecard</div>
+    <div style="font-size:10px;color:var(--muted)">
+      <span style="font-family:var(--mono)">www.edgefinder.pro</span> ·
+      5-factor weighted model ·
+      <span style="color:${biasC(overallBias)};font-weight:700">${overallBias}</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+    ${leftHTML}
+    ${rightHTML}
+  </div>`;
+}
 
 // ── RENDER: FOREX SCORECARD ────────────────────────────────────────────────────
 const SC_FOREX_PAIRS = [
@@ -3951,38 +4226,6 @@ setInterval(refreshAll,15*60*1000);
 // Scorecard engine — runs after refreshAll has populated state, then every 5 min
 setTimeout(runEngine, 2000);
 setInterval(runEngine, 5*60*1000);
-</script>
-  <script>
-async function loadForexData() {
-  try {
-    const res = await fetch("https://edgefinder-backend.onrender.com/forex");
-    const data = await res.json();
-
-    console.log("Forex Data:", data);
-
-    // Example: update UI
-    for (const pair in data) {
-      const price = data[pair]?.price || "N/A";
-
-      // Find element with id like EURUSD, GBPUSD etc.
-      const id = pair.replace("/", "");
-      const el = document.getElementById(id);
-
-      if (el) {
-        el.innerText = price;
-      }
-    }
-
-  } catch (err) {
-    console.error("Error loading forex:", err);
-  }
-}
-
-// run once
-loadForexData();
-
-// refresh every 10 seconds
-setInterval(loadForexData, 10000);
 </script>
 </body>
 </html>
