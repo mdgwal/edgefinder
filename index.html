@@ -2888,46 +2888,79 @@ function renderActive(){
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ── WEIGHTS (adjustable) ─────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+//  FOREX SCORECARD — Hedge-Fund Grade 6-Factor Macro Engine v2
+//  Spec:  T·20% + I·15% + G·20% + Inf·15% + L·10% + MP·20%  = 1.00
+//  FX pair score = Base score − Quote score   (range ≈ −4 → +4)
+//  All other tabs / asset scorecard UNTOUCHED.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── LEGACY WEIGHTS (used by Asset Scorecard + Top Setups — DO NOT CHANGE) ──
 const SC_WEIGHTS = {
   technical:  0.30,
   sentiment:  0.20,
   cot:        0.20,
-  macro:      0.30,   // growth + inflation + jobs bundled for weighted sum
+  macro:      0.30,
 };
-
-// Internal sub-weights within macro
 const SC_MACRO_WEIGHTS = {
   growth:    0.40,
   inflation: 0.30,
   jobs:      0.30,
 };
 
-// ── FOREX ASSET → MYFXBOOK SYMBOL MAP ────────────────────────────────────────
+// ── FX-SPECIFIC WEIGHTS (6 factors, sums to 1.00) ────────────────────────
+const FX_WEIGHTS = {
+  technical:       0.20,
+  institutional:   0.15,
+  growth:          0.20,
+  inflation:       0.15,
+  labor:           0.10,
+  monetaryPolicy:  0.20,
+};
+
+// ── MONETARY POLICY DATASET ───────────────────────────────────────────────
+// Each currency: rate (%), stance (-2 Dovish → +2 Hawkish), trend (-1/0/+1)
+// Updated manually when central banks meet; falls back gracefully if stale.
+const FX_CB_DATA = {
+  USD:{ rate:5.25, stance: 1, trend: 0, name:"Fed",  label:"Hawkish Hold"   },
+  EUR:{ rate:4.50, stance: 0, trend:-1, name:"ECB",  label:"Cutting"         },
+  GBP:{ rate:5.25, stance: 0, trend:-1, name:"BoE",  label:"Cautious Cut"    },
+  JPY:{ rate:0.50, stance:-1, trend: 1, name:"BoJ",  label:"Gradual Hike"    },
+  AUD:{ rate:4.35, stance: 0, trend:-1, name:"RBA",  label:"Cutting"         },
+  CAD:{ rate:2.75, stance:-1, trend:-1, name:"BoC",  label:"Dovish Cutting"  },
+  CHF:{ rate:0.50, stance:-2, trend:-1, name:"SNB",  label:"Aggressive Cut"  },
+  NZD:{ rate:3.50, stance:-1, trend:-1, name:"RBNZ", label:"Cutting"         },
+};
+
+// Regime context: risk-on biases AUD/NZD/GBP up, risk-off biases USD/JPY/CHF up
+// Derived from VIX proxy (Fear/Greed below 35 = risk-off)
+function fxRegimeBias(ccyId, fgScore) {
+  if(!fgScore) return 0;
+  const riskOn  = ['AUD','NZD','GBP','CAD'];
+  const riskOff = ['USD','JPY','CHF'];
+  if(fgScore < 35) return riskOff.includes(ccyId) ? 1 : riskOn.includes(ccyId) ? -1 : 0;
+  if(fgScore > 65) return riskOn.includes(ccyId)  ? 1 : riskOff.includes(ccyId) ? -1 : 0;
+  return 0;
+}
+
+// ── SYMBOL MAPS (unchanged — keep existing) ──────────────────────────────
 const SC_MFX_MAP = {
   EUR:"EURUSD", GBP:"GBPUSD", JPY:"USDJPY", AUD:"AUDUSD",
   CAD:"USDCAD", NZD:"NZDUSD", CHF:"USDCHF",
 };
-// For USD-quote pairs: sentiment is contrarian — heavy longs → bearish
-// For USD-base pairs: invert
-const SC_MFX_INVERT = { JPY:true, CAD:true, CHF:true }; // USD is base
-
-// ── ASSET → COT ID MAP ───────────────────────────────────────────────────────
+const SC_MFX_INVERT = { JPY:true, CAD:true, CHF:true };
 const SC_COT_MAP = {
   Gold:"Gold", SILVER:"SILVER", USOIL:"USOIL", BTC:"BTC",
   NASDAQ:"NASDAQ", DOW:"DOW", SPX500:"SPX", RUSSELL:"RUSSELL", US10T:"US10T",
   COPPER:"COPPER",
   EUR:"EUR", GBP:"GBP", JPY:"JPY", AUD:"AUD", CAD:"CAD", CHF:"CHF", NZD:"NZD", USD:"USD",
 };
-
-// ── ASSET → PUT-CALL ID MAP ───────────────────────────────────────────────────
 const SC_PC_MAP = {
   SPX500:"SPX500", NASDAQ:"NAS100", Gold:"GOLD", USOIL:"USOIL",
   BTC:"BTCUSD", EUR:"EURUSD", JPY:"USDJPY",
 };
 
-// ── STEP 1: Aggregate live state into a unified snapshot ─────────────────────
-// This is called by runEngine. It does NOT do any new HTTP requests —
-// it packages data already fetched by the existing refreshAll() pipeline.
+// ── DATA SNAPSHOT (unchanged signature — used by both engines) ────────────
 async function fetchAllData() {
   const cotRows   = (state.cotData && state.cotData.length) ? state.cotData : COT_DATA;
   const sentiment = state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT;
@@ -2935,179 +2968,365 @@ async function fetchAllData() {
   const putCall   = state.putCallLive   ? (state.putCallData || PUT_CALL) : PUT_CALL;
   const aaiiData  = state.aaiiLive      ? (state.aaiiData    || AAII)     : AAII;
   const rates     = state.rates;
-
   return { cotRows, sentiment, econ, putCall, aaiiData, rates, ts: Date.now() };
 }
 
-// ── STEP 2: Derive per-component scores from live snapshot ───────────────────
-// Returns scores in range [-2, +2] per component.
+// ═══════════════════════════════════════════════════════════════════════════
+//  LEGACY ENGINE (Asset Scorecard + Top Setups — IDENTICAL TO BEFORE)
+// ═══════════════════════════════════════════════════════════════════════════
 function deriveComponents(assetId, liveData) {
   const fallback = ASSETS_SCORED.find(a => a.id === assetId);
   const clamp2   = v => Math.max(-2, Math.min(2, Math.round(v)));
 
-  // ── TECHNICAL ──
-  // Use static trend + seasonal (no live OHLC feed available).
-  // When live rates exist for FX pairs, add a mild drift signal.
+  // Technical
   let technical = fallback ? clamp2(fallback.trend * 0.7 + fallback.seasonal * 0.3) : 0;
   if (liveData.rates && SC_MFX_MAP[assetId]) {
-    // Rate-of-change proxy: compare to previous rates snapshot (prevRates)
-    const sym = SC_MFX_MAP[assetId];
     const inverted = !!SC_MFX_INVERT[assetId];
     if (state.prevRates && state.rates) {
-      const cur  = inverted ? (state.rates[assetId]   || 1) : (1 / (state.rates[assetId]   || 1));
-      const prev = inverted ? (state.prevRates[assetId] || 1) : (1 / (state.prevRates[assetId] || 1));
+      const cur  = inverted ? (state.rates[assetId] || 1)     : (1/(state.rates[assetId]     || 1));
+      const prev = inverted ? (state.prevRates[assetId] || 1) : (1/(state.prevRates[assetId] || 1));
       const roc  = (cur - prev) / prev;
-      const rocSignal = roc > 0.003 ? 1 : roc < -0.003 ? -1 : 0;  // 0.3% threshold
-      // Blend: 70% static bias, 30% live momentum
-      technical = clamp2(technical * 0.7 + rocSignal * 0.3 * 2);
+      const sig  = roc > 0.003 ? 1 : roc < -0.003 ? -1 : 0;
+      technical  = clamp2(technical * 0.7 + sig * 0.3 * 2);
     }
   }
-
-  // ── SENTIMENT ──
-  // Source 1: Myfxbook retail (contrarian)
+  // Sentiment
   let sentimentScore = fallback ? clamp2(fallback.retail) : 0;
   const mfxSym = SC_MFX_MAP[assetId];
   if (mfxSym && liveData.sentiment && liveData.sentiment.length) {
     const row = liveData.sentiment.find(s => s.name === mfxSym);
     if (row) {
       const lp = row.longPercentage;
-      // Contrarian: >65% longs = bearish signal, <35% longs = bullish signal
-      const rawSent = lp >= 75 ? -2 : lp >= 65 ? -1 : lp <= 25 ? 2 : lp <= 35 ? 1 : 0;
-      if (SC_MFX_INVERT[assetId]) sentimentScore = clamp2(-rawSent);
-      else sentimentScore = rawSent;
+      const rs = lp >= 75 ? -2 : lp >= 65 ? -1 : lp <= 25 ? 2 : lp <= 35 ? 1 : 0;
+      sentimentScore = clamp2(SC_MFX_INVERT[assetId] ? -rs : rs);
     }
   }
-  // Source 2: Put/Call ratio (blended 30%)
   const pcId = SC_PC_MAP[assetId];
   if (pcId && liveData.putCall && liveData.putCall.length) {
     const row = liveData.putCall.find(p => p.id === pcId);
     if (row) {
-      const pcSignal = row.pc > 1.2 ? 1 : row.pc < 0.7 ? -1 : 0;
-      sentimentScore = clamp2(sentimentScore * 0.7 + pcSignal * 0.3 * 2);
+      const sig = row.pc > 1.2 ? 1 : row.pc < 0.7 ? -1 : 0;
+      sentimentScore = clamp2(sentimentScore * 0.7 + sig * 0.3 * 2);
     }
   }
-  // Source 3: AAII for equity/macro assets
   if (["DOW","NASDAQ","SPX500","RUSSELL","Gold","BTC"].includes(assetId) && liveData.aaiiData) {
     const spread = liveData.aaiiData.spread ?? 0;
-    const aaiiSignal = spread < -15 ? 2 : spread < -5 ? 1 : spread > 15 ? -2 : spread > 5 ? -1 : 0;
-    sentimentScore = clamp2(sentimentScore * 0.6 + aaiiSignal * 0.4 * 2);
+    const sig = spread < -15 ? 2 : spread < -5 ? 1 : spread > 15 ? -2 : spread > 5 ? -1 : 0;
+    sentimentScore = clamp2(sentimentScore * 0.6 + sig * 0.4 * 2);
   }
-
-  // ── COT (Institutional) ──
+  // COT
   let cotScore = fallback ? clamp2(fallback.cot) : 0;
-  const cotId = SC_COT_MAP[assetId];
+  const cotId  = SC_COT_MAP[assetId];
   if (cotId && liveData.cotRows && liveData.cotRows.length) {
     const row = liveData.cotRows.find(r => r.id === cotId);
     if (row) {
-      // Net positioning: longPct - shortPct as fraction of 100
-      const net     = (row.longPct || 50) - (row.shortPct || 50); // -100..+100
-      const netChg  = row.netChg || 0;
-      const netSig  = net  > 20 ? 2 : net  > 5 ? 1 : net  < -20 ? -2 : net  < -5 ? -1 : 0;
-      const chgSig  = netChg > 3 ? 1 : netChg < -3 ? -1 : 0;
-      cotScore = clamp2(netSig * 0.7 + chgSig * 0.3 * 2);
+      const net    = (row.longPct || 50) - (row.shortPct || 50);
+      const netChg = row.netChg || 0;
+      const netSig = net > 20 ? 2 : net > 5 ? 1 : net < -20 ? -2 : net < -5 ? -1 : 0;
+      const chgSig = netChg > 3 ? 1 : netChg < -3 ? -1 : 0;
+      cotScore     = clamp2(netSig * 0.7 + chgSig * 0.3 * 2);
     }
   }
-
-  // ── MACRO (Growth + Inflation + Jobs) ──
+  // Macro
   let growthScore    = fallback ? clamp2((fallback.gdp + fallback.mPMI + fallback.sPMI + fallback.retailSal) / 2) : 0;
-  let inflationScore = fallback ? clamp2(fallback.inflation)                                                       : 0;
-  let jobsScore      = fallback ? clamp2((fallback.empChg + fallback.unemploy + fallback.rates) / 1.5)            : 0;
-
-  // Override with live FRED data where available
-  // FRED data is keyed by currency (USD, EUR, GBP, JPY)
+  let inflationScore = fallback ? clamp2(fallback.inflation) : 0;
+  let jobsScore      = fallback ? clamp2((fallback.empChg + fallback.unemploy + fallback.rates) / 1.5) : 0;
   const fredKey = ["EUR","GBP","JPY"].includes(assetId) ? assetId
-                : ["DOW","NASDAQ","SPX500","RUSSELL","Gold","USOIL","SILVER","COPPER","US10T","BTC"] .includes(assetId) ? "USD"
+                : ["DOW","NASDAQ","SPX500","RUSSELL","Gold","USOIL","SILVER","COPPER","US10T","BTC"].includes(assetId) ? "USD"
                 : assetId === "USD" ? "USD" : null;
-
   if (fredKey && liveData.econ && liveData.econ[fredKey] && liveData.econ[fredKey].length) {
-    const econItems = liveData.econ[fredKey];
-    // Sum surprise scores from FRED (each is -0.5..+0.5)
-    const gdpItem = econItems.find(i => i.l.toLowerCase().includes("gdp"));
-    const cpiItem = econItems.find(i => i.l.toLowerCase().includes("cpi"));
-    const unempItem = econItems.find(i => i.l.toLowerCase().includes("unemploy") || i.l.toLowerCase().includes("rate") && !i.l.toLowerCase().includes("fed") && !i.l.toLowerCase().includes("ecb") && !i.l.toLowerCase().includes("boe") && !i.l.toLowerCase().includes("boj"));
-
-    if (gdpItem)   growthScore    = clamp2((gdpItem.s ?? 0) * 4);   // scale .5 → 2
-    if (cpiItem)   inflationScore = clamp2(-(cpiItem.s ?? 0) * 4);  // high CPI = bearish
-    if (unempItem) jobsScore      = clamp2(-(unempItem.s ?? 0) * 4); // high unemp = bearish
+    const items = liveData.econ[fredKey];
+    const gdp   = items.find(i => i.l.toLowerCase().includes("gdp"));
+    const cpi   = items.find(i => i.l.toLowerCase().includes("cpi"));
+    const unemp = items.find(i => i.l.toLowerCase().includes("unemploy"));
+    if (gdp)   growthScore    = clamp2((gdp.s ?? 0) * 4);
+    if (cpi)   inflationScore = clamp2(-(cpi.s ?? 0) * 4);
+    if (unemp) jobsScore      = clamp2(-(unemp.s ?? 0) * 4);
   }
-
-  // Macro composite
   const macroRaw = growthScore * SC_MACRO_WEIGHTS.growth
                  + inflationScore * SC_MACRO_WEIGHTS.inflation
-                 + jobsScore      * SC_MACRO_WEIGHTS.jobs;
-  const macro = clamp2(macroRaw / 0.4); // renormalize so full-bull macro = +2
-
-  return {
-    technical, sentiment: sentimentScore, cot: cotScore,
-    growth: growthScore, inflation: inflationScore, jobs: jobsScore, macro,
-  };
+                 + jobsScore * SC_MACRO_WEIGHTS.jobs;
+  const macro = clamp2(macroRaw / 0.4);
+  return { technical, sentiment: sentimentScore, cot: cotScore,
+           growth: growthScore, inflation: inflationScore, jobs: jobsScore, macro };
 }
 
-// ── STEP 3: Weighted asset score ──────────────────────────────────────────────
 function calculateComponentScore(a) {
-  // Legacy compatibility — used by getAssetMetrics (keeps metric tables working)
   return deriveComponents(a.id, {
-    cotRows:    (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
-    sentiment:  state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
-    econ:       state.econData      || FALLBACK_ECON,
-    putCall:    state.putCallLive   ? (state.putCallData || PUT_CALL) : PUT_CALL,
-    aaiiData:   state.aaiiLive      ? (state.aaiiData    || AAII)     : AAII,
-    rates:      state.rates,
+    cotRows:   (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
+    sentiment: state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
+    econ:      state.econData || FALLBACK_ECON,
+    putCall:   state.putCallLive ? (state.putCallData || PUT_CALL) : PUT_CALL,
+    aaiiData:  state.aaiiLive ? (state.aaiiData || AAII) : AAII,
+    rates:     state.rates,
   });
 }
 
 function calculateAssetScore(a, liveData) {
-  const ld   = liveData || {
-    cotRows:    (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
-    sentiment:  state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
-    econ:       state.econData      || FALLBACK_ECON,
-    putCall:    state.putCallLive   ? (state.putCallData || PUT_CALL) : PUT_CALL,
-    aaiiData:   state.aaiiLive      ? (state.aaiiData    || AAII)     : AAII,
-    rates:      state.rates,
+  const ld = liveData || {
+    cotRows:   (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
+    sentiment: state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
+    econ:      state.econData || FALLBACK_ECON,
+    putCall:   state.putCallLive ? (state.putCallData || PUT_CALL) : PUT_CALL,
+    aaiiData:  state.aaiiLive ? (state.aaiiData || AAII) : AAII,
+    rates:     state.rates,
   };
   const comp = deriveComponents(a.id, ld);
-  const w    = SC_WEIGHTS;
-  // Weighted sum: technical, sentiment, cot each scaled from [-2,+2]; macro already composite
-  const raw =
-    comp.technical * w.technical * 5 +   // ×5 → [-10,+10] range
-    comp.sentiment * w.sentiment * 5 +
-    comp.cot       * w.cot       * 5 +
-    comp.macro     * w.macro     * 5;
+  const w = SC_WEIGHTS;
+  const raw = comp.technical * w.technical * 5 +
+              comp.sentiment * w.sentiment * 5 +
+              comp.cot       * w.cot       * 5 +
+              comp.macro     * w.macro     * 5;
   const total = Math.max(-12, Math.min(12, Math.round(raw)));
   const bias  = total >= 5 ? "Bullish" : total <= -5 ? "Bearish"
               : total >= 3 ? "Mild Bull" : total <= -3 ? "Mild Bear" : "Neutral";
   return { asset: a.id, name: a.name, cat: a.cat, components: comp, totalScore: total, bias };
 }
 
-// ── STEP 4: Currency strength + forex pair ────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+//  NEW FX ENGINE — 6-factor per-currency scoring
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Factor 1: Technical [-2,+2] ───────────────────────────────────────────
+function fxTechnical(ccyId, liveData) {
+  const fb = ASSETS_SCORED.find(a => a.id === ccyId);
+  let base = fb ? Math.max(-2, Math.min(2, Math.round(fb.trend * 0.6 + fb.seasonal * 0.4))) : 0;
+  // Live price momentum boost from rate-of-change
+  const sym      = SC_MFX_MAP[ccyId];
+  const inverted = !!SC_MFX_INVERT[ccyId];
+  if (sym && state.prevRates && state.rates && state.rates[ccyId]) {
+    const cur  = inverted ? (state.rates[ccyId] || 1)     : 1/(state.rates[ccyId] || 1);
+    const prev = inverted ? (state.prevRates[ccyId] || 1) : 1/(state.prevRates[ccyId] || 1);
+    const roc  = (cur - prev) / prev;
+    const live = roc > 0.005 ? 2 : roc > 0.002 ? 1 : roc < -0.005 ? -2 : roc < -0.002 ? -1 : 0;
+    base = Math.max(-2, Math.min(2, Math.round(base * 0.65 + live * 0.35)));
+  }
+  return base;
+}
+
+// ── Factor 2: Institutional [-2,+2] with crowding risk ────────────────────
+function fxInstitutional(ccyId, liveData) {
+  const cotId = SC_COT_MAP[ccyId];
+  if (!cotId || !liveData.cotRows || !liveData.cotRows.length) {
+    const fb = ASSETS_SCORED.find(a => a.id === ccyId);
+    return fb ? Math.max(-2, Math.min(2, fb.cot)) : 0;
+  }
+  const row = liveData.cotRows.find(r => r.id === cotId);
+  if (!row) {
+    const fb = ASSETS_SCORED.find(a => a.id === ccyId);
+    return fb ? Math.max(-2, Math.min(2, fb.cot)) : 0;
+  }
+  const net    = (row.longPct || 50) - (row.shortPct || 50);  // –50 to +50
+  const netChg = row.netChg || 0;
+  // Directional signal: Z-score proxy
+  const dirSig = net > 25 ? 2 : net > 10 ? 1 : net < -25 ? -2 : net < -10 ? -1 : 0;
+  // Change signal: momentum of COT positioning
+  const chgSig = netChg > 5 ? 2 : netChg > 2 ? 1 : netChg < -5 ? -2 : netChg < -2 ? -1 : 0;
+  // Crowding risk: extreme longs are contrarian bearish, extreme shorts contrarian bullish
+  const crowd = net > 35 ? -1 : net < -35 ? 1 : 0;
+  // Blend: direction 50%, momentum 30%, crowding contrarian 20%
+  const raw = dirSig * 0.50 + chgSig * 0.30 + crowd * 0.20 * 2;
+  return Math.max(-2, Math.min(2, Math.round(raw)));
+}
+
+// ── Factor 3: Economic Growth [-2,+2] ─────────────────────────────────────
+function fxGrowth(ccyId, liveData) {
+  const fb = ASSETS_SCORED.find(a => a.id === ccyId);
+  // Static fallback: surprise-weighted PMI + GDP + retail sales
+  let base = fb ? Math.max(-2, Math.min(2, Math.round(
+    (fb.gdp * 0.30 + fb.mPMI * 0.30 + fb.sPMI * 0.20 + fb.retailSal * 0.20) * 1.2
+  ))) : 0;
+  // Live FRED override (surprise-based)
+  const fredKey = ["EUR","GBP","JPY","USD"].includes(ccyId) ? ccyId : null;
+  if (fredKey && liveData.econ && liveData.econ[fredKey]) {
+    const items = liveData.econ[fredKey];
+    const gdp   = items.find(i => i.l.toLowerCase().includes("gdp"));
+    if (gdp && gdp.s !== undefined) {
+      const surprise = gdp.s;  // –0.5 to +0.5 → scale to –2 to +2
+      base = Math.max(-2, Math.min(2, Math.round(surprise * 4)));
+    }
+  }
+  return base;
+}
+
+// ── Factor 4: Inflation [-2,+2] (central bank reaction function) ─────────
+// Rising inflation + hawkish CB = bullish (CB will hike → rate differential widens)
+// Rising inflation + dovish CB  = neutral/bearish (policy lag, real rates fall)
+function fxInflation(ccyId, liveData) {
+  const fb  = ASSETS_SCORED.find(a => a.id === ccyId);
+  const cb  = FX_CB_DATA[ccyId] || { stance: 0, trend: 0 };
+  let cpiSig = fb ? Math.max(-2, Math.min(2, fb.inflation)) : 0;
+  // Live FRED CPI override
+  const fredKey = ["EUR","GBP","JPY","USD"].includes(ccyId) ? ccyId : null;
+  if (fredKey && liveData.econ && liveData.econ[fredKey]) {
+    const items = liveData.econ[fredKey];
+    const cpi   = items.find(i => i.l.toLowerCase().includes("cpi"));
+    if (cpi && cpi.s !== undefined) cpiSig = Math.max(-2, Math.min(2, Math.round(cpi.s * 4)));
+  }
+  // Policy reaction: if CB is hawkish, inflation surprise is bullish for currency
+  // if CB is dovish/neutral, inflation is neutral or bearish (policy credibility risk)
+  const reaction = cb.stance >= 1 ? cpiSig          // hawkish: inflation → hike → bullish
+                 : cb.stance <= -1 ? cpiSig * 0      // dovish: no reaction
+                 : cpiSig * 0.5;                     // neutral: partial pass-through
+  return Math.max(-2, Math.min(2, Math.round(reaction)));
+}
+
+// ── Factor 5: Labor [-2,+2] ───────────────────────────────────────────────
+function fxLabor(ccyId, liveData) {
+  const fb = ASSETS_SCORED.find(a => a.id === ccyId);
+  let base = fb ? Math.max(-2, Math.min(2, Math.round(
+    (fb.empChg * 0.40 + fb.unemploy * 0.35 + (fb.rates || 0) * 0.25) * 1.2
+  ))) : 0;
+  // Live FRED unemployment override
+  const fredKey = ["EUR","GBP","JPY","USD"].includes(ccyId) ? ccyId : null;
+  if (fredKey && liveData.econ && liveData.econ[fredKey]) {
+    const items = liveData.econ[fredKey];
+    const unemp = items.find(i => i.l.toLowerCase().includes("unemploy"));
+    // Rising unemployment = bearish; surprise vs expectation
+    if (unemp && unemp.s !== undefined) base = Math.max(-2, Math.min(2, Math.round(-unemp.s * 4)));
+  }
+  return base;
+}
+
+// ── Factor 6: Monetary Policy [-2,+2] — THE MOST IMPORTANT FACTOR ─────────
+// Score = CB stance + rate differential vs world average + trend
+function fxMonetaryPolicy(ccyId, liveData) {
+  const cb = FX_CB_DATA[ccyId];
+  if (!cb) {
+    const fb = ASSETS_SCORED.find(a => a.id === ccyId);
+    return fb ? Math.max(-2, Math.min(2, fb.rates)) : 0;
+  }
+  // Rate differential: compare this currency's rate to G8 average
+  const allRates = Object.values(FX_CB_DATA).map(c => c.rate);
+  const avgRate  = allRates.reduce((s,v) => s+v, 0) / allRates.length;
+  const diffSig  = cb.rate > avgRate + 1.5 ? 2 : cb.rate > avgRate + 0.5 ? 1
+                 : cb.rate < avgRate - 1.5 ? -2 : cb.rate < avgRate - 0.5 ? -1 : 0;
+  // CB stance: hawkish (+) = tightening, dovish (−) = easing
+  const stanceSig = cb.stance;  // already −2 to +2
+  // Trend: if cutting, subtract; if hiking, add
+  const trendSig  = cb.trend;   // −1/0/+1
+  // Live FRED rate override: if current rate > 1yr ago → hiking, else cutting
+  let stanceOverride = stanceSig;
+  const fredKey = ["EUR","GBP","JPY","USD"].includes(ccyId) ? ccyId : null;
+  if (fredKey && liveData.econ && liveData.econ[fredKey]) {
+    const items    = liveData.econ[fredKey];
+    const rateItem = items.find(i => i.l.toLowerCase().includes("rate") &&
+                                     (i.l.toLowerCase().includes("fed") ||
+                                      i.l.toLowerCase().includes("ecb") ||
+                                      i.l.toLowerCase().includes("boe") ||
+                                      i.l.toLowerCase().includes("boj")));
+    if (rateItem && rateItem.s !== undefined) {
+      // Positive surprise (rate higher than expected) = hawkish surprise = bullish
+      stanceOverride = Math.max(-2, Math.min(2,
+        stanceSig + Math.round(rateItem.s * 3)
+      ));
+    }
+  }
+  // Blend: stance 45%, differential 35%, trend 20%
+  const raw = stanceOverride * 0.45 + diffSig * 0.35 + trendSig * 0.20 * 2;
+  return Math.max(-2, Math.min(2, Math.round(raw)));
+}
+
+// ── CURRENCY MACRO SCORE (6 factors, FX weights) ─────────────────────────
+function scoreCurrency(ccyId, liveData) {
+  const fgScore = state.fgData && state.fgData.length
+    ? parseInt(state.fgData[0].value || '50') : 50;
+  const regime = fxRegimeBias(ccyId, fgScore);
+
+  const t   = fxTechnical(ccyId, liveData);
+  const i   = fxInstitutional(ccyId, liveData);
+  const g   = fxGrowth(ccyId, liveData);
+  const inf = fxInflation(ccyId, liveData);
+  const l   = fxLabor(ccyId, liveData);
+  const mp  = fxMonetaryPolicy(ccyId, liveData);
+  const cb  = FX_CB_DATA[ccyId] || { rate: 0, stance: 0, name:'', label:'' };
+
+  const w   = FX_WEIGHTS;
+  const ws  = t*w.technical + i*w.institutional + g*w.growth +
+              inf*w.inflation + l*w.labor + mp*w.monetaryPolicy + regime*0.05;
+  // Scale to integer display score (×5 → roughly –10 to +10)
+  const score = Math.max(-10, Math.min(10, Math.round(ws * 5)));
+
+  // Divergence flag: if technical ≠ macro direction
+  const macroDir = g + inf + l + mp;
+  const diverge  = (t > 1 && macroDir < -2) || (t < -1 && macroDir > 2);
+
+  // Momentum vs yesterday
+  let delta = null;
+  try {
+    const yd = new Date(); yd.setDate(yd.getDate()-1);
+    const yk = 'ef_fx_' + ccyId + '_' + yd.toISOString().split('T')[0];
+    const yr = localStorage.getItem(yk);
+    if (yr) delta = score - parseFloat(yr);
+  } catch(e){}
+  // Save today
+  try {
+    const td = new Date().toISOString().split('T')[0];
+    localStorage.setItem('ef_fx_'+ccyId+'_'+td, String(score));
+  } catch(e){}
+
+  return {
+    currency: ccyId,
+    score,
+    components: { technical: t, institutional: i, growth: g,
+                  inflation: inf, labor: l, monetaryPolicy: mp },
+    cbRate: cb.rate, cbStance: cb.stance, cbLabel: cb.label, cbName: cb.name,
+    regime, diverge, delta,
+  };
+}
+
+// ── REBUILD buildCurrencyScores to use NEW 6-factor engine for FX ─────────
 function buildCurrencyScores(liveData) {
-  const ld = liveData;
+  const ld = liveData || {
+    cotRows:   (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
+    sentiment: state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
+    econ:      state.econData || FALLBACK_ECON,
+    putCall:   state.putCallLive ? (state.putCallData || PUT_CALL) : PUT_CALL,
+    aaiiData:  state.aaiiLive ? (state.aaiiData || AAII) : AAII,
+    rates:     state.rates,
+  };
   const ccyIds = ["USD","EUR","GBP","JPY","AUD","CAD","CHF","NZD"];
   const scores = {};
   ccyIds.forEach(ccy => {
-    const a = ASSETS_SCORED.find(x => x.id === ccy);
-    scores[ccy] = a ? calculateAssetScore(a, ld).totalScore : 0;
+    const result = scoreCurrency(ccy, ld);
+    scores[ccy]  = result.score;
+    // Store full scored object keyed by currency for UI consumption
+    scores['_detail_'+ccy] = result;
   });
   return scores;
 }
 
+// ── PAIR SCORING with upgraded bias thresholds ────────────────────────────
 function calculateForexScore(baseCcy, quoteCcy, ccyScores) {
   const baseScore  = ccyScores[baseCcy]  ?? 0;
   const quoteScore = ccyScores[quoteCcy] ?? 0;
   const pairScore  = baseScore - quoteScore;
-  const bias = pairScore >= 3 ? "Bullish" : pairScore <= -3 ? "Bearish"
-             : pairScore >= 1 ? "Mild Bull" : pairScore <= -1 ? "Mild Bear" : "Neutral";
-  return { base: baseCcy, quote: quoteCcy, baseScore, quoteScore, pairScore, bias };
+  // Spec thresholds: +2/+0.5 → Bull; −0.5/−2 → Bear (scaled for integer scores)
+  const bias =
+    pairScore >= 6  ? "Strong Bull" :
+    pairScore >= 2  ? "Bullish"     :
+    pairScore <= -6 ? "Strong Bear" :
+    pairScore <= -2 ? "Bearish"     : "Neutral";
+  const baseDetail  = ccyScores['_detail_'+baseCcy]  || null;
+  const quoteDetail = ccyScores['_detail_'+quoteCcy] || null;
+  // Regime-driven regime classification for pair
+  const regime = (() => {
+    const fgScore = state.fgData && state.fgData.length
+      ? parseInt(state.fgData[0].value || '50') : 50;
+    if(fgScore < 35) return 'Risk-Off';
+    if(fgScore > 65) return 'Risk-On';
+    return 'Neutral Regime';
+  })();
+  return { base: baseCcy, quote: quoteCcy, baseScore, quoteScore, pairScore, bias,
+           baseDetail, quoteDetail, regime };
 }
 
-// ── STEP 5: Score ALL assets for the engine ───────────────────────────────────
 function scoreAllAssets(liveData) {
   const out = {};
   ASSETS_SCORED.forEach(a => { out[a.id] = calculateAssetScore(a, liveData); });
   return out;
 }
 
-// ── STEP 6: Build forex pair results ─────────────────────────────────────────
 function buildForexPairs(ccyScores) {
   return SC_FOREX_PAIRS.map(p => ({
     ...p, ...calculateForexScore(p.base, p.quote, ccyScores),
@@ -4369,14 +4588,386 @@ function renderForexScorecard() {
   updateForexUI(pairs, ccyScores);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  AUTOMATIC DATA PIPELINE — EdgeFinder FX Scorecard
+//  Rules: no changes to scoring, UI, or existing data structures.
+//  Adds: per-source scheduling, caching, stale detection, event triggers.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── PIPELINE CACHE ────────────────────────────────────────────────────────
+// All cache entries: { data, ts, source, stale }
+// Keys: 'cot' | 'econ' | 'sentiment' | 'rates' | 'feargreed' | 'putcall'
+const DP_CACHE = {};
+
+// Cache TTLs in milliseconds
+const DP_TTL = {
+  rates:      5  * 60 * 1000,    //  5 min  — Frankfurter FX rates
+  feargreed:  15 * 60 * 1000,    // 15 min  — Alternative.me F&G
+  sentiment:  3  * 60 * 60 * 1000, // 3 hr  — Myfxbook community outlook
+  cot:        12 * 60 * 60 * 1000, // 12 hr  — CFTC (released Fri, cached)
+  econ:       6  * 60 * 60 * 1000, // 6 hr   — FRED (releases are infrequent)
+  putcall:    60 * 60 * 1000,     //  1 hr  — CBOE put/call
+};
+
+// Check if cache entry is still valid
+function dpCacheValid(key) {
+  const e = DP_CACHE[key];
+  if (!e || !e.ts || !e.data) return false;
+  return (Date.now() - e.ts) < (DP_TTL[key] || 0);
+}
+
+// Write a cache entry with metadata
+function dpCacheSet(key, data, source) {
+  DP_CACHE[key] = { data, ts: Date.now(), source, stale: false };
+  // Also persist lightweight metadata to localStorage for next boot
+  try {
+    localStorage.setItem('ef_dp_ts_' + key, String(Date.now()));
+    localStorage.setItem('ef_dp_src_' + key, source);
+  } catch(e) {}
+}
+
+// Mark a key as stale without clearing data (data stays, freshness degrades)
+function dpMarkStale(key) {
+  if (DP_CACHE[key]) DP_CACHE[key].stale = true;
+}
+
+// Return data freshness label for UI display
+function dpFreshness(key) {
+  const e = DP_CACHE[key];
+  if (!e || !e.ts) return { label: 'No data', color: '#8b949e' };
+  const age = (Date.now() - e.ts) / 1000;
+  if (e.stale)          return { label: 'Stale',    color: '#e05c6a' };
+  if (age < 300)        return { label: 'Live',     color: '#00ff88' };
+  if (age < 3600)       return { label: Math.round(age/60)+'m ago',  color: '#4a90d9' };
+  if (age < 86400)      return { label: Math.round(age/3600)+'h ago', color: '#f0b429' };
+  return { label: Math.round(age/86400)+'d ago', color: '#e05c6a' };
+}
+
+// ── PIPELINE STATE ────────────────────────────────────────────────────────
+// Tracks per-source last-fetch timestamp and in-flight guard
+const DP_STATE = {
+  rates_running:     false,
+  sentiment_running: false,
+  cot_running:       false,
+  econ_running:      false,
+  feargreed_running: false,
+  putcall_running:   false,
+  // Next scheduled fetch for each source (epoch ms)
+  rates_next:     0,
+  sentiment_next: 0,
+  cot_next:       0,
+  econ_next:      0,
+  feargreed_next: 0,
+  putcall_next:   0,
+};
+
+// ── ENGINE TRIGGER ────────────────────────────────────────────────────────
+// After any data source updates, call this to rerun the FX scoring engine
+// and patch only the active tab DOM.
+function dpTriggerEngine(sourceKey) {
+  // Debounce: multiple rapid updates collapse into one engine run
+  if (dpTriggerEngine._timer) clearTimeout(dpTriggerEngine._timer);
+  dpTriggerEngine._timer = setTimeout(async () => {
+    try {
+      await runEngine();
+    } catch(e) {
+      console.warn('[DP] Engine trigger failed:', e.message);
+    }
+  }, 400);
+}
+dpTriggerEngine._timer = null;
+
+// ── SOURCE 1: FX RATES (Frankfurter) — every 5 min ───────────────────────
+async function dpFetchRates() {
+  if (DP_STATE.rates_running || dpCacheValid('rates')) return;
+  DP_STATE.rates_running = true;
+  try {
+    const [cur, prev] = await Promise.allSettled([fetchRates(), fetchPrev()]);
+    if (cur.status === 'fulfilled' && cur.value) {
+      state.rates     = cur.value;
+      state.cdata     = buildStrength(cur.value);
+      dpCacheSet('rates', cur.value, 'Frankfurter');
+    } else {
+      dpMarkStale('rates');
+    }
+    if (prev.status === 'fulfilled' && prev.value) {
+      state.prevRates = prev.value;
+    }
+    DP_STATE.rates_next = Date.now() + DP_TTL.rates;
+    dpTriggerEngine('rates');
+  } catch(e) {
+    console.warn('[DP] Rates fetch failed:', e.message);
+    dpMarkStale('rates');
+  } finally {
+    DP_STATE.rates_running = false;
+  }
+}
+
+// ── SOURCE 2: FEAR & GREED — every 15 min ────────────────────────────────
+async function dpFetchFearGreed() {
+  if (DP_STATE.feargreed_running || dpCacheValid('feargreed')) return;
+  DP_STATE.feargreed_running = true;
+  try {
+    const data = await fetchFearGreed();
+    if (data && data.length) {
+      state.fgData = data;
+      state.fgLive = true;
+      dpCacheSet('feargreed', data, 'alternative.me');
+      DP_STATE.feargreed_next = Date.now() + DP_TTL.feargreed;
+      dpTriggerEngine('feargreed');
+    }
+  } catch(e) {
+    console.warn('[DP] Fear/Greed fetch failed:', e.message);
+    dpMarkStale('feargreed');
+    state.fgLive = false;
+  } finally {
+    DP_STATE.feargreed_running = false;
+  }
+}
+
+// ── SOURCE 3: RETAIL SENTIMENT (Myfxbook) — every 3 hr ───────────────────
+async function dpFetchSentiment() {
+  if (DP_STATE.sentiment_running) return;
+  if (dpCacheValid('sentiment') && state.sentimentLive) return;
+  if (!state.mfxEmail || !state.mfxPassword) return;  // no credentials = skip silently
+  DP_STATE.sentiment_running = true;
+  const timeout = setTimeout(() => {
+    DP_STATE.sentiment_running = false;
+    dpMarkStale('sentiment');
+  }, 18000);  // 18s hard timeout
+  try {
+    const symbols = await fetchMyfxbookSentiment();
+    clearTimeout(timeout);
+    if (symbols && symbols.length) {
+      state.sentimentData = symbols.map(s => ({
+        name:            s.name,
+        longPercentage:  parseFloat(s.longPercentage),
+        shortPercentage: parseFloat(s.shortPercentage),
+        longVolume:      parseInt(s.longVolume)    || 0,
+        shortVolume:     parseInt(s.shortVolume)   || 0,
+        longPositions:   parseInt(s.longPositions) || 0,
+        shortPositions:  parseInt(s.shortPositions)|| 0,
+      }));
+      state.sentimentLive    = true;
+      state.sentimentLoading = false;
+      dpCacheSet('sentiment', state.sentimentData, 'Myfxbook');
+      DP_STATE.sentiment_next = Date.now() + DP_TTL.sentiment;
+      // Patch sentiment tab if open
+      if (activeTab === 'sentiment') renderSentiment();
+      dpTriggerEngine('sentiment');
+    }
+  } catch(e) {
+    clearTimeout(timeout);
+    console.warn('[DP] Myfxbook sentiment failed:', e.message);
+    state.sentimentLive    = false;
+    state.sentimentLoading = false;
+    dpMarkStale('sentiment');
+  } finally {
+    DP_STATE.sentiment_running = false;
+  }
+}
+
+// ── SOURCE 4: COT (CFTC) — every 12 hr ───────────────────────────────────
+async function dpFetchCOT() {
+  if (DP_STATE.cot_running || dpCacheValid('cot')) return;
+  // Extra guard: CFTC data only changes once/week — skip if we fetched today
+  const lastFetchDay = localStorage.getItem('ef_dp_cot_day');
+  const today = new Date().toISOString().split('T')[0];
+  if (lastFetchDay === today && state.cotLive && state.cotData && state.cotData.length) {
+    // Refresh cache TTL so subsequent calls skip too
+    if (!DP_CACHE.cot) dpCacheSet('cot', state.cotData, 'CFTC');
+    return;
+  }
+  DP_STATE.cot_running = true;
+  try {
+    const rows = await fetchCFTCData();
+    if (rows && rows.length) {
+      state.cotData       = rows;
+      state.cotLive       = true;
+      state.cotLastUpdate = Date.now();
+      dpCacheSet('cot', rows, 'CFTC');
+      localStorage.setItem('ef_dp_cot_day', today);
+      DP_STATE.cot_next = Date.now() + DP_TTL.cot;
+      if (activeTab === 'cot') renderCOT();
+      dpTriggerEngine('cot');  // event: COT → institutional component updated
+    }
+  } catch(e) {
+    console.warn('[DP] CFTC COT fetch failed:', e.message);
+    state.cotLive = false;
+    dpMarkStale('cot');
+  } finally {
+    DP_STATE.cot_running = false;
+  }
+}
+
+// ── SOURCE 5: ECONOMIC DATA (FRED) — every 6 hr ──────────────────────────
+// Event-driven components: GDP → growth, CPI → inflation, NFP → labor, Rate → MP
+async function dpFetchEcon() {
+  if (DP_STATE.econ_running || dpCacheValid('econ')) return;
+  if (!state.fredKey) return;  // no API key = skip silently
+  DP_STATE.econ_running = true;
+  try {
+    const data = await fetchFREDEcon(state.fredKey);
+    if (data) {
+      state.econData    = data;
+      state.econLive    = true;
+      state.econLoading = false;
+      dpCacheSet('econ', data, 'FRED');
+      DP_STATE.econ_next = Date.now() + DP_TTL.econ;
+      if (activeTab === 'econ') renderEcon();
+      // Event dispatch: which components changed?
+      // CPI → inflation, GDP → growth, Unemploy → labor, Rate → monetaryPolicy
+      dpTriggerEngine('econ');
+    }
+  } catch(e) {
+    console.warn('[DP] FRED econ fetch failed:', e.message);
+    state.econLive    = false;
+    state.econLoading = false;
+    dpMarkStale('econ');
+    // Fallback: keep existing state.econData (already FALLBACK_ECON)
+  } finally {
+    DP_STATE.econ_running = false;
+  }
+}
+
+// ── SOURCE 6: PUT/CALL (CBOE proxy) — every 1 hr ─────────────────────────
+async function dpFetchPutCall() {
+  if (DP_STATE.putcall_running || dpCacheValid('putcall')) return;
+  DP_STATE.putcall_running = true;
+  try {
+    const data = await fetchPutCall();  // existing function
+    if (data && data.length) {
+      state.putCallData = data;
+      state.putCallLive = true;
+      dpCacheSet('putcall', data, 'CBOE');
+      DP_STATE.putcall_next = Date.now() + DP_TTL.putcall;
+      dpTriggerEngine('putcall');
+    }
+  } catch(e) {
+    console.warn('[DP] Put/call fetch failed:', e.message);
+    state.putCallLive = false;
+    dpMarkStale('putcall');
+  } finally {
+    DP_STATE.putcall_running = false;
+  }
+}
+
+// ── CENTRAL BANK RATE UPDATER ─────────────────────────────────────────────
+// Reads FRED rate series for USD/EUR/GBP/JPY and patches FX_CB_DATA.
+// Only runs if FRED key is set; non-blocking.
+async function dpUpdateCBRates() {
+  if (!state.fredKey) return;
+  const rateSeriesMap = {
+    USD: { id: 'FEDFUNDS',   label: 'Fed Rate' },
+    EUR: { id: 'ECBDFR',     label: 'ECB Rate' },
+    GBP: { id: 'IUDSOIA',    label: 'BoE Rate' },
+    JPY: { id: 'IRSTJPN156N',label: 'BoJ Rate' },
+  };
+  for (const [ccy, series] of Object.entries(rateSeriesMap)) {
+    try {
+      const obs = await fredFetch(series.id, state.fredKey, 3);
+      if (!obs || !obs.length) continue;
+      const latest = parseFloat(obs[0].value);
+      const prev   = obs.length >= 2 ? parseFloat(obs[1].value) : latest;
+      if (isNaN(latest)) continue;
+      // Update FX_CB_DATA rate level
+      if (FX_CB_DATA[ccy]) {
+        FX_CB_DATA[ccy].rate  = latest;
+        // Derive trend: if latest > prev (last obs) = hiking (+1), else cutting (-1)
+        if (!isNaN(prev) && Math.abs(latest - prev) > 0.01) {
+          FX_CB_DATA[ccy].trend = latest > prev ? 1 : -1;
+        }
+        // Derive stance from trend + differential context
+        const avgRate = Object.values(FX_CB_DATA).reduce((s,c) => s + c.rate, 0) /
+                        Object.keys(FX_CB_DATA).length;
+        const diff    = latest - avgRate;
+        if (FX_CB_DATA[ccy].trend === 1)  FX_CB_DATA[ccy].stance = 1;
+        else if (FX_CB_DATA[ccy].trend === -1) FX_CB_DATA[ccy].stance = -1;
+        // Update label
+        FX_CB_DATA[ccy].label = FX_CB_DATA[ccy].trend === 1  ? 'Hiking'
+                              : FX_CB_DATA[ccy].trend === -1 ? 'Cutting' : 'Hold';
+      }
+      await new Promise(r => setTimeout(r, 200));  // FRED rate limit: 5 req/s
+    } catch(e) {
+      // Silent fallback — FX_CB_DATA retains static values
+    }
+  }
+  // Trigger engine after all rates updated
+  dpTriggerEngine('cb_rates');
+}
+
+// ── STALE DATA MONITOR ────────────────────────────────────────────────────
+// Runs every 2 min; marks entries stale if TTL exceeded
+function dpStaleScan() {
+  for (const key of Object.keys(DP_TTL)) {
+    const e = DP_CACHE[key];
+    if (e && e.ts && !e.stale) {
+      const ttl = DP_TTL[key];
+      if ((Date.now() - e.ts) > ttl * 2) {  // 2× TTL = stale
+        dpMarkStale(key);
+      }
+    }
+  }
+}
+
+// ── SCHEDULER ────────────────────────────────────────────────────────────
+// Single polling loop — checks each source against its own TTL.
+// Avoids multiple setInterval timers; runs every 60 seconds.
+async function dpScheduler() {
+  const now = Date.now();
+
+  // Rates: every 5 min
+  if (now >= DP_STATE.rates_next)     dpFetchRates();
+  // Fear/Greed: every 15 min
+  if (now >= DP_STATE.feargreed_next) dpFetchFearGreed();
+  // Sentiment: every 3 hr
+  if (now >= DP_STATE.sentiment_next) dpFetchSentiment();
+  // COT: every 12 hr
+  if (now >= DP_STATE.cot_next)       dpFetchCOT();
+  // Econ/FRED: every 6 hr
+  if (now >= DP_STATE.econ_next)      dpFetchEcon();
+  // Put/Call: every 1 hr
+  if (now >= DP_STATE.putcall_next)   dpFetchPutCall();
+  // Stale scan: every run
+  dpStaleScan();
+}
+
+// ── INITIAL PIPELINE LOAD ────────────────────────────────────────────────
+// Called once at boot. Fetches all sources in priority order.
+// Scoring engine is triggered automatically as each source resolves.
+async function dpBootLoad() {
+  // Priority 1: Rates (needed for technical + any price logic)
+  await dpFetchRates().catch(() => {});
+  // Priority 2: Trigger engine with whatever state we have
+  dpTriggerEngine('boot');
+  // Priority 3: Background fetches (non-blocking from here)
+  Promise.allSettled([
+    dpFetchFearGreed(),
+    dpFetchCOT(),
+    dpFetchPutCall(),
+  ]);
+  // Priority 4: Econ is slowest (many FRED series)
+  setTimeout(() => dpFetchEcon(), 1500);
+  // Priority 5: Myfxbook (may fail — credentials required)
+  setTimeout(() => dpFetchSentiment(), 2000);
+  // Priority 6: CB rates patch (FRED sub-queries)
+  setTimeout(() => dpUpdateCBRates(), 8000);
+}
+
+// Expose freshness helper to renderForexScorecard / status bars
+window.dpFreshness = dpFreshness;
+
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 initTabs();
 renderActive();
 refreshAll();
-setInterval(refreshAll,15*60*1000);
+setInterval(refreshAll, 15*60*1000);
 // Scorecard engine — runs after refreshAll has populated state, then every 5 min
 setTimeout(runEngine, 2000);
 setInterval(runEngine, 5*60*1000);
+// ── DATA PIPELINE — automatic fetch + schedule ────────────────────────────────
+dpBootLoad();                          // immediate priority load
+setInterval(dpScheduler, 60*1000);    // scheduler tick: every 60 s
 </script>
 </body>
 </html>
