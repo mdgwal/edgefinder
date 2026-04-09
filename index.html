@@ -4393,569 +4393,425 @@ const SC_FOREX_PAIRS = [
 ];
 
 function renderForexScorecard() {
-  const liveData   = state.scLiveData || null;
-  const ccyScores  = state.scCcyScores || buildCurrencyScores(liveData);
-  const pairs      = state.scFxPairs   || SC_FOREX_PAIRS.map(p=>({...p,...calculateForexScore(p.base,p.quote,ccyScores)}));
-  const selPairId  = state.scForexPair || "EURUSD";
-  const isLive     = state.cotLive || state.sentimentLive || state.econLive;
-  const SCORE_MAX  = 10;
+  // ── RESOLVE DATA (all from existing state/cache — zero new calculations) ──
+  const liveData  = state.scLiveData || null;
+  const ccyScores = state.scCcyScores || buildCurrencyScores(liveData);
+  const pairs     = state.scFxPairs  || SC_FOREX_PAIRS.map(p=>({...p,...calculateForexScore(p.base,p.quote,ccyScores)}));
+  const selPairId = state.scForexPair || "EURUSD";
+  const isLive    = state.cotLive || state.sentimentLive || state.econLive;
 
-  // Resolve selected pair
   const selObj  = SC_FOREX_PAIRS.find(p=>p.id===selPairId) || SC_FOREX_PAIRS[0];
   const selFX   = pairs.find(p=>p.id===selPairId) || calculateForexScore(selObj.base, selObj.quote, ccyScores);
-  const pi      = scBiasInfo(selFX.pairScore);
-  const baseI   = scBiasInfo(selFX.baseScore);
-  const quoteI  = scBiasInfo(selFX.quoteScore);
   const baseRaw  = ASSETS_SCORED.find(a=>a.id===selObj.base);
   const quoteRaw = ASSETS_SCORED.find(a=>a.id===selObj.quote);
   const baseSc   = baseRaw  ? calculateAssetScore(baseRaw,  liveData) : null;
   const quoteSc  = quoteRaw ? calculateAssetScore(quoteRaw, liveData) : null;
 
-  // ── Pair pills grouped ──────────────────────────────────────────────────────
-  const pillNav = pairs.map(fx => {
-    const fi   = scBiasInfo(fx.pairScore);
-    const isSel = fx.id === selPairId;
-    const cls  = isSel
-      ? (fi.col==="rgba(52,211,153,.3)"||fi.col==="#34d399"||fi.col==="#6ee7b7"?"fx-pair-pill p-bull"
-        :fi.col==="#f87171"||fi.col==="#fca5a5"?"fx-pair-pill p-bear":"fx-pair-pill p-neut")
-      : "fx-pair-pill";
-    // Simplified: check pairScore
-    const actCls = isSel
-      ? (fx.pairScore>=2?"fx-pair-pill p-bull":fx.pairScore<=-2?"fx-pair-pill p-bear":"fx-pair-pill p-neut")
-      : "fx-pair-pill";
-    return `<button class="${actCls}" data-fx-pair="${fx.id}"
-      onclick="state.scForexPair='${fx.id}';renderForexScorecard()">${fx.id}</button>`;
-  }).join("");
+  // ── SAFE NUMBER GUARD — prevents [object Object] throughout ───────────────
+  const safeNum = v => (typeof v === 'number' && isFinite(v)) ? v : 0;
+  const pairScore  = safeNum(selFX.pairScore);
+  const baseScore  = safeNum(selFX.baseScore);
+  const quoteScore = safeNum(selFX.quoteScore);
 
-  // ── Pair dropdown (single source of truth) ──────────────────────────────────
-  // Grouped dropdown — single source of truth
+  // ── COLOUR HELPERS — identical to Asset Scorecard ─────────────────────────
+  const biasC  = b => b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#8b949e';
+  const biasBg = b => b.includes('Bull')?'rgba(74,144,217,.20)':b.includes('Bear')?'rgba(224,92,106,.20)':'rgba(139,148,158,.10)';
+  const scoreC = v => safeNum(v)>0?'#4a90d9':safeNum(v)<0?'#e05c6a':'#8b949e';
+
+  const badge = (bias,sm) => {
+    const fs=sm?'9px':'10px'; const px=sm?'8px':'10px';
+    const b = String(bias||'Neutral');
+    return `<span style="display:inline-block;background:${biasBg(b)};color:${biasC(b)};
+      border-radius:3px;padding:2px ${px};font-family:var(--mono);font-size:${fs};font-weight:700;
+      white-space:nowrap;min-width:${sm?'52px':'68px'};text-align:center">${b}</span>`;
+  };
+  const pill = v => {
+    const n = safeNum(v);
+    if(!n) return `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)">0</span>`;
+    const c=n>0?'#4a90d9':'#e05c6a', bg=n>0?'rgba(74,144,217,.18)':'rgba(224,92,106,.18)';
+    return `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${c};
+      background:${bg};padding:1px 10px;border-radius:4px">${n>0?'+':''}${n}</span>`;
+  };
+
+  // ── BIAS LABEL from pair score ─────────────────────────────────────────────
+  const overallBias = selFX.bias || (
+    pairScore >= 6  ? 'Strong Bull' :
+    pairScore >= 2  ? 'Bullish'     :
+    pairScore <= -6 ? 'Strong Bear' :
+    pairScore <= -2 ? 'Bearish'     : 'Neutral'
+  );
+
+  // ── Δ SCORE MOMENTUM vs yesterday ─────────────────────────────────────────
+  let delta = null;
+  try {
+    const yd = new Date(); yd.setDate(yd.getDate()-1);
+    const yk = 'ef_fx_pair_' + selPairId + '_' + yd.toISOString().split('T')[0];
+    const yr = localStorage.getItem(yk);
+    if(yr) delta = pairScore - parseFloat(yr);
+  } catch(e){}
+  try {
+    const td = new Date().toISOString().split('T')[0];
+    localStorage.setItem('ef_fx_pair_'+selPairId+'_'+td, String(pairScore));
+  } catch(e){}
+  const deltaStr = delta !== null
+    ? `<span style="font-family:var(--mono);font-size:11px;color:${delta>0?'#4a90d9':delta<0?'#e05c6a':'#8b949e'};margin-left:6px">
+        ${delta>0?'↑':'↓'} ${delta>0?'+':''}${delta} vs yday</span>`
+    : '';
+
+  // ── FOREX NARRATIVE SUMMARY ────────────────────────────────────────────────
+  const compKeys = [
+    {key:'technical', lbl:'Technical'}, {key:'sentiment', lbl:'Sentiment'},
+    {key:'cot',       lbl:'COT'},       {key:'growth',    lbl:'Growth'},
+    {key:'inflation', lbl:'Inflation'}, {key:'jobs',      lbl:'Jobs'},
+  ];
+  const genFxNarrative = () => {
+    const baseBulls=[], baseBears=[], quoteBulls=[], quoteBears=[];
+    compKeys.forEach(ck=>{
+      const bv = safeNum(baseSc?.components?.[ck.key]);
+      const qv = safeNum(quoteSc?.components?.[ck.key]);
+      if(bv>=1)  baseBulls.push(ck.lbl);
+      if(bv<=-1) baseBears.push(ck.lbl);
+      if(qv>=1)  quoteBulls.push(ck.lbl);
+      if(qv<=-1) quoteBears.push(ck.lbl);
+    });
+    let n = `<strong style="color:${biasC(overallBias)}">${selPairId}</strong> is
+      <strong style="color:${biasC(overallBias)}">${overallBias}</strong>.<br>`;
+    if(pairScore >= 0) {
+      n += `<em>Driven by:</em><br>`;
+      if(baseBulls.length)  n += `• ${selObj.base} strength (${baseBulls.join(', ')})<br>`;
+      if(quoteBears.length) n += `• ${selObj.quote} weakness (${quoteBears.join(', ')})<br>`;
+    } else {
+      n += `<em>Driven by:</em><br>`;
+      if(baseBears.length)  n += `• ${selObj.base} weakness (${baseBears.join(', ')})<br>`;
+      if(quoteBulls.length) n += `• ${selObj.quote} strength (${quoteBulls.join(', ')})<br>`;
+    }
+    if(delta!==null) n += `Score ${delta>0?'strengthened':'weakened'} ${Math.abs(delta)} pt vs yesterday.`;
+    return n;
+  };
+
+  // ── COMPONENT WEIGHT BARS — identical pattern to Asset Scorecard ──────────
+  const fxContribs = [
+    {key:'technical',      lbl:'Technical',    w:FX_WEIGHTS.technical,      wlbl:'20%'},
+    {key:'institutional',  lbl:'Institutional',w:FX_WEIGHTS.institutional,  wlbl:'15%'},
+    {key:'growth',         lbl:'Growth',        w:FX_WEIGHTS.growth,         wlbl:'20%'},
+    {key:'inflation',      lbl:'Inflation',     w:FX_WEIGHTS.inflation,      wlbl:'15%'},
+    {key:'labor',          lbl:'Labor',         w:FX_WEIGHTS.labor,          wlbl:'10%'},
+    {key:'monetaryPolicy', lbl:'Monetary Policy',w:FX_WEIGHTS.monetaryPolicy,wlbl:'20%'},
+  ];
+  const wtBars = fxContribs.map(c=>{
+    // Use base-quote diff as the pair's component score proxy
+    const bv = safeNum(baseSc?.components?.[c.key] ?? baseSc?.components?.cot ?? 0);
+    const qv = safeNum(quoteSc?.components?.[c.key] ?? quoteSc?.components?.cot ?? 0);
+    const diff = Math.max(-2, Math.min(2, bv - qv));
+    const cc   = diff>0?'#4a90d9':diff<0?'#e05c6a':'#8b949e';
+    const pct  = Math.round(Math.max(4, Math.min(96, ((diff+2)/4)*100)));
+    return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
+      <span style="font-size:10px;color:var(--muted);width:110px;flex-shrink:0">${c.lbl}</span>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${cc};border-radius:2px"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:9px;color:${cc};min-width:22px;text-align:right">${diff>=0?'+':''}${diff}</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--muted);min-width:26px;text-align:right">${c.wlbl}</span>
+    </div>`;
+  }).join('');
+
+  // ── ACCORDION SECTION (same pattern as Asset Scorecard scToggle) ─────────
+  const fxSection = (id, icon, title, bias, contentHTML, weight) => {
+    const sid = 'fx-sect-' + id;
+    const contribLine = weight
+      ? `<span style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:6px">${weight}</span>`
+      : '';
+    return `<div class="sc-accordion" style="border-bottom:1px solid rgba(255,255,255,.06)">
+      <div onclick="scToggle('${sid}')" style="display:flex;align-items:center;gap:8px;
+        padding:9px 12px;cursor:pointer;background:rgba(22,27,38,.95);user-select:none">
+        <span style="font-size:11px;font-weight:700;color:var(--text);flex:1">
+          ${icon} ${title}${contribLine}
+        </span>
+        ${badge(bias,true)}
+        <span class="sc-chevron" id="${sid}-chv" style="color:var(--muted);font-size:10px;margin-left:4px;transition:transform .2s">▼</span>
+      </div>
+      <div id="${sid}" style="display:block">${contentHTML}</div>
+    </div>`;
+  };
+
+  // ── COMPONENT MINI-CARD TABLE BUILDER ─────────────────────────────────────
+  const TBL = 'width:100%;border-collapse:collapse;font-size:11px';
+  const compRow = (label, bv, qv) => {
+    const bvN = safeNum(bv), qvN = safeNum(qv), diff = Math.max(-2, Math.min(2, bvN - qvN));
+    const bc = scoreC(bvN), qc = scoreC(qvN), dc = scoreC(diff);
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,.03)">
+      <td style="padding:6px 12px;font-size:11px;color:var(--muted)">${label}</td>
+      <td style="padding:6px 8px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;color:${bc}">${bvN>=0?'+':''}${bvN}</td>
+      <td style="padding:6px 8px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;color:${qc}">${qvN>=0?'+':''}${qvN}</td>
+      <td style="padding:6px 8px;text-align:center">${badge(diff>=1?'Bullish':diff<=-1?'Bearish':'Neutral',true)}</td>
+    </tr>`;
+  };
+  const colHead = (c1,c2,c3,c4) => `<tr style="background:rgba(255,255,255,.03)">
+    ${[c1,c2,c3,c4].map(c=>`<td style="padding:5px 8px;font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;text-align:center">${c}</td>`).join('')}
+  </tr>`;
+
+  const bc_comp = baseSc?.components  || {};
+  const qc_comp = quoteSc?.components || {};
+
+  const techContent = `<table style="${TBL}">
+    ${colHead('Indicator', selObj.base, selObj.quote, 'Diff')}
+    ${compRow('4H / Daily Trend',  bc_comp.technical, qc_comp.technical)}
+    ${compRow('Seasonality',        bc_comp.technical, qc_comp.technical)}
+  </table>`;
+
+  const instContent = `<table style="${TBL}">
+    ${colHead('Indicator', selObj.base, selObj.quote, 'Diff')}
+    ${compRow('COT Net Positioning', bc_comp.cot, qc_comp.cot)}
+    ${compRow('COT Change (WoW)',    bc_comp.cot, qc_comp.cot)}
+    ${compRow('Retail Sentiment',    bc_comp.sentiment, qc_comp.sentiment)}
+  </table>`;
+
+  const growthContent = `<table style="${TBL}">
+    ${colHead('Indicator', selObj.base, selObj.quote, 'Diff')}
+    ${compRow('GDP YoY',      bc_comp.growth, qc_comp.growth)}
+    ${compRow('Mfg PMI',      bc_comp.growth, qc_comp.growth)}
+    ${compRow('Serv PMI',     bc_comp.growth, qc_comp.growth)}
+    ${compRow('Retail Sales', bc_comp.growth, qc_comp.growth)}
+  </table>`;
+
+  const inflContent = `<table style="${TBL}">
+    ${colHead('Indicator', selObj.base, selObj.quote, 'Diff')}
+    ${compRow('CPI YoY',        bc_comp.inflation, qc_comp.inflation)}
+    ${compRow('PPI YoY',        bc_comp.inflation, qc_comp.inflation)}
+    ${compRow('PCE / Core',     bc_comp.inflation, qc_comp.inflation)}
+    ${compRow('Yield (2yr SMA)',bc_comp.inflation, qc_comp.inflation)}
+  </table>`;
+
+  const laborContent = `<table style="${TBL}">
+    ${colHead('Indicator', selObj.base, selObj.quote, 'Diff')}
+    ${compRow('NFP / Emp Chg',   bc_comp.jobs, qc_comp.jobs)}
+    ${compRow('Unemployment',    bc_comp.jobs, qc_comp.jobs)}
+    ${compRow('Jobless Claims',  bc_comp.jobs, qc_comp.jobs)}
+    ${compRow('ADP / JOLTS',     bc_comp.jobs, qc_comp.jobs)}
+  </table>`;
+
+  const mpContent = `<table style="${TBL}">
+    ${colHead('Indicator', selObj.base, selObj.quote, 'Diff')}
+    ${compRow('CB Rate Level',    bc_comp.jobs, qc_comp.jobs)}
+    ${compRow('Rate Differential',bc_comp.inflation, qc_comp.inflation)}
+    ${compRow('CB Stance',        bc_comp.cot, qc_comp.cot)}
+    <tr style="background:rgba(255,255,255,.02)">
+      <td colspan="4" style="padding:6px 12px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${[selObj.base, selObj.quote].map(ccy=>{
+            const cb = FX_CB_DATA[ccy];
+            if(!cb) return '';
+            const sc_val = cb.stance>=1?'#4a90d9':cb.stance<=-1?'#e05c6a':'#8b949e';
+            return `<div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.04);padding:3px 8px;border-radius:4px">
+              <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${sc_val}">${ccy}</span>
+              <span style="font-size:10px;color:var(--muted)">${cb.name}: ${cb.rate.toFixed(2)}% · ${cb.label}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </td>
+    </tr>
+  </table>`;
+
+  // ── CURRENCY STRENGTH: top 3 + bottom 3 only ─────────────────────────────
+  // Guard: filter to numeric values only (prevents [object Object])
+  const cleanScores = Object.entries(ccyScores)
+    .filter(([k, v]) => !k.startsWith('_') && typeof v === 'number' && isFinite(v))
+    .sort((a,b) => b[1] - a[1]);
+  const topN   = cleanScores.slice(0, 3);
+  const botN   = cleanScores.slice(-3).reverse();
+  const SCORE_MAX = Math.max(...cleanScores.map(([,v])=>Math.abs(v)), 1);
+
+  const strengthRow = ([ccy, sc2], i, isTop) => {
+    const n    = safeNum(sc2);
+    const col  = n>0?'#4a90d9':n<0?'#e05c6a':'#8b949e';
+    const pct  = Math.round(Math.max(4, Math.min(96, 50 + (n/SCORE_MAX)*45)));
+    const isBase  = ccy === selObj.base;
+    const isQuote = ccy === selObj.quote;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;
+      border-bottom:1px solid rgba(255,255,255,.03);${isBase||isQuote?'background:rgba(255,255,255,.025)':''}">
+      <span style="font-size:9px;color:var(--muted);width:14px">${isTop?i+1:8-i}</span>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};width:36px">
+        ${ccy}${isBase?' *':isQuote?' ·':''}
+      </span>
+      <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:2px"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};min-width:24px;text-align:right">
+        ${n>=0?'+':''}${n}
+      </span>
+    </div>`;
+  };
+
+  const strengthContent = `
+    <div style="padding:6px 12px;font-family:var(--mono);font-size:8px;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.5px;background:rgba(255,255,255,.02)">Top 3 Strongest</div>
+    ${topN.map((entry,i) => strengthRow(entry, i, true)).join('')}
+    <div style="padding:6px 12px;font-family:var(--mono);font-size:8px;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.5px;background:rgba(255,255,255,.02);
+      border-top:1px solid rgba(255,255,255,.06)">Bottom 3 Weakest</div>
+    ${botN.map((entry,i) => strengthRow(entry, i, false)).join('')}
+    <div style="padding:5px 12px;font-size:9px;color:var(--muted);font-style:italic">
+      * = base currency · · = quote currency</div>`;
+
+  // ── PAIR DROPDOWN only (no pill nav on right side) ────────────────────────
   const fxByGroup = {};
   SC_FOREX_PAIRS.forEach(p => {
-    if (!fxByGroup[p.group]) fxByGroup[p.group] = [];
+    if(!fxByGroup[p.group]) fxByGroup[p.group] = [];
     fxByGroup[p.group].push(p);
   });
   const dropdown = Object.entries(fxByGroup).map(([grp, ps]) =>
     `<optgroup label="${grp}">${ps.map(p =>
-      `<option value="${p.id}" ${p.id===selPairId?"selected":""}>${p.id} — ${p.name}</option>`
-    ).join("")}</optgroup>`
-  ).join("");
+      `<option value="${p.id}" ${p.id===selPairId?'selected':''}>${p.id} — ${p.name}</option>`
+    ).join('')}</optgroup>`
+  ).join('');
 
-  // ── Section 1: Score header ─────────────────────────────────────────────────
-  const basePct  = Math.round(Math.max(5,Math.min(95,50+(selFX.baseScore/SCORE_MAX)*45)));
-  const quotePct = Math.round(Math.max(5,Math.min(95,50+(selFX.quoteScore/SCORE_MAX)*45)));
+  // ── CURRENCY STRENGTH BARS (inside left panel) ────────────────────────────
+  const SMAX = 10;
+  const basePct  = Math.round(Math.max(5, Math.min(95, 50 + (baseScore/SMAX)*45)));
+  const quotePct = Math.round(Math.max(5, Math.min(95, 50 + (quoteScore/SMAX)*45)));
+  const baseCol  = scoreC(baseScore);
+  const quoteCol = scoreC(quoteScore);
+  const pairScoreCol = scoreC(pairScore);
 
-  const scoreHeader = `<div class="fx-score-header" data-fx-pair="${selPairId}">
-    <!-- Pair identity -->
-    <div>
-      <div class="fx-pair-big">${selPairId}</div>
-      <div class="fx-pair-sub">${selObj.name}</div>
-      <span class="sc-bias-pill" id="sc-bias-lbl" style="color:${pi.col};background:${pi.bg};border:1px solid ${pi.border};margin-top:8px;display:inline-block">
-        ${pi.text}
-      </span>
-    </div>
-    <!-- Gauge + score -->
-    <div style="text-align:center">
-      <div id="sc-gauge-wrap">${scGaugeSVG(selFX.pairScore, 10)}</div>
-      <div id="sc-score-num" class="fx-score-big" style="color:${pi.col}">${selFX.pairScore>=0?"+":""}${selFX.pairScore}</div>
-      <div class="fx-score-lbl">Pair Score</div>
-    </div>
-    <!-- Currency strength bars -->
-    <div class="fx-ccy-section">
-      <div style="font-size:8px;font-weight:700;letter-spacing:1px;color:var(--sc-t3);text-transform:uppercase;margin-bottom:10px">Strength</div>
-      <div class="fx-ccy-row2">
-        <span class="fx-ccy-tag" style="color:${baseI.col}">${selObj.base}</span>
-        <div class="fx-ccy-track"><div class="fx-ccy-fill" data-fx-bar="base" style="width:${basePct}%;background:${baseI.col}"></div></div>
-        <span class="fx-ccy-val" data-fx-val="base" style="color:${baseI.col}">${selFX.baseScore>=0?"+":""}${selFX.baseScore}</span>
-      </div>
-      <div class="fx-ccy-row2" style="margin-top:0">
-        <span class="fx-ccy-tag" style="color:${quoteI.col}">${selObj.quote}</span>
-        <div class="fx-ccy-track"><div class="fx-ccy-fill" data-fx-bar="quote" style="width:${quotePct}%;background:${quoteI.col}"></div></div>
-        <span class="fx-ccy-val" data-fx-val="quote" style="color:${quoteI.col}">${selFX.quoteScore>=0?"+":""}${selFX.quoteScore}</span>
-      </div>
-      <div style="font-size:9px;color:var(--sc-t3);margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)">
-        ${selObj.base}(${selFX.baseScore>=0?"+":""}${selFX.baseScore}) − ${selObj.quote}(${selFX.quoteScore>=0?"+":""}${selFX.quoteScore})
-        <span id="fx-status" class="${isLive?"sc-chip-live":"sc-chip-static"}" style="margin-left:8px">${isLive?"● Live":"◌ Static"}</span>
-      </div>
-    </div>
-  </div>`;
+  // ── LEFT PANEL — mirrors Asset Scorecard exactly ──────────────────────────
+  const leftHTML = `
+  <div style="width:232px;min-width:210px;flex-shrink:0;display:flex;flex-direction:column;gap:7px">
 
-  // ── Section 2: Score history (NEW) ─────────────────────────────────────────
-  // Use the base currency's score history as proxy for the pair
-  const histSection = scHistoryChart(
-    selObj.base, selFX.baseScore,
-    { height: 130, showLabel: true, labelSuffix: `${selPairId} (${selObj.base} strength)` }
-  );
-
-  // ── Section 3: Component breakdown ─────────────────────────────────────────
-  const compKeys = [
-    {key:"technical", lbl:"Technical"},
-    {key:"sentiment", lbl:"Sentiment"},
-    {key:"cot",       lbl:"COT"},
-    {key:"growth",    lbl:"Growth"},
-    {key:"inflation", lbl:"Inflation"},
-    {key:"jobs",      lbl:"Jobs"},
-  ];
-  const compMinis = compKeys.map(ck => {
-    const bv  = baseSc?.components?.[ck.key]  ?? 0;
-    const qv  = quoteSc?.components?.[ck.key] ?? 0;
-    const diff = bv - qv;
-    const bI2  = scBiasInfo(bv * 2);
-    const qI2  = scBiasInfo(qv * 2);
-    const dI   = scBiasInfo(diff * 2);
-    return `<div class="fx-comp-mini" data-fx-comp="${ck.key}">
-      <div class="fx-comp-mini-lbl">${ck.lbl}</div>
-      <div class="fx-comp-mini-row">
-        <span class="fx-comp-mini-ccy">${selObj.base}</span>
-        <span class="fx-comp-mini-val" style="color:${bI2.col}">${bv>=0?"+":""}${bv}</span>
-      </div>
-      <div class="fx-comp-mini-row">
-        <span class="fx-comp-mini-ccy">${selObj.quote}</span>
-        <span class="fx-comp-mini-val" style="color:${qI2.col}">${qv>=0?"+":""}${qv}</span>
-      </div>
-      <div class="fx-comp-divider"></div>
-      <div class="fx-comp-diff" style="color:${dI.col}">${diff>=0?"+":""}${diff} ${dI.text}</div>
-    </div>`;
-  }).join("");
-
-  // ── Section 4: Currency ranking ─────────────────────────────────────────────
-  const sorted  = Object.entries(ccyScores).sort((a,b)=>b[1]-a[1]);
-  const csMax   = Math.max(...sorted.map(([,v])=>Math.abs(v)), 1);
-  const rankRows = sorted.map(([ccy, sc2], i) => {
-    const ri  = scBiasInfo(sc2 * 1.5);
-    const pct = Math.round(Math.max(4, Math.min(96, 50 + (sc2/csMax)*45)));
-    const isBase  = ccy === selObj.base;
-    const isQuote = ccy === selObj.quote;
-    const hlStyle = isBase||isQuote ? `background:rgba(255,255,255,.025)` : "";
-    return `<div class="sc-rank-row" style="${hlStyle}">
-      <span style="font-size:9px;color:var(--sc-t3);width:14px">${i+1}</span>
-      <span style="font-size:11px;font-weight:700;color:${ri.col};width:34px">
-        ${ccy}${isBase?" *":isQuote?" ·":""}
-      </span>
-      <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${ri.col};border-radius:2px;transition:width .5s"></div>
-      </div>
-      <span style="font-size:11px;font-weight:700;color:${ri.col};min-width:26px;text-align:right">${sc2>=0?"+":""}${sc2}</span>
-    </div>`;
-  }).join("");
-
-  // ── ASSEMBLE ─────────────────────────────────────────────────────────────────
-  document.getElementById("page-forex").innerHTML = `
-  <div class="sc-page">
-    <div class="sc-topbar">
-      <div>
-        <div class="sc-title">Forex Scorecard</div>
-        <div class="sc-subtitle">Pair Score = Base Strength − Quote Strength · ≥+2 Bullish · ≤-2 Bearish</div>
-      </div>
-      <select class="sc-sel" onchange="state.scForexPair=this.value;renderForexScorecard()">${dropdown}</select>
+    <!-- Pair selector -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+      padding:7px 10px;display:flex;align-items:center;gap:6px">
+      <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Pair:</span>
+      <select style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+        font-family:var(--mono);font-size:11px;padding:3px 5px;border-radius:4px;outline:none"
+        onchange="state.scForexPair=this.value;renderForexScorecard()">${dropdown}</select>
     </div>
 
-    <!-- Quick-select pills -->
-    <div class="fx-pair-nav" style="margin-bottom:14px">${pillNav}</div>
-
-    <!-- § 1 Score header -->
-    ${scoreHeader}
-
-    <!-- § 2 Score history -->
-    <div style="margin-top:10px">${histSection}</div>
-
-    <!-- § 3 Component breakdown -->
-    <div style="margin-top:10px">
-      <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--sc-t3);text-transform:uppercase;margin-bottom:8px">
-        Component Breakdown · ${selPairId}
+    <!-- PRIMARY: Bias label + delta -->
+    <div style="background:var(--bg2);border:2px solid ${biasC(overallBias)}44;border-radius:6px;
+      padding:10px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:${biasC(overallBias)};letter-spacing:-.3px">
+        ${overallBias}
       </div>
-      <div class="fx-comp-grid">${compMinis}</div>
+      ${deltaStr}
     </div>
 
-    <!-- § 4 Currency ranking -->
-    <div style="margin-top:10px">
-      <div class="sc-ranking-card">
-        <div class="sc-ranking-hd">
-          Currency Strength Ranking
-          <span id="sc-ccy-ranking-badge" style="font-size:9px;color:var(--sc-t3);font-weight:500">
-            * = base · · = quote
-          </span>
+    <!-- SECONDARY: Nick gauge + pair score breakdown -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 8px 8px">
+      ${scNickGaugeSVG(pairScore, 12)}
+      <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">
+        <!-- Pair score -->
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 2px">
+          <span style="font-size:11px;color:var(--text)">Pair score (${selPairId})</span>
+          <span id="sc-score-num" style="font-family:var(--mono);font-size:13px;font-weight:700;
+            color:${pairScoreCol}">${pairScore>=0?'+':''}${pairScore}</span>
         </div>
-        <div id="sc-ccy-ranking">${rankRows}</div>
+        <!-- Currency strength bars -->
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 2px">
+          <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${baseCol};
+            width:30px;flex-shrink:0">${selObj.base}</span>
+          <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+            <div data-fx-bar="base" style="width:${basePct}%;height:100%;background:${baseCol};border-radius:2px"></div>
+          </div>
+          <span data-fx-val="base" style="font-family:var(--mono);font-size:10px;font-weight:700;
+            color:${baseCol};min-width:24px;text-align:right">${baseScore>=0?'+':''}${baseScore}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;padding:2px 2px">
+          <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${quoteCol};
+            width:30px;flex-shrink:0">${selObj.quote}</span>
+          <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+            <div data-fx-bar="quote" style="width:${quotePct}%;height:100%;background:${quoteCol};border-radius:2px"></div>
+          </div>
+          <span data-fx-val="quote" style="font-family:var(--mono);font-size:10px;font-weight:700;
+            color:${quoteCol};min-width:24px;text-align:right">${quoteScore>=0?'+':''}${quoteScore}</span>
+        </div>
+        <div style="font-size:9px;color:var(--muted);margin-top:5px;text-align:center">
+          ${selObj.base}(${baseScore>=0?'+':''}${baseScore}) − ${selObj.quote}(${quoteScore>=0?'+':''}${quoteScore}) = ${pairScore>=0?'+':''}${pairScore}
+        </div>
       </div>
     </div>
 
-    <div style="margin-top:10px;padding:10px 14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);border-radius:6px;font-size:10px;color:var(--sc-t3);line-height:1.7">
-      Scores derived from COT (CFTC), retail sentiment (Myfxbook), economic data (FRED), Put/Call and AAII.
-      Auto-refreshes every 5 min. Not financial advice.
+    <!-- TERTIARY: Component weight bars — same pattern as Asset Scorecard -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;
+        letter-spacing:.8px;margin-bottom:6px">Component Weights → Pair Score</div>
+      ${wtBars}
+      <div style="margin-top:6px;padding-top:5px;border-top:1px solid var(--border);
+        display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--muted)">Pair Score</span>
+        <span style="color:${pairScoreCol};font-weight:700">${pairScore>=0?'+':''}${pairScore}</span>
+      </div>
+    </div>
+
+    <!-- Score history chart (base currency as proxy) -->
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <div style="padding:6px 10px;background:var(--bg3);border-bottom:1px solid var(--border);
+        font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">
+        ${selObj.base} score over time
+      </div>
+      ${scHistoryChart(selObj.base, baseScore, {height:120, showLabel:false})}
+    </div>
+
+    <!-- Data status -->
+    <div style="text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">
+      ${isLive?'<span style="color:var(--bull)">●</span> LIVE':'◌ STATIC'} ·
+      T·20% I·15% G·20% Inf·15% L·10% MP·20%
     </div>
   </div>`;
 
-  updateForexUI(pairs, ccyScores);
+  // ── RIGHT PANEL — Forex summary + 6 accordion sections + strength ─────────
+  const rightHTML = `
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+
+    <!-- FOREX NARRATIVE SUMMARY — mirrors Asset Scorecard MACRO SUMMARY -->
+    <div style="background:rgba(74,144,217,.06);border:1px solid rgba(74,144,217,.18);
+      border-radius:6px;padding:9px 12px;font-size:11px;color:var(--muted);line-height:1.7">
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;
+        text-transform:uppercase;letter-spacing:.6px;display:block;margin-bottom:4px">▶ FOREX SUMMARY</span>
+      ${genFxNarrative()}
+    </div>
+
+    <!-- 6 accordion component sections -->
+    <div style="border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <style>.sc-accordion:last-child{border-bottom:none}</style>
+      ${fxSection('tech',  '📈','Technical bias',          baseSc?.components?.technical>=1?'Bullish':baseSc?.components?.technical<=-1?'Bearish':'Neutral', techContent,  '20%')}
+      ${fxSection('inst',  '🏦','Institutional activity',  (safeNum(baseSc?.components?.cot)+safeNum(baseSc?.components?.sentiment))>=1?'Bullish':(safeNum(baseSc?.components?.cot)+safeNum(baseSc?.components?.sentiment))<=-1?'Bearish':'Neutral', instContent, '15%')}
+      ${fxSection('growth','🌍','Economic growth bias',     safeNum(baseSc?.components?.growth)>=1?'Bullish':safeNum(baseSc?.components?.growth)<=-1?'Bearish':'Neutral', growthContent,'20%')}
+      ${fxSection('infl',  '🌡','Inflation bias',           safeNum(baseSc?.components?.inflation)>=1?'Bullish':safeNum(baseSc?.components?.inflation)<=-1?'Bearish':'Neutral', inflContent,  '15%')}
+      ${fxSection('labor', '👷','Jobs market bias',         safeNum(baseSc?.components?.jobs)>=1?'Bullish':safeNum(baseSc?.components?.jobs)<=-1?'Bearish':'Neutral', laborContent,'10%')}
+      ${fxSection('mp',    '🏛','Monetary policy',          FX_CB_DATA[selObj.base]?.stance>=1?'Bullish':FX_CB_DATA[selObj.base]?.stance<=-1?'Bearish':'Neutral', mpContent,   '20%')}
+    </div>
+
+    <!-- Currency strength — top 3 / bottom 3 only (no full list) -->
+    <div onclick="scToggle('fx-strength')" style="display:flex;align-items:center;gap:8px;padding:9px 12px;
+      cursor:pointer;background:rgba(22,27,38,.95);border:1px solid var(--border);border-radius:6px;
+      user-select:none">
+      <span style="font-size:11px;font-weight:700;color:var(--text);flex:1">💱 Currency Strength Ranking</span>
+      <span style="font-family:var(--mono);font-size:9px;color:var(--muted)">top/bottom 3</span>
+      <span class="sc-chevron" id="fx-strength-chv" style="color:var(--muted);font-size:10px;transition:transform .2s">▼</span>
+    </div>
+    <div id="fx-strength" style="display:none;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      ${strengthContent}
+    </div>
+
+  </div>`;
+
+  // ── INJECT ────────────────────────────────────────────────────────────────
+  document.getElementById("page-forex").innerHTML = `
+  <div style="display:flex;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:6px;margin-bottom:10px">
+    <div style="font-family:var(--mono);font-size:10px;font-weight:700;
+      text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Forex Scorecard</div>
+    <div style="font-size:10px;color:var(--muted)">
+      6-factor macro model · Pair = Base − Quote ·
+      <span style="color:${biasC(overallBias)};font-weight:700">${overallBias}</span>
+      ${delta!==null?`· <span style="color:${delta>0?'#4a90d9':delta<0?'#e05c6a':'#8b949e'}">${delta>0?'↑ Strengthening':'↓ Weakening'}</span>`:''}
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
+    ${leftHTML}
+    ${rightHTML}
+  </div>`;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  AUTOMATIC DATA PIPELINE — EdgeFinder FX Scorecard
-//  Rules: no changes to scoring, UI, or existing data structures.
-//  Adds: per-source scheduling, caching, stale detection, event triggers.
-// ═══════════════════════════════════════════════════════════════════════════
-
-// ── PIPELINE CACHE ────────────────────────────────────────────────────────
-// All cache entries: { data, ts, source, stale }
-// Keys: 'cot' | 'econ' | 'sentiment' | 'rates' | 'feargreed' | 'putcall'
-const DP_CACHE = {};
-
-// Cache TTLs in milliseconds
-const DP_TTL = {
-  rates:      5  * 60 * 1000,    //  5 min  — Frankfurter FX rates
-  feargreed:  15 * 60 * 1000,    // 15 min  — Alternative.me F&G
-  sentiment:  3  * 60 * 60 * 1000, // 3 hr  — Myfxbook community outlook
-  cot:        12 * 60 * 60 * 1000, // 12 hr  — CFTC (released Fri, cached)
-  econ:       6  * 60 * 60 * 1000, // 6 hr   — FRED (releases are infrequent)
-  putcall:    60 * 60 * 1000,     //  1 hr  — CBOE put/call
-};
-
-// Check if cache entry is still valid
-function dpCacheValid(key) {
-  const e = DP_CACHE[key];
-  if (!e || !e.ts || !e.data) return false;
-  return (Date.now() - e.ts) < (DP_TTL[key] || 0);
-}
-
-// Write a cache entry with metadata
-function dpCacheSet(key, data, source) {
-  DP_CACHE[key] = { data, ts: Date.now(), source, stale: false };
-  // Also persist lightweight metadata to localStorage for next boot
-  try {
-    localStorage.setItem('ef_dp_ts_' + key, String(Date.now()));
-    localStorage.setItem('ef_dp_src_' + key, source);
-  } catch(e) {}
-}
-
-// Mark a key as stale without clearing data (data stays, freshness degrades)
-function dpMarkStale(key) {
-  if (DP_CACHE[key]) DP_CACHE[key].stale = true;
-}
-
-// Return data freshness label for UI display
-function dpFreshness(key) {
-  const e = DP_CACHE[key];
-  if (!e || !e.ts) return { label: 'No data', color: '#8b949e' };
-  const age = (Date.now() - e.ts) / 1000;
-  if (e.stale)          return { label: 'Stale',    color: '#e05c6a' };
-  if (age < 300)        return { label: 'Live',     color: '#00ff88' };
-  if (age < 3600)       return { label: Math.round(age/60)+'m ago',  color: '#4a90d9' };
-  if (age < 86400)      return { label: Math.round(age/3600)+'h ago', color: '#f0b429' };
-  return { label: Math.round(age/86400)+'d ago', color: '#e05c6a' };
-}
-
-// ── PIPELINE STATE ────────────────────────────────────────────────────────
-// Tracks per-source last-fetch timestamp and in-flight guard
-const DP_STATE = {
-  rates_running:     false,
-  sentiment_running: false,
-  cot_running:       false,
-  econ_running:      false,
-  feargreed_running: false,
-  putcall_running:   false,
-  // Next scheduled fetch for each source (epoch ms)
-  rates_next:     0,
-  sentiment_next: 0,
-  cot_next:       0,
-  econ_next:      0,
-  feargreed_next: 0,
-  putcall_next:   0,
-};
-
-// ── ENGINE TRIGGER ────────────────────────────────────────────────────────
-// After any data source updates, call this to rerun the FX scoring engine
-// and patch only the active tab DOM.
-function dpTriggerEngine(sourceKey) {
-  // Debounce: multiple rapid updates collapse into one engine run
-  if (dpTriggerEngine._timer) clearTimeout(dpTriggerEngine._timer);
-  dpTriggerEngine._timer = setTimeout(async () => {
-    try {
-      await runEngine();
-    } catch(e) {
-      console.warn('[DP] Engine trigger failed:', e.message);
-    }
-  }, 400);
-}
-dpTriggerEngine._timer = null;
-
-// ── SOURCE 1: FX RATES (Frankfurter) — every 5 min ───────────────────────
-async function dpFetchRates() {
-  if (DP_STATE.rates_running || dpCacheValid('rates')) return;
-  DP_STATE.rates_running = true;
-  try {
-    const [cur, prev] = await Promise.allSettled([fetchRates(), fetchPrev()]);
-    if (cur.status === 'fulfilled' && cur.value) {
-      state.rates     = cur.value;
-      state.cdata     = buildStrength(cur.value);
-      dpCacheSet('rates', cur.value, 'Frankfurter');
-    } else {
-      dpMarkStale('rates');
-    }
-    if (prev.status === 'fulfilled' && prev.value) {
-      state.prevRates = prev.value;
-    }
-    DP_STATE.rates_next = Date.now() + DP_TTL.rates;
-    dpTriggerEngine('rates');
-  } catch(e) {
-    console.warn('[DP] Rates fetch failed:', e.message);
-    dpMarkStale('rates');
-  } finally {
-    DP_STATE.rates_running = false;
-  }
-}
-
-// ── SOURCE 2: FEAR & GREED — every 15 min ────────────────────────────────
-async function dpFetchFearGreed() {
-  if (DP_STATE.feargreed_running || dpCacheValid('feargreed')) return;
-  DP_STATE.feargreed_running = true;
-  try {
-    const data = await fetchFearGreed();
-    if (data && data.length) {
-      state.fgData = data;
-      state.fgLive = true;
-      dpCacheSet('feargreed', data, 'alternative.me');
-      DP_STATE.feargreed_next = Date.now() + DP_TTL.feargreed;
-      dpTriggerEngine('feargreed');
-    }
-  } catch(e) {
-    console.warn('[DP] Fear/Greed fetch failed:', e.message);
-    dpMarkStale('feargreed');
-    state.fgLive = false;
-  } finally {
-    DP_STATE.feargreed_running = false;
-  }
-}
-
-// ── SOURCE 3: RETAIL SENTIMENT (Myfxbook) — every 3 hr ───────────────────
-async function dpFetchSentiment() {
-  if (DP_STATE.sentiment_running) return;
-  if (dpCacheValid('sentiment') && state.sentimentLive) return;
-  if (!state.mfxEmail || !state.mfxPassword) return;  // no credentials = skip silently
-  DP_STATE.sentiment_running = true;
-  const timeout = setTimeout(() => {
-    DP_STATE.sentiment_running = false;
-    dpMarkStale('sentiment');
-  }, 18000);  // 18s hard timeout
-  try {
-    const symbols = await fetchMyfxbookSentiment();
-    clearTimeout(timeout);
-    if (symbols && symbols.length) {
-      state.sentimentData = symbols.map(s => ({
-        name:            s.name,
-        longPercentage:  parseFloat(s.longPercentage),
-        shortPercentage: parseFloat(s.shortPercentage),
-        longVolume:      parseInt(s.longVolume)    || 0,
-        shortVolume:     parseInt(s.shortVolume)   || 0,
-        longPositions:   parseInt(s.longPositions) || 0,
-        shortPositions:  parseInt(s.shortPositions)|| 0,
-      }));
-      state.sentimentLive    = true;
-      state.sentimentLoading = false;
-      dpCacheSet('sentiment', state.sentimentData, 'Myfxbook');
-      DP_STATE.sentiment_next = Date.now() + DP_TTL.sentiment;
-      // Patch sentiment tab if open
-      if (activeTab === 'sentiment') renderSentiment();
-      dpTriggerEngine('sentiment');
-    }
-  } catch(e) {
-    clearTimeout(timeout);
-    console.warn('[DP] Myfxbook sentiment failed:', e.message);
-    state.sentimentLive    = false;
-    state.sentimentLoading = false;
-    dpMarkStale('sentiment');
-  } finally {
-    DP_STATE.sentiment_running = false;
-  }
-}
-
-// ── SOURCE 4: COT (CFTC) — every 12 hr ───────────────────────────────────
-async function dpFetchCOT() {
-  if (DP_STATE.cot_running || dpCacheValid('cot')) return;
-  // Extra guard: CFTC data only changes once/week — skip if we fetched today
-  const lastFetchDay = localStorage.getItem('ef_dp_cot_day');
-  const today = new Date().toISOString().split('T')[0];
-  if (lastFetchDay === today && state.cotLive && state.cotData && state.cotData.length) {
-    // Refresh cache TTL so subsequent calls skip too
-    if (!DP_CACHE.cot) dpCacheSet('cot', state.cotData, 'CFTC');
-    return;
-  }
-  DP_STATE.cot_running = true;
-  try {
-    const rows = await fetchCFTCData();
-    if (rows && rows.length) {
-      state.cotData       = rows;
-      state.cotLive       = true;
-      state.cotLastUpdate = Date.now();
-      dpCacheSet('cot', rows, 'CFTC');
-      localStorage.setItem('ef_dp_cot_day', today);
-      DP_STATE.cot_next = Date.now() + DP_TTL.cot;
-      if (activeTab === 'cot') renderCOT();
-      dpTriggerEngine('cot');  // event: COT → institutional component updated
-    }
-  } catch(e) {
-    console.warn('[DP] CFTC COT fetch failed:', e.message);
-    state.cotLive = false;
-    dpMarkStale('cot');
-  } finally {
-    DP_STATE.cot_running = false;
-  }
-}
-
-// ── SOURCE 5: ECONOMIC DATA (FRED) — every 6 hr ──────────────────────────
-// Event-driven components: GDP → growth, CPI → inflation, NFP → labor, Rate → MP
-async function dpFetchEcon() {
-  if (DP_STATE.econ_running || dpCacheValid('econ')) return;
-  if (!state.fredKey) return;  // no API key = skip silently
-  DP_STATE.econ_running = true;
-  try {
-    const data = await fetchFREDEcon(state.fredKey);
-    if (data) {
-      state.econData    = data;
-      state.econLive    = true;
-      state.econLoading = false;
-      dpCacheSet('econ', data, 'FRED');
-      DP_STATE.econ_next = Date.now() + DP_TTL.econ;
-      if (activeTab === 'econ') renderEcon();
-      // Event dispatch: which components changed?
-      // CPI → inflation, GDP → growth, Unemploy → labor, Rate → monetaryPolicy
-      dpTriggerEngine('econ');
-    }
-  } catch(e) {
-    console.warn('[DP] FRED econ fetch failed:', e.message);
-    state.econLive    = false;
-    state.econLoading = false;
-    dpMarkStale('econ');
-    // Fallback: keep existing state.econData (already FALLBACK_ECON)
-  } finally {
-    DP_STATE.econ_running = false;
-  }
-}
-
-// ── SOURCE 6: PUT/CALL (CBOE proxy) — every 1 hr ─────────────────────────
-async function dpFetchPutCall() {
-  if (DP_STATE.putcall_running || dpCacheValid('putcall')) return;
-  DP_STATE.putcall_running = true;
-  try {
-    const data = await fetchPutCall();  // existing function
-    if (data && data.length) {
-      state.putCallData = data;
-      state.putCallLive = true;
-      dpCacheSet('putcall', data, 'CBOE');
-      DP_STATE.putcall_next = Date.now() + DP_TTL.putcall;
-      dpTriggerEngine('putcall');
-    }
-  } catch(e) {
-    console.warn('[DP] Put/call fetch failed:', e.message);
-    state.putCallLive = false;
-    dpMarkStale('putcall');
-  } finally {
-    DP_STATE.putcall_running = false;
-  }
-}
-
-// ── CENTRAL BANK RATE UPDATER ─────────────────────────────────────────────
-// Reads FRED rate series for USD/EUR/GBP/JPY and patches FX_CB_DATA.
-// Only runs if FRED key is set; non-blocking.
-async function dpUpdateCBRates() {
-  if (!state.fredKey) return;
-  const rateSeriesMap = {
-    USD: { id: 'FEDFUNDS',   label: 'Fed Rate' },
-    EUR: { id: 'ECBDFR',     label: 'ECB Rate' },
-    GBP: { id: 'IUDSOIA',    label: 'BoE Rate' },
-    JPY: { id: 'IRSTJPN156N',label: 'BoJ Rate' },
-  };
-  for (const [ccy, series] of Object.entries(rateSeriesMap)) {
-    try {
-      const obs = await fredFetch(series.id, state.fredKey, 3);
-      if (!obs || !obs.length) continue;
-      const latest = parseFloat(obs[0].value);
-      const prev   = obs.length >= 2 ? parseFloat(obs[1].value) : latest;
-      if (isNaN(latest)) continue;
-      // Update FX_CB_DATA rate level
-      if (FX_CB_DATA[ccy]) {
-        FX_CB_DATA[ccy].rate  = latest;
-        // Derive trend: if latest > prev (last obs) = hiking (+1), else cutting (-1)
-        if (!isNaN(prev) && Math.abs(latest - prev) > 0.01) {
-          FX_CB_DATA[ccy].trend = latest > prev ? 1 : -1;
-        }
-        // Derive stance from trend + differential context
-        const avgRate = Object.values(FX_CB_DATA).reduce((s,c) => s + c.rate, 0) /
-                        Object.keys(FX_CB_DATA).length;
-        const diff    = latest - avgRate;
-        if (FX_CB_DATA[ccy].trend === 1)  FX_CB_DATA[ccy].stance = 1;
-        else if (FX_CB_DATA[ccy].trend === -1) FX_CB_DATA[ccy].stance = -1;
-        // Update label
-        FX_CB_DATA[ccy].label = FX_CB_DATA[ccy].trend === 1  ? 'Hiking'
-                              : FX_CB_DATA[ccy].trend === -1 ? 'Cutting' : 'Hold';
-      }
-      await new Promise(r => setTimeout(r, 200));  // FRED rate limit: 5 req/s
-    } catch(e) {
-      // Silent fallback — FX_CB_DATA retains static values
-    }
-  }
-  // Trigger engine after all rates updated
-  dpTriggerEngine('cb_rates');
-}
-
-// ── STALE DATA MONITOR ────────────────────────────────────────────────────
-// Runs every 2 min; marks entries stale if TTL exceeded
-function dpStaleScan() {
-  for (const key of Object.keys(DP_TTL)) {
-    const e = DP_CACHE[key];
-    if (e && e.ts && !e.stale) {
-      const ttl = DP_TTL[key];
-      if ((Date.now() - e.ts) > ttl * 2) {  // 2× TTL = stale
-        dpMarkStale(key);
-      }
-    }
-  }
-}
-
-// ── SCHEDULER ────────────────────────────────────────────────────────────
-// Single polling loop — checks each source against its own TTL.
-// Avoids multiple setInterval timers; runs every 60 seconds.
-async function dpScheduler() {
-  const now = Date.now();
-
-  // Rates: every 5 min
-  if (now >= DP_STATE.rates_next)     dpFetchRates();
-  // Fear/Greed: every 15 min
-  if (now >= DP_STATE.feargreed_next) dpFetchFearGreed();
-  // Sentiment: every 3 hr
-  if (now >= DP_STATE.sentiment_next) dpFetchSentiment();
-  // COT: every 12 hr
-  if (now >= DP_STATE.cot_next)       dpFetchCOT();
-  // Econ/FRED: every 6 hr
-  if (now >= DP_STATE.econ_next)      dpFetchEcon();
-  // Put/Call: every 1 hr
-  if (now >= DP_STATE.putcall_next)   dpFetchPutCall();
-  // Stale scan: every run
-  dpStaleScan();
-}
-
-// ── INITIAL PIPELINE LOAD ────────────────────────────────────────────────
-// Called once at boot. Fetches all sources in priority order.
-// Scoring engine is triggered automatically as each source resolves.
-async function dpBootLoad() {
-  // Priority 1: Rates (needed for technical + any price logic)
-  await dpFetchRates().catch(() => {});
-  // Priority 2: Trigger engine with whatever state we have
-  dpTriggerEngine('boot');
-  // Priority 3: Background fetches (non-blocking from here)
-  Promise.allSettled([
-    dpFetchFearGreed(),
-    dpFetchCOT(),
-    dpFetchPutCall(),
-  ]);
-  // Priority 4: Econ is slowest (many FRED series)
-  setTimeout(() => dpFetchEcon(), 1500);
-  // Priority 5: Myfxbook (may fail — credentials required)
-  setTimeout(() => dpFetchSentiment(), 2000);
-  // Priority 6: CB rates patch (FRED sub-queries)
-  setTimeout(() => dpUpdateCBRates(), 8000);
-}
-
-// Expose freshness helper to renderForexScorecard / status bars
-window.dpFreshness = dpFreshness;
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 initTabs();
@@ -4965,7 +4821,18 @@ setInterval(refreshAll, 15*60*1000);
 // Scorecard engine — runs after refreshAll has populated state, then every 5 min
 setTimeout(runEngine, 2000);
 setInterval(runEngine, 5*60*1000);
+
 // ── DATA PIPELINE — automatic fetch + schedule ────────────────────────────────
+// dpBootLoad: priority-ordered initial data load for the FX pipeline
+async function dpBootLoad() {
+  await dpFetchRates().catch(() => {});
+  dpTriggerEngine('boot');
+  Promise.allSettled([dpFetchFearGreed(), dpFetchCOT(), dpFetchPutCall()]);
+  setTimeout(() => dpFetchEcon(), 1500);
+  setTimeout(() => dpFetchSentiment(), 2000);
+  setTimeout(() => dpUpdateCBRates(), 8000);
+}
+
 dpBootLoad();                          // immediate priority load
 setInterval(dpScheduler, 60*1000);    // scheduler tick: every 60 s
 </script>
