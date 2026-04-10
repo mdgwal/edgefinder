@@ -4796,20 +4796,303 @@ function renderForexScorecard() {
   </div>`;
 
   // ── INJECT ────────────────────────────────────────────────────────────────
+  // ── CARD HELPERS (UI only, no logic) ────────────────────────────────────
+  const cardWrap = (inner) =>
+    `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px">${inner}</div>`;
+
+  const cardHd = (left, right) =>
+    `<div style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      ${left}${right?`<div>${right}</div>`:''}
+    </div>`;
+
+  const indRow = (label, bias) => {
+    const b = String(bias||'Neutral');
+    const bc2 = biasC(b);
+    const dot = b.includes('Bull')?'▲':b.includes('Bear')?'▼':'→';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;
+      padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.03)">
+      <span style="font-size:11px;color:var(--muted)">${label}</span>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${bc2};
+        background:${biasBg(b)};padding:2px 8px;border-radius:3px;white-space:nowrap">${dot} ${b}</span>
+    </div>`;
+  };
+
+  // Helper: component card with bias pill + weight + indicator rows
+  const compCard = (icon, title, bias, weight, contribN, indicators) => {
+    const b = String(bias||'Neutral');
+    const cc = biasC(b);
+    const cn = safeNum(contribN);
+    const cnStr = cn!==0 ? `<span style="font-family:var(--mono);font-size:10px;font-weight:700;
+      color:${cc}">${cn>=0?'+':''}${cn.toFixed(2)}</span>` : '';
+    return cardWrap(
+      cardHd(
+        `<span style="font-size:12px;font-weight:700;color:var(--text)">${icon} ${title}</span>
+         <span style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:6px">${weight}</span>`,
+        `<div style="display:flex;align-items:center;gap:8px">
+          ${cnStr}
+          ${badge(b, true)}
+        </div>`
+      ) +
+      `<div>${indicators}</div>`
+    );
+  };
+
+  // ── DROPDOWN ─────────────────────────────────────────────────────────────
+  const fxByGroup2 = {};
+  SC_FOREX_PAIRS.forEach(p => {
+    if(!fxByGroup2[p.group]) fxByGroup2[p.group] = [];
+    fxByGroup2[p.group].push(p);
+  });
+  const drop2 = Object.entries(fxByGroup2).map(([grp,ps]) =>
+    `<optgroup label="${grp}">${ps.map(p=>
+      `<option value="${p.id}" ${p.id===selPairId?'selected':''}>${p.id} — ${p.name}</option>`
+    ).join('')}</optgroup>`
+  ).join('');
+
+  // ── SECTION 1: HERO ──────────────────────────────────────────────────────
+  const SMAX2 = 10;
+  const bPct2  = Math.round(Math.max(5, Math.min(95, 50+(baseScore/SMAX2)*45)));
+  const qPct2  = Math.round(Math.max(5, Math.min(95, 50+(quoteScore/SMAX2)*45)));
+  const bCol2  = scoreC(baseScore);
+  const qCol2  = scoreC(quoteScore);
+  const psCol2 = scoreC(pairScore);
+
+  const heroHTML = `
+  <!-- Pair selector -->
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+    padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap">Pair:</span>
+    <select style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
+      font-family:var(--mono);font-size:12px;padding:5px 8px;border-radius:5px;outline:none"
+      onchange="state.scForexPair=this.value;renderForexScorecard()">${drop2}</select>
+  </div>
+
+  <!-- Bias card -->
+  ${cardWrap(`
+    <div style="padding:14px 16px;text-align:center;border-bottom:2px solid ${biasC(overallBias)}33">
+      <div style="font-size:22px;font-weight:800;color:${biasC(overallBias)};letter-spacing:-.4px;margin-bottom:4px">${overallBias}</div>
+      ${delta!==null?`<div style="font-family:var(--mono);font-size:11px;color:${delta>0?'#4a90d9':delta<0?'#e05c6a':'#8b949e'}">
+        ${delta>0?'↑':'↓'} ${Math.abs(delta)} pt vs yesterday · ${delta>0?'Strengthening':'Weakening'}</div>`:''}
+    </div>
+    <!-- Gauge + score -->
+    <div style="padding:12px 8px 8px;text-align:center">
+      ${scNickGaugeSVG(pairScore, 12)}
+      <div style="font-family:var(--mono);font-size:28px;font-weight:800;color:${psCol2};margin-top:4px;letter-spacing:-1px">${pairScore>=0?'+':''}${pairScore}</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px">Pair Score · ${selObj.base} − ${selObj.quote}</div>
+    </div>
+    <!-- Base vs Quote bars -->
+    <div style="padding:10px 14px;border-top:1px solid var(--border)">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Currency Strength</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${bCol2};width:32px;flex-shrink:0">${selObj.base}</span>
+        <div style="flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden">
+          <div data-fx-bar="base" style="width:${bPct2}%;height:100%;background:${bCol2};border-radius:3px"></div>
+        </div>
+        <span data-fx-val="base" style="font-family:var(--mono);font-size:11px;font-weight:700;color:${bCol2};min-width:28px;text-align:right">${baseScore>=0?'+':''}${baseScore}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${qCol2};width:32px;flex-shrink:0">${selObj.quote}</span>
+        <div style="flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden">
+          <div data-fx-bar="quote" style="width:${qPct2}%;height:100%;background:${qCol2};border-radius:3px"></div>
+        </div>
+        <span data-fx-val="quote" style="font-family:var(--mono);font-size:11px;font-weight:700;color:${qCol2};min-width:28px;text-align:right">${quoteScore>=0?'+':''}${quoteScore}</span>
+      </div>
+      <div style="margin-top:6px;font-size:9px;color:var(--muted);text-align:center">
+        ${selObj.base}(${baseScore>=0?'+':''}${baseScore}) − ${selObj.quote}(${quoteScore>=0?'+':''}${quoteScore}) = ${pairScore>=0?'+':''}${pairScore}
+      </div>
+    </div>
+    ${isLive?
+      `<div style="padding:6px 14px 8px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--bull)">● LIVE DATA</div>` :
+      `<div style="padding:6px 14px 8px;text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted)">◌ STATIC DATA</div>`}
+  `)}`;
+
+  // ── SECTION 2: SCORE DRIVER CARDS ────────────────────────────────────────
+  // For each factor: derive the pair-level interpreted bias from base-quote diff
+  const bc2 = baseSc?.components || {};
+  const qc2 = quoteSc?.components || {};
+
+  const factorBias = (bv, qv) => {
+    const d = safeNum(bv) - safeNum(qv);
+    return d >= 1 ? 'Bullish' : d <= -1 ? 'Bearish' : 'Neutral';
+  };
+  const factorContrib = (bv, qv, w) => {
+    const d = Math.max(-2, Math.min(2, safeNum(bv) - safeNum(qv)));
+    return d * w;
+  };
+
+  const techBias   = factorBias(bc2.technical,  qc2.technical);
+  const instBias   = factorBias(safeNum(bc2.cot)+safeNum(bc2.sentiment), safeNum(qc2.cot)+safeNum(qc2.sentiment));
+  const growBias   = factorBias(bc2.growth,    qc2.growth);
+  const inflBias   = factorBias(bc2.inflation, qc2.inflation);
+  const laborBias  = factorBias(bc2.jobs,      qc2.jobs);
+  const mpBias     = FX_CB_DATA[selObj.base]?.stance >= 1 ? 'Bullish' :
+                     FX_CB_DATA[selObj.base]?.stance <= -1 ? 'Bearish' : 'Neutral';
+
+  const driverCardsHTML = `
+  <div style="font-family:var(--mono);font-size:8px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.8px;margin-bottom:8px">Score Drivers</div>
+
+  ${compCard('📈','Technical',''+techBias,'20%',
+    factorContrib(bc2.technical, qc2.technical, FX_WEIGHTS.technical),
+    indRow('4H / Daily Chart Trend', factorBias(bc2.technical, qc2.technical)) +
+    indRow("Seasonality",            factorBias(bc2.technical, qc2.technical))
+  )}
+
+  ${compCard('🏦','Institutional (COT)',''+instBias,'15%',
+    factorContrib(safeNum(bc2.cot)+safeNum(bc2.sentiment), safeNum(qc2.cot)+safeNum(qc2.sentiment), FX_WEIGHTS.institutional),
+    indRow('COT Net Positioning', factorBias(bc2.cot, qc2.cot)) +
+    indRow('COT Change (WoW)',    factorBias(bc2.cot, qc2.cot)) +
+    indRow('Retail Sentiment',    factorBias(bc2.sentiment, qc2.sentiment))
+  )}
+
+  ${compCard('🌍','Economic Growth',''+growBias,'20%',
+    factorContrib(bc2.growth, qc2.growth, FX_WEIGHTS.growth),
+    indRow('GDP YoY',      factorBias(bc2.growth, qc2.growth)) +
+    indRow('Mfg PMI',      factorBias(bc2.growth, qc2.growth)) +
+    indRow('Services PMI', factorBias(bc2.growth, qc2.growth)) +
+    indRow('Retail Sales', factorBias(bc2.growth, qc2.growth))
+  )}
+
+  ${compCard('🌡','Inflation',''+inflBias,'15%',
+    factorContrib(bc2.inflation, qc2.inflation, FX_WEIGHTS.inflation),
+    indRow('CPI YoY',        factorBias(bc2.inflation, qc2.inflation)) +
+    indRow('PPI YoY',        factorBias(bc2.inflation, qc2.inflation)) +
+    indRow('PCE / Core',     factorBias(bc2.inflation, qc2.inflation)) +
+    indRow('Yield (2yr SMA)',factorBias(bc2.inflation, qc2.inflation))
+  )}
+
+  ${compCard('👷','Labor Market',''+laborBias,'10%',
+    factorContrib(bc2.jobs, qc2.jobs, FX_WEIGHTS.labor),
+    indRow('NFP / Emp Change', factorBias(bc2.jobs, qc2.jobs)) +
+    indRow('Unemployment',     factorBias(bc2.jobs, qc2.jobs)) +
+    indRow('Jobless Claims',   factorBias(bc2.jobs, qc2.jobs))
+  )}
+
+  ${compCard('🏛','Monetary Policy',''+mpBias,'20%',
+    factorContrib(safeNum(FX_CB_DATA[selObj.base]?.stance), safeNum(FX_CB_DATA[selObj.quote]?.stance), FX_WEIGHTS.monetaryPolicy),
+    (() => {
+      const bCB  = FX_CB_DATA[selObj.base]  || {rate:0, name:'CB', label:'Unknown'};
+      const qCB  = FX_CB_DATA[selObj.quote] || {rate:0, name:'CB', label:'Unknown'};
+      const allR = Object.values(FX_CB_DATA).map(c=>c.rate);
+      const avg  = allR.reduce((s,v)=>s+v,0)/allR.length;
+      const diff = parseFloat((bCB.rate - qCB.rate).toFixed(2));
+      const diffBias = diff > 0.5 ? 'Bullish' : diff < -0.5 ? 'Bearish' : 'Neutral';
+      return `
+        <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05)">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:10px;color:var(--muted)">${selObj.base} · ${bCB.name}</span>
+            <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${biasC(mpBias)}">${bCB.rate.toFixed(2)}% · ${bCB.label}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+            <span style="font-size:10px;color:var(--muted)">${selObj.quote} · ${qCB.name}</span>
+            <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${biasC(factorBias(safeNum(FX_CB_DATA[selObj.quote]?.stance), 0))}">${qCB.rate.toFixed(2)}% · ${qCB.label}</span>
+          </div>
+        </div>
+        ${indRow('Rate Differential ('+selObj.base+'−'+selObj.quote+')', diffBias)}
+        ${indRow('CB Stance ('+selObj.base+')', mpBias)}
+        ${indRow('Avg G8 Rate vs '+selObj.base, bCB.rate > avg + 0.5 ? 'Bullish' : bCB.rate < avg - 0.5 ? 'Bearish' : 'Neutral')}
+      `;
+    })()
+  )}`;
+
+  // ── SECTION 3: SCORE HISTORY ──────────────────────────────────────────────
+  const histHTML2 = cardWrap(
+    `<div style="padding:8px 12px 4px;font-family:var(--mono);font-size:9px;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.8px">${selObj.base} Score Over Time</div>` +
+    scHistoryChart(selObj.base, baseScore, {height:120, showLabel:false})
+  );
+
+  // ── SECTION 4: MACRO SUMMARY ──────────────────────────────────────────────
+  const summaryHTML = `<div style="background:rgba(74,144,217,.06);border:1px solid rgba(74,144,217,.16);
+    border-radius:8px;padding:12px 14px;margin-bottom:10px">
+    <div style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;
+      text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">▶ FOREX SUMMARY</div>
+    <div style="font-size:11px;color:var(--muted);line-height:1.75">${genFxNarrative()}</div>
+  </div>`;
+
+  // ── SECTION 5: CURRENCY STRENGTH RANKING (clean, top+bottom only) ────────
+  const cleanCS = Object.entries(ccyScores)
+    .filter(([k,v]) => !k.startsWith('_') && typeof v==='number' && isFinite(v))
+    .sort((a,b)=>b[1]-a[1]);
+  const csMax2 = Math.max(...cleanCS.map(([,v])=>Math.abs(v)), 1);
+
+  const csRow = ([ccy, sc2], rank) => {
+    const n   = safeNum(sc2);
+    const col = n>0?'#4a90d9':n<0?'#e05c6a':'#8b949e';
+    const pct = Math.round(Math.max(4, Math.min(96, 50+(n/csMax2)*45)));
+    const isBase  = ccy===selObj.base;
+    const isQuote = ccy===selObj.quote;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;
+      border-bottom:1px solid rgba(255,255,255,.03);${isBase||isQuote?'background:rgba(255,255,255,.025)':''}">
+      <span style="font-size:9px;color:var(--muted);width:14px;flex-shrink:0">${rank}</span>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};width:36px;flex-shrink:0">
+        ${ccy}${isBase?' *':isQuote?' ·':''}
+      </span>
+      <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:2px"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};
+        min-width:26px;text-align:right">${n>=0?'+':''}${n}</span>
+    </div>`;
+  };
+
+  const strengthHTML = cardWrap(
+    cardHd(
+      `<span style="font-size:11px;font-weight:700;color:var(--text)">💱 Currency Strength</span>`,
+      `<span style="font-size:9px;color:var(--muted)">* base · · quote</span>`
+    ) +
+    `<div style="padding:4px 0">
+      <div style="padding:4px 14px;font-family:var(--mono);font-size:8px;color:var(--muted);
+        text-transform:uppercase;letter-spacing:.5px">Top 3</div>
+      ${cleanCS.slice(0,3).map((e,i)=>csRow(e,i+1)).join('')}
+      <div style="height:1px;background:rgba(255,255,255,.05);margin:6px 0"></div>
+      <div style="padding:4px 14px;font-family:var(--mono);font-size:8px;color:var(--muted);
+        text-transform:uppercase;letter-spacing:.5px">Bottom 3</div>
+      ${[...cleanCS].reverse().slice(0,3).map((e,i)=>csRow(e, cleanCS.length-i)).join('')}
+    </div>`
+  );
+
+  // ── COMPONENT WEIGHT SUMMARY BAR ─────────────────────────────────────────
+  const wtSummary = cardWrap(
+    cardHd(`<span style="font-size:11px;font-weight:700;color:var(--text)">⚖ Component Weights</span>`,
+           `<span style="font-family:var(--mono);font-size:10px;color:${psCol2};font-weight:700">${pairScore>=0?'+':''}${pairScore} Pair Score</span>`) +
+    `<div style="padding:10px 14px">${wtBars}</div>`
+  );
+
+  // ── LAYOUT: LEFT (hero) + RIGHT (summary → drivers → history → strength) ──
   document.getElementById("page-forex").innerHTML = `
+  <style>.sc-accordion:last-child{border-bottom:none}</style>
   <div style="display:flex;align-items:center;justify-content:space-between;
     flex-wrap:wrap;gap:6px;margin-bottom:10px">
     <div style="font-family:var(--mono);font-size:10px;font-weight:700;
       text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Forex Scorecard</div>
     <div style="font-size:10px;color:var(--muted)">
-      6-factor macro model · Pair = Base − Quote ·
+      6-factor macro model ·
       <span style="color:${biasC(overallBias)};font-weight:700">${overallBias}</span>
       ${delta!==null?`· <span style="color:${delta>0?'#4a90d9':delta<0?'#e05c6a':'#8b949e'}">${delta>0?'↑ Strengthening':'↓ Weakening'}</span>`:''}
     </div>
   </div>
-  <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
-    ${leftHTML}
-    ${rightHTML}
+  <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+
+    <!-- LEFT: Hero block (fixed width matching Asset Scorecard left panel) -->
+    <div style="width:232px;min-width:210px;flex-shrink:0">
+      ${heroHTML}
+      ${wtSummary}
+    </div>
+
+    <!-- RIGHT: Scrollable content column -->
+    <div style="flex:1;min-width:0">
+      ${summaryHTML}
+      ${driverCardsHTML}
+      ${histHTML2}
+      ${strengthHTML}
+      <div style="padding:8px 0 4px;font-size:10px;color:var(--muted);line-height:1.6">
+        6-factor model · T·20% I·15% G·20% Inf·15% L·10% MP·20% ·
+        Pair score = Base − Quote strength · Not financial advice.
+      </div>
+    </div>
+
   </div>`;
 }
 
@@ -4834,6 +5117,19 @@ async function dpBootLoad() {
 }
 
 dpBootLoad();                          // immediate priority load
+
+// ── SCHEDULER — single 60s tick, checks each source against its own TTL ──
+async function dpScheduler() {
+  const now = Date.now();
+  if (now >= DP_STATE.rates_next)     dpFetchRates();
+  if (now >= DP_STATE.feargreed_next) dpFetchFearGreed();
+  if (now >= DP_STATE.sentiment_next) dpFetchSentiment();
+  if (now >= DP_STATE.cot_next)       dpFetchCOT();
+  if (now >= DP_STATE.econ_next)      dpFetchEcon();
+  if (now >= DP_STATE.putcall_next)   dpFetchPutCall();
+  dpStaleScan();
+}
+
 setInterval(dpScheduler, 60*1000);    // scheduler tick: every 60 s
 </script>
 </body>
