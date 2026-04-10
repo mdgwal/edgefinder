@@ -3447,6 +3447,7 @@ let _engineRunning = false;
 
 async function runEngine() {
   if (_engineRunning) return;           // prevent overlap
+  if (!document.getElementById("page-scorecard")) return; // DOM not ready
   _engineRunning = true;
   try {
     const liveData   = await fetchAllData();
@@ -4477,7 +4478,8 @@ function renderScorecard() {
     </div>
   </div>`;
 
-  document.getElementById("page-scorecard").innerHTML = `
+  try {
+    document.getElementById("page-scorecard").innerHTML = `
   <!-- Page header -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <div>
@@ -4493,6 +4495,10 @@ function renderScorecard() {
   ${wtSection}
   ${histSection}
   ${detailsSection}`;
+  } catch(e) {
+    console.error("[SC] render error:", e);
+    const _el=document.getElementById("page-scorecard"); if(_el) _el.innerHTML=`<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">⚠ Render error — check console.<br><span style="color:#e05c6a;font-size:10px;">`+e.message+`</span></div>`;
+  }
 }
 
 // ── Accordion toggle (called from onclick) ────────────────────────────────────
@@ -5120,7 +5126,8 @@ function renderForexScorecard() {
     </div>`
   );
 
-  document.getElementById("page-forex").innerHTML = `
+  try {
+    document.getElementById("page-forex").innerHTML = `
   <!-- Header -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <span style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35)">Forex Scorecard</span>
@@ -5144,6 +5151,10 @@ function renderForexScorecard() {
       </div>
     </div>
   </div>`;
+  } catch(e) {
+    console.error("[FX] render error:", e);
+    const _el=document.getElementById("page-forex"); if(_el) _el.innerHTML=`<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">⚠ Render error — check console.<br><span style="color:#e05c6a;font-size:10px;">`+e.message+`</span></div>`;
+  }
 }
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 initTabs();
@@ -5166,6 +5177,16 @@ async function dpBootLoad() {
 }
 
 dpBootLoad();                          // immediate priority load
+
+// ── STALE SCAN — mark cache entries stale if TTL×2 exceeded ──────────────
+function dpStaleScan() {
+  for (const key of Object.keys(DP_TTL)) {
+    const c = DP_CACHE[key];
+    if (c && c.ts && !c.stale && (Date.now() - c.ts) > (DP_TTL[key] || 0) * 2) {
+      c.stale = true;
+    }
+  }
+}
 
 // ── SCHEDULER — single 60s tick, checks each source against its own TTL ──
 async function dpScheduler() {
