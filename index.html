@@ -4935,317 +4935,286 @@ function renderForexScorecard() {
 
   </div>`;
 
-  // ── INJECT ───────────────────────────────────────────────────────────────────
-  // ── HELPERS (layout-only — data unchanged) ───────────────────────────────────
-  // Card shell: increased radius + margin-bottom for breathing room
-  const fxCard = inner =>
-    `<div style="background:#0d1420;border:1px solid rgba(255,255,255,.08);border-radius:12px;
-      overflow:hidden;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.25)">${inner}</div>`;
+  // ── INJECT — single-column, mirrors Asset Scorecard structure exactly ────────
 
-  // Card header: more padding, slightly bolder left text
-  const fxHd = (l,r) =>
-    `<div style="padding:12px 16px;background:rgba(255,255,255,.03);
-      border-bottom:1px solid rgba(255,255,255,.07);
-      display:flex;align-items:center;justify-content:space-between">
-      ${l}${r?`<div>${r}</div>`:''}
-    </div>`;
-
-  const fxBadge = (b, sm) => {
-    const s = String(b||'Neutral');
-    const c  = s.includes('Bull')?'#4a90d9':s.includes('Bear')?'#e05c6a':'#6b7280';
-    const bg = s.includes('Bull')?'rgba(74,144,217,.15)':s.includes('Bear')?'rgba(224,92,106,.15)':'rgba(107,114,128,.1)';
-    const fs = sm?'9px':'10px', px = sm?'8px':'12px';
-    return `<span style="display:inline-block;background:${bg};color:${c};border-radius:4px;
-      padding:3px ${px};font-family:var(--mono);font-size:${fs};font-weight:700;white-space:nowrap">${s}</span>`;
+  // Shared helpers (scoped to forex, same pattern as asset K/mkBadge/scoreChip)
+  const fxK = {
+    card: 'background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
+    hd:   'padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;',
+    body: 'padding:12px 14px;',
   };
-
-  // Indicator row: increased padding + line-height for readability
-  const fxInd = (label, bias) => {
-    const b = String(bias||'Neutral');
-    const c = b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#6b7280';
-    const dot = b.includes('Bull')?'▲':b.includes('Bear')?'▼':'→';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;
-      padding:8px 16px;border-bottom:1px solid rgba(255,255,255,.04);line-height:1.4">
-      <span style="font-size:11px;color:rgba(255,255,255,.5)">${label}</span>
-      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${c};
-        margin-left:12px;white-space:nowrap">${dot} ${b}</span>
-    </div>`;
+  const fxBadge2 = (b,sm) => {
+    const s=String(b||'Neutral');
+    const c=s.includes('Bull')?'#4a90d9':s.includes('Bear')?'#e05c6a':'#6b7280';
+    const bg=s.includes('Bull')?'rgba(74,144,217,.15)':s.includes('Bear')?'rgba(224,92,106,.15)':'rgba(107,114,128,.1)';
+    const fs=sm?'9px':'10px',px=sm?'7px':'11px';
+    return `<span style="display:inline-block;background:${bg};color:${c};border-radius:3px;padding:2px ${px};font-family:var(--mono);font-size:${fs};font-weight:700;white-space:nowrap">${s}</span>`;
   };
-
-  // Component card: cleaner header with bigger weight badge
-  const fxCompCard = (icon, title, bias, wlbl, contrib, indicators) => {
-    const b  = String(bias||'Neutral');
-    const c  = b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#6b7280';
-    const cn = Number(contrib)||0;
-    const cnStr = cn !== 0
-      ? `<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${cn>0?'#4a90d9':'#e05c6a'};
-          background:${cn>0?'rgba(74,144,217,.12)':'rgba(224,92,106,.12)'};padding:2px 7px;border-radius:3px">${cn>=0?'+':''}${cn.toFixed(2)}</span>` : '';
-    return fxCard(
-      fxHd(`<div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:12px;font-weight:700;color:rgba(255,255,255,.8)">${icon} ${title}</span>
-        <span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);
-          background:rgba(255,255,255,.05);padding:1px 6px;border-radius:3px">${wlbl}</span>
-      </div>`,
-      `<div style="display:flex;align-items:center;gap:8px">${cnStr}${fxBadge(b,true)}</div>`) +
-      `<div style="padding-bottom:2px">${indicators}</div>`
-    );
+  const fxChip = v => {
+    const n=safeNum(v); if(!n) return `<span style="font-family:var(--mono);font-size:12px;color:#4b5563">0</span>`;
+    const c=n>0?'#4a90d9':'#e05c6a',bg=n>0?'rgba(74,144,217,.15)':'rgba(224,92,106,.15)';
+    return `<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${c};background:${bg};padding:1px 9px;border-radius:4px">${n>0?'+':''}${n}</span>`;
   };
+  const fxSC2 = v => safeNum(v)>0?'#4a90d9':safeNum(v)<0?'#e05c6a':'#6b7280';
+  const fxBC2 = b => String(b||'').includes('Bull')?'#4a90d9':String(b||'').includes('Bear')?'#e05c6a':'#6b7280';
 
-  // Dropdown
-  const fxByGroup2 = {};
-  SC_FOREX_PAIRS.forEach(p => {
-    if (!fxByGroup2[p.group]) fxByGroup2[p.group] = [];
-    fxByGroup2[p.group].push(p);
-  });
-  const drop2 = Object.entries(fxByGroup2).map(([grp,ps]) =>
-    `<optgroup label="${grp}">${ps.map(p =>
-      `<option value="${p.id}" ${p.id===selPairId?'selected':''}>${p.id} — ${p.name}</option>`
-    ).join('')}</optgroup>`
+  // Pair dropdown
+  const fxByGrp={};
+  SC_FOREX_PAIRS.forEach(p=>{if(!fxByGrp[p.group])fxByGrp[p.group]=[];fxByGrp[p.group].push(p);});
+  const fxDrop=Object.entries(fxByGrp).map(([g,ps])=>
+    `<optgroup label="${g}">${ps.map(p=>`<option value="${p.id}" ${p.id===selPairId?'selected':''}>${p.id} — ${p.name}</option>`).join('')}</optgroup>`
   ).join('');
 
-  // Color helpers (unchanged)
-  const fxBC  = b => b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#6b7280';
-  const fxSC  = v => safeNum(v)>0?'#4a90d9':safeNum(v)<0?'#e05c6a':'#6b7280';
-  const psCol2 = fxSC(pairScore);
-  const bCol2  = fxSC(baseScore);
-  const qCol2  = fxSC(quoteScore);
-  const SMAX2 = 10;
-  const bPct2 = Math.round(Math.max(5, Math.min(95, 50+(baseScore/SMAX2)*45)));
-  const qPct2 = Math.round(Math.max(5, Math.min(95, 50+(quoteScore/SMAX2)*45)));
+  // Colors
+  const fxBiasBC = fxBC2(overallBias);
+  const fxHeroBdr = `2px solid ${fxBiasBC}30`;
+  const fxPS_EC   = pairScore>4?'#4a90d9':pairScore>1?'#6aa8dc':pairScore<-4?'#c04040':pairScore<-1?'#dc7070':'#6b7280';
+  const bsC = fxSC2(baseScore), qsC = fxSC2(quoteScore);
+  const SMAX2=10;
+  const bPct2=Math.round(Math.max(5,Math.min(95,50+(baseScore/SMAX2)*45)));
+  const qPct2=Math.round(Math.max(5,Math.min(95,50+(quoteScore/SMAX2)*45)));
 
-  // ── SECTION 1: Hero — gauge (scaled down ~18%) + strength panel ─────────────
-  const fxHeroSection = `<div style="background:#0d1420;border:1px solid rgba(255,255,255,.08);
-    border-radius:12px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.25)">
-    <!-- Bias label -->
-    <div style="padding:16px 20px 10px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05)">
-      <div style="font-size:24px;font-weight:900;color:${fxBC(overallBias)};letter-spacing:-.4px;line-height:1.1">${overallBias}</div>
-      ${delta!==null?`<div style="font-family:var(--mono);font-size:11px;color:${delta>0?'#4a90d9':delta<0?'#e05c6a':'#6b7280'};margin-top:6px">
-        ${delta>0?'↑':delta<0?'↓':'→'} ${Math.abs(delta)} pt vs yesterday · <em style="font-style:normal">${delta>0?'Strengthening':'Weakening'}</em>
-      </div>`:''}
+  // ── S1: HERO (same structure as Asset hero) ────────────────────────────────
+  // Left: gauge + pair score  |  Right: base/quote breakdown + pair equation
+  const fxHeroSection = `
+  <div style="${fxK.card}border:${fxHeroBdr};margin-bottom:14px">
+    <div style="padding:18px 20px 14px;text-align:center">
+      <div style="font-size:26px;font-weight:900;color:${fxBiasBC};letter-spacing:-.5px;line-height:1">${overallBias}</div>
+      ${delta!==null?`<div style="font-family:var(--mono);font-size:11px;color:${delta>0?'#4a90d9':delta<0?'#e05c6a':'#6b7280'};margin-top:5px">${delta>0?'↑':delta<0?'↓':'→'} ${Math.abs(delta)} pt vs yesterday · ${delta>0?'Strengthening':'Weakening'}</div>`:''}
     </div>
-    <!-- Gauge + strength in one row -->
-    <div style="display:flex;align-items:stretch;flex-wrap:wrap">
-      <!-- Gauge: 168px wide (18% smaller than 200px) -->
-      <div style="flex:0 0 168px;padding:14px 10px 10px;border-right:1px solid rgba(255,255,255,.06);
-        display:flex;flex-direction:column;align-items:center;justify-content:center">
-        <div style="width:168px">${scNickGaugeSVG(pairScore, 12)}</div>
-        <div style="text-align:center;margin-top:6px">
-          <span id="sc-score-num" style="font-family:var(--mono);font-size:20px;font-weight:800;color:${psCol2}">${pairScore>=0?'+':''}${pairScore}</span>
-          <div style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.8px;margin-top:2px">Pair Score</div>
+    <div style="display:flex;align-items:center;gap:0;border-top:1px solid rgba(255,255,255,.06)">
+      <!-- Gauge (same slot width as Asset) -->
+      <div style="flex:0 0 200px;padding:10px 8px 8px;border-right:1px solid rgba(255,255,255,.06)">
+        ${scNickGaugeSVG(pairScore, 12)}
+        <div style="text-align:center;margin-top:4px">
+          <span id="sc-score-num" style="font-family:var(--mono);font-size:22px;font-weight:800;color:${fxPS_EC}">${pairScore>=0?'+':''}${pairScore}</span>
+          <span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);margin-left:4px">PAIR SCORE</span>
         </div>
       </div>
-      <!-- Currency strength bars: vertically centered, more padding -->
-      <div style="flex:1;padding:18px 20px;min-width:180px;display:flex;flex-direction:column;justify-content:center;gap:14px">
-        <div style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);
-          text-transform:uppercase;letter-spacing:.9px;margin-bottom:2px">Currency Strength</div>
-        <!-- Base -->
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${bCol2};width:34px;flex-shrink:0">${selObj.base}</span>
-          <div style="flex:1;height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden">
-            <div data-fx-bar="base" style="width:${bPct2}%;height:100%;background:${bCol2};border-radius:4px;transition:width .5s ease"></div>
-          </div>
-          <span data-fx-val="base" style="font-family:var(--mono);font-size:12px;font-weight:700;color:${bCol2};min-width:30px;text-align:right">${baseScore>=0?'+':''}${baseScore}</span>
-        </div>
-        <!-- Quote -->
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${qCol2};width:34px;flex-shrink:0">${selObj.quote}</span>
-          <div style="flex:1;height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden">
-            <div data-fx-bar="quote" style="width:${qPct2}%;height:100%;background:${qCol2};border-radius:4px;transition:width .5s ease"></div>
-          </div>
-          <span data-fx-val="quote" style="font-family:var(--mono);font-size:12px;font-weight:700;color:${qCol2};min-width:30px;text-align:right">${quoteScore>=0?'+':''}${quoteScore}</span>
-        </div>
-        <!-- Equation + status -->
-        <div style="display:flex;align-items:center;justify-content:space-between;
-          padding-top:10px;border-top:1px solid rgba(255,255,255,.06);margin-top:2px">
-          <span style="font-size:10px;color:rgba(255,255,255,.25)">
-            ${selObj.base}(${baseScore>=0?'+':''}${baseScore}) − ${selObj.quote}(${quoteScore>=0?'+':''}${quoteScore}) = ${pairScore>=0?'+':''}${pairScore}
-          </span>
-          <span class="${isLive?'cbadge-live':'cbadge-demo'}" style="flex-shrink:0">${isLive?'● LIVE':'◌ STATIC'}</span>
-        </div>
-      </div>
-    </div>
-  </div>`;
-
-  // ── SECTION 2: Summary ───────────────────────────────────────────────────────
-  const fxSummarySection = fxCard(
-    fxHd(
-      `<span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;
-        text-transform:uppercase;letter-spacing:.9px">▶ Forex Summary</span>`,
-      `<span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3)">${selPairId}</span>`
-    ) +
-    `<div style="padding:14px 16px;font-size:11px;color:rgba(255,255,255,.5);line-height:1.85">${genFxNarrative()}</div>`
-  );
-
-  // ── SECTION 3: Driver cards — 2-column grid for Tech+Inst, Growth+Inflation ──
-  const bc2 = baseSc?.components||{}, qc2 = quoteSc?.components||{};
-  const fbias  = (bv,qv) => { const d=safeNum(bv)-safeNum(qv); return d>=1?'Bullish':d<=-1?'Bearish':'Neutral'; };
-  const fctrib = (bv,qv,w) => Math.max(-2, Math.min(2, safeNum(bv)-safeNum(qv))) * w;
-
-  const cardTech = fxCompCard('📈','Technical', fbias(bc2.technical,qc2.technical), '20%',
-    fctrib(bc2.technical,qc2.technical,FX_WEIGHTS.technical),
-    fxInd('4H / Daily Trend', fbias(bc2.technical,qc2.technical)) +
-    fxInd('Seasonality',      fbias(bc2.technical,qc2.technical)));
-
-  const cardInst = fxCompCard('🏦','Institutional', fbias(safeNum(bc2.cot)+safeNum(bc2.sentiment),safeNum(qc2.cot)+safeNum(qc2.sentiment)), '15%',
-    fctrib(safeNum(bc2.cot)+safeNum(bc2.sentiment),safeNum(qc2.cot)+safeNum(qc2.sentiment),FX_WEIGHTS.institutional),
-    fxInd('COT Net Positioning', fbias(bc2.cot,qc2.cot)) +
-    fxInd('COT Change (WoW)',    fbias(bc2.cot,qc2.cot)) +
-    fxInd('Retail Sentiment',    fbias(bc2.sentiment,qc2.sentiment)));
-
-  const cardGrowth = fxCompCard('🌍','Economic Growth', fbias(bc2.growth,qc2.growth), '20%',
-    fctrib(bc2.growth,qc2.growth,FX_WEIGHTS.growth),
-    fxInd('GDP YoY',      fbias(bc2.growth,qc2.growth)) +
-    fxInd('Mfg PMI',      fbias(bc2.growth,qc2.growth)) +
-    fxInd('Services PMI', fbias(bc2.growth,qc2.growth)) +
-    fxInd('Retail Sales', fbias(bc2.growth,qc2.growth)));
-
-  const cardInfl = fxCompCard('🌡','Inflation', fbias(bc2.inflation,qc2.inflation), '15%',
-    fctrib(bc2.inflation,qc2.inflation,FX_WEIGHTS.inflation),
-    fxInd('CPI YoY',        fbias(bc2.inflation,qc2.inflation)) +
-    fxInd('PPI YoY',        fbias(bc2.inflation,qc2.inflation)) +
-    fxInd('PCE / Core',     fbias(bc2.inflation,qc2.inflation)) +
-    fxInd('Yield (2yr SMA)',fbias(bc2.inflation,qc2.inflation)));
-
-  const cardLabor = fxCompCard('👷','Labor Market', fbias(bc2.jobs,qc2.jobs), '10%',
-    fctrib(bc2.jobs,qc2.jobs,FX_WEIGHTS.labor),
-    fxInd('NFP / Employment', fbias(bc2.jobs,qc2.jobs)) +
-    fxInd('Unemployment',     fbias(bc2.jobs,qc2.jobs)) +
-    fxInd('Jobless Claims',   fbias(bc2.jobs,qc2.jobs)));
-
-  const cardMP = fxCompCard('🏛','Monetary Policy',
-    FX_CB_DATA[selObj.base]?.stance>=1?'Bullish':FX_CB_DATA[selObj.base]?.stance<=-1?'Bearish':'Neutral', '20%',
-    fctrib(safeNum(FX_CB_DATA[selObj.base]?.stance),safeNum(FX_CB_DATA[selObj.quote]?.stance),FX_WEIGHTS.monetaryPolicy),
-    (()=>{
-      const bCB = FX_CB_DATA[selObj.base]||{rate:0,name:'CB',label:'—'};
-      const qCB = FX_CB_DATA[selObj.quote]||{rate:0,name:'CB',label:'—'};
-      const diff = parseFloat((bCB.rate-qCB.rate).toFixed(2));
-      return `<div style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.05)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:10px;color:rgba(255,255,255,.4)">${selObj.base} · ${bCB.name}</span>
-          <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${fxBC(FX_CB_DATA[selObj.base]?.stance>=1?'Bullish':FX_CB_DATA[selObj.base]?.stance<=-1?'Bearish':'Neutral')}">${bCB.rate.toFixed(2)}% · ${bCB.label}</span>
-        </div>
+      <!-- Right: base / quote / equation (replaces asset score rows) -->
+      <div style="flex:1;padding:10px 16px;display:flex;flex-direction:column;gap:6px">
+        <!-- Base currency row -->
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:10px;color:rgba(255,255,255,.4)">${selObj.quote} · ${qCB.name}</span>
-          <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${fxBC(FX_CB_DATA[selObj.quote]?.stance>=1?'Bullish':FX_CB_DATA[selObj.quote]?.stance<=-1?'Bearish':'Neutral')}">${qCB.rate.toFixed(2)}% · ${qCB.label}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.5)">${selObj.base} (Base)</span>
+          <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${bsC}">${baseScore>=0?'+':''}${baseScore}</span>
         </div>
-      </div>` +
-      fxInd(`Rate Diff (${selObj.base}−${selObj.quote}): ${diff>=0?'+':''}${diff}%`, diff>0.5?'Bullish':diff<-0.5?'Bearish':'Neutral') +
-      fxInd(`${selObj.base} Stance`, FX_CB_DATA[selObj.base]?.stance>=1?'Bullish':FX_CB_DATA[selObj.base]?.stance<=-1?'Bearish':'Neutral');
-    })());
-
-  // 2-column layout for Tech+Inst, Growth+Inflation; full-width for Labor+MP
-  const driverSection = `
-  <div style="margin-bottom:4px">
-    <div style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);
-      text-transform:uppercase;letter-spacing:.9px;margin-bottom:12px">Score Drivers</div>
-
-    <!-- Row 1: Technical + Institutional (2-up) -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0">
-      <div>${cardTech}</div>
-      <div>${cardInst}</div>
+        <!-- Quote currency row -->
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:rgba(255,255,255,.5)">${selObj.quote} (Quote)</span>
+          <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${qsC}">${quoteScore>=0?'+':''}${quoteScore}</span>
+        </div>
+        <!-- Strength bars -->
+        <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+          <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${bsC};width:30px;flex-shrink:0">${selObj.base}</span>
+          <div style="flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
+            <div data-fx-bar="base" style="width:${bPct2}%;height:100%;background:${bsC};border-radius:2px;transition:width .4s"></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${qsC};width:30px;flex-shrink:0">${selObj.quote}</span>
+          <div style="flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
+            <div data-fx-bar="quote" style="width:${qPct2}%;height:100%;background:${qsC};border-radius:2px;transition:width .4s"></div>
+          </div>
+        </div>
+        <!-- Pair equation -->
+        <div style="margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3)">
+            ${selObj.base}(${baseScore>=0?'+':''}${baseScore}) − ${selObj.quote}(${quoteScore>=0?'+':''}${quoteScore}) = <strong style="color:${fxPS_EC}">${pairScore>=0?'+':''}${pairScore}</strong>
+          </span>
+          <span class="${isLive?'cbadge-live':'cbadge-demo'}" style="font-size:9px">${isLive?'● LIVE':'◌ STATIC'}</span>
+        </div>
+      </div>
     </div>
-    <!-- Row 2: Growth + Inflation (2-up) -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0">
-      <div>${cardGrowth}</div>
-      <div>${cardInfl}</div>
-    </div>
-    <!-- Row 3: Labor full-width -->
-    ${cardLabor}
-    <!-- Row 4: Monetary Policy full-width -->
-    ${cardMP}
   </div>`;
 
-  // ── SECTION 4: Score History ─────────────────────────────────────────────────
-  const fxHistSection = fxCard(
-    fxHd(`<span style="font-family:var(--mono);font-size:9px;font-weight:700;
-      color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.9px">📈 ${selObj.base} Score Over Time</span>`) +
-    scHistoryChart(selObj.base, baseScore, {height:120, showLabel:false})
-  );
+  // ── S2: MACRO SUMMARY (identical card pattern to Asset) ────────────────────
+  const fxSummarySection = `
+  <div style="${fxK.card}margin-bottom:14px;border-color:rgba(74,144,217,.2)">
+    <div style="${fxK.hd}">
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;text-transform:uppercase;letter-spacing:.8px">▶ Forex Summary</span>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${fxBiasBC}">${overallBias}</span>
+    </div>
+    <div style="${fxK.body}font-size:11px;color:rgba(255,255,255,.5);line-height:1.75">${genFxNarrative()}</div>
+  </div>`;
 
-  // ── SECTION 5: Currency Strength (more spacing per row) ──────────────────────
-  const cleanCS = Object.entries(ccyScores)
-    .filter(([k,v]) => !k.startsWith('_') && typeof v==='number' && isFinite(v))
-    .sort((a,b) => b[1]-a[1]);
-  const csMax2 = Math.max(...cleanCS.map(([,v])=>Math.abs(v)), 1);
+  // ── S3: COMPONENT WEIGHTS (full-width horizontal bars — identical to Asset) ─
+  const fxContribs2 = [
+    {key:'technical',      lbl:'Technical',       w:FX_WEIGHTS.technical,       wlbl:'20%'},
+    {key:'institutional',  lbl:'Institutional',   w:FX_WEIGHTS.institutional,   wlbl:'15%'},
+    {key:'growth',         lbl:'Growth',           w:FX_WEIGHTS.growth,          wlbl:'20%'},
+    {key:'inflation',      lbl:'Inflation',        w:FX_WEIGHTS.inflation,       wlbl:'15%'},
+    {key:'labor',          lbl:'Labor',            w:FX_WEIGHTS.labor,           wlbl:'10%'},
+    {key:'monetaryPolicy', lbl:'Monetary Policy',  w:FX_WEIGHTS.monetaryPolicy,  wlbl:'20%'},
+  ];
+  const bc2=baseSc?.components||{}, qc2=quoteSc?.components||{};
+  const fbias2=(bv,qv)=>{const d=safeNum(bv)-safeNum(qv);return d>=1?'Bullish':d<=-1?'Bearish':'Neutral';};
 
-  const csRow = ([ccy, sc2], rank) => {
-    const n   = safeNum(sc2);
-    const col = n>0?'#4a90d9':n<0?'#e05c6a':'#6b7280';
-    const pct = Math.round(Math.max(4, Math.min(96, 50+(n/csMax2)*45)));
-    const isBQ = ccy===selObj.base||ccy===selObj.quote;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 16px;
-      border-bottom:1px solid rgba(255,255,255,.04);${isBQ?'background:rgba(255,255,255,.025)':''}">
-      <span style="font-size:9px;color:rgba(255,255,255,.25);width:14px;flex-shrink:0">${rank}</span>
-      <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${col};
-        width:36px;flex-shrink:0">${ccy}${ccy===selObj.base?' *':ccy===selObj.quote?' ·':''}</span>
-      <div style="flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${col};border-radius:3px;transition:width .5s ease"></div>
+  // Compute pair-level per-component diff for the weight bars
+  const fxWtRows = fxContribs2.map(c => {
+    const bv = safeNum(bc2[c.key]??bc2.cot??0);
+    const qv = safeNum(qc2[c.key]??qc2.cot??0);
+    const diff = Math.max(-2, Math.min(2, bv - qv));
+    const cc   = diff>0?'#4a90d9':diff<0?'#e05c6a':'#4b5563';
+    const pct  = Math.round(Math.max(4, Math.min(96, ((diff+2)/4)*100)));
+    const contrib = (diff * c.w).toFixed(2);
+    return `<div style="display:grid;grid-template-columns:110px 1fr 32px 40px;align-items:center;gap:8px">
+      <span style="font-size:10px;color:rgba(255,255,255,.4)">${c.lbl}</span>
+      <div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${cc};border-radius:2px"></div>
       </div>
-      <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${col};
-        min-width:28px;text-align:right">${n>=0?'+':''}${n}</span>
+      <span style="font-family:var(--mono);font-size:9px;color:${cc};text-align:right">${diff>=0?'+':''}${diff}</span>
+      <span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-align:right">${c.wlbl}</span>
+    </div>`;
+  }).join('');
+
+  const fxWtSection = `
+  <div style="${fxK.card}margin-bottom:14px">
+    <div style="${fxK.hd}">
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">⚖ Component Weights</span>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${fxPS_EC}">${pairScore>=0?'+':''}${pairScore} pair score</span>
+    </div>
+    <div style="padding:10px 14px;display:flex;flex-direction:column;gap:5px">${fxWtRows}</div>
+  </div>`;
+
+  // ── S4: SCORE OVER TIME (full-width, same card as Asset) ───────────────────
+  const fxHistSection = `
+  <div style="${fxK.card}margin-bottom:14px;overflow:hidden">
+    <div style="${fxK.hd}">
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">📈 Score Over Time — ${selObj.base}</span>
+    </div>
+    ${scHistoryChart(selObj.base, baseScore, {height:120, showLabel:false})}
+  </div>`;
+
+  // ── S5: COMPONENT BREAKDOWN — full-width accordion sections ───────────────
+  // Each section mirrors Asset Scorecard accordion: header row + indicator rows
+  const fxIndRow = (label, bias) => {
+    const b  = String(bias||'Neutral');
+    const c  = b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#6b7280';
+    const dot= b.includes('Bull')?'▲':b.includes('Bear')?'▼':'→';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04)">
+      <span style="font-size:11px;color:rgba(255,255,255,.45)">${label}</span>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${c}">${dot} ${b}</span>
     </div>`;
   };
 
-  const fxStrengthSection = fxCard(
-    fxHd(`<span style="font-family:var(--mono);font-size:9px;font-weight:700;
-      color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.9px">💱 Currency Strength Ranking</span>`,
-      `<span style="font-size:9px;color:rgba(255,255,255,.25)">* base · · quote</span>`) +
-    `<div style="padding:6px 0">
-      <div style="padding:6px 16px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);
-        text-transform:uppercase;letter-spacing:.5px">Top 3</div>
-      ${cleanCS.slice(0,3).map((e,i)=>csRow(e,i+1)).join('')}
-      <div style="height:1px;background:rgba(255,255,255,.06);margin:6px 0"></div>
-      <div style="padding:6px 16px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);
-        text-transform:uppercase;letter-spacing:.5px">Bottom 3</div>
-      ${[...cleanCS].reverse().slice(0,3).map((e,i)=>csRow(e,cleanCS.length-i)).join('')}
-    </div>`
-  );
+  const fxSection2 = (id, icon, title, bias, weight, contentHTML) => {
+    const sid = 'fxs-'+id;
+    const b   = String(bias||'Neutral');
+    const c   = b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#6b7280';
+    const bg  = b.includes('Bull')?'rgba(74,144,217,.15)':b.includes('Bear')?'rgba(224,92,106,.15)':'rgba(107,114,128,.1)';
+    return `<div class="sc-accordion" style="border-bottom:1px solid rgba(255,255,255,.06)">
+      <div onclick="scToggle('${sid}')" style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;background:rgba(22,27,38,.95);user-select:none">
+        <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.75);flex:1">${icon} ${title}</span>
+        <span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);margin-right:4px">${weight}</span>
+        <span style="display:inline-block;background:${bg};color:${c};border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:9px;font-weight:700">${b}</span>
+        <span class="sc-chevron" id="${sid}-chv" style="color:rgba(255,255,255,.3);font-size:10px;margin-left:4px;transition:transform .2s">▼</span>
+      </div>
+      <div id="${sid}" style="display:block">${contentHTML}</div>
+    </div>`;
+  };
 
-  // ── SECTION 6: Weight bars ───────────────────────────────────────────────────
-  const fxWtSection = fxCard(
-    fxHd(
-      `<span style="font-family:var(--mono);font-size:9px;font-weight:700;
-        color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.9px">⚖ Component Weights</span>`,
-      `<span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${psCol2}">${pairScore>=0?'+':''}${pairScore} pair score</span>`
-    ) +
-    `<div style="padding:12px 16px;display:flex;flex-direction:column;gap:7px">${wtBars}</div>`
-  );
+  const fxFbias = (bv,qv) => {const d=safeNum(bv)-safeNum(qv);return d>=1?'Bullish':d<=-1?'Bearish':'Neutral';};
 
-  // ── FINAL ASSEMBLY ───────────────────────────────────────────────────────────
+  const fxBreakdownSection = `
+  <div style="${fxK.card}margin-bottom:14px;overflow:hidden">
+    <style>.sc-accordion:last-child{border-bottom:none}</style>
+    ${fxSection2('tech','📈','Technical',
+      fxFbias(bc2.technical,qc2.technical),'20%',
+      fxIndRow('4H / Daily Trend',   fxFbias(bc2.technical,qc2.technical)) +
+      fxIndRow('Seasonality',         fxFbias(bc2.technical,qc2.technical)))}
+    ${fxSection2('inst','🏦','Institutional (COT)',
+      fxFbias(safeNum(bc2.cot)+safeNum(bc2.sentiment),safeNum(qc2.cot)+safeNum(qc2.sentiment)),'15%',
+      fxIndRow('COT Net Positioning', fxFbias(bc2.cot,qc2.cot)) +
+      fxIndRow('COT Change (WoW)',    fxFbias(bc2.cot,qc2.cot)) +
+      fxIndRow('Retail Sentiment',    fxFbias(bc2.sentiment,qc2.sentiment)))}
+    ${fxSection2('growth','🌍','Economic Growth',
+      fxFbias(bc2.growth,qc2.growth),'20%',
+      fxIndRow('GDP YoY',      fxFbias(bc2.growth,qc2.growth)) +
+      fxIndRow('Mfg PMI',      fxFbias(bc2.growth,qc2.growth)) +
+      fxIndRow('Services PMI', fxFbias(bc2.growth,qc2.growth)) +
+      fxIndRow('Retail Sales', fxFbias(bc2.growth,qc2.growth)))}
+    ${fxSection2('infl','🌡','Inflation',
+      fxFbias(bc2.inflation,qc2.inflation),'15%',
+      fxIndRow('CPI YoY',         fxFbias(bc2.inflation,qc2.inflation)) +
+      fxIndRow('PPI YoY',         fxFbias(bc2.inflation,qc2.inflation)) +
+      fxIndRow('PCE / Core',      fxFbias(bc2.inflation,qc2.inflation)) +
+      fxIndRow('Yield (2yr SMA)', fxFbias(bc2.inflation,qc2.inflation)))}
+    ${fxSection2('labor','👷','Labor Market',
+      fxFbias(bc2.jobs,qc2.jobs),'10%',
+      fxIndRow('NFP / Employment', fxFbias(bc2.jobs,qc2.jobs)) +
+      fxIndRow('Unemployment',     fxFbias(bc2.jobs,qc2.jobs)) +
+      fxIndRow('Jobless Claims',   fxFbias(bc2.jobs,qc2.jobs)))}
+    ${fxSection2('mp','🏛','Monetary Policy',
+      FX_CB_DATA[selObj.base]?.stance>=1?'Bullish':FX_CB_DATA[selObj.base]?.stance<=-1?'Bearish':'Neutral','20%',
+      (()=>{
+        const bCB=FX_CB_DATA[selObj.base]||{rate:0,name:'CB',label:'—'};
+        const qCB=FX_CB_DATA[selObj.quote]||{rate:0,name:'CB',label:'—'};
+        const diff=parseFloat((bCB.rate-qCB.rate).toFixed(2));
+        const diffBias=diff>0.5?'Bullish':diff<-0.5?'Bearish':'Neutral';
+        const bStBias=bCB.stance>=1?'Bullish':bCB.stance<=-1?'Bearish':'Neutral';
+        return `<div style="padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.04)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:10px;color:rgba(255,255,255,.4)">${selObj.base} · ${bCB.name}</span>
+            <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${bCB.stance>=1?'#4a90d9':bCB.stance<=-1?'#e05c6a':'#6b7280'}">${bCB.rate.toFixed(2)}% · ${bCB.label}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:10px;color:rgba(255,255,255,.4)">${selObj.quote} · ${qCB.name}</span>
+            <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${qCB.stance>=1?'#4a90d9':qCB.stance<=-1?'#e05c6a':'#6b7280'}">${qCB.rate.toFixed(2)}% · ${qCB.label}</span>
+          </div>
+        </div>` +
+        fxIndRow(`Rate Diff (${selObj.base}−${selObj.quote}): ${diff>=0?'+':''}${diff}%`, diffBias) +
+        fxIndRow(`${selObj.base} CB Stance`, bStBias);
+      })())}
+  </div>`;
+
+  // ── S6: CURRENCY STRENGTH RANKING (full-width, clean rows) ────────────────
+  const cleanCS2=Object.entries(ccyScores).filter(([k,v])=>!k.startsWith('_')&&typeof v==='number'&&isFinite(v)).sort((a,b)=>b[1]-a[1]);
+  const csMax3=Math.max(...cleanCS2.map(([,v])=>Math.abs(v)),1);
+  const csRankRow=([ccy,sc2],rank)=>{
+    const n=safeNum(sc2), col=n>0?'#4a90d9':n<0?'#e05c6a':'#6b7280';
+    const pct=Math.round(Math.max(4,Math.min(96,50+(n/csMax3)*45)));
+    const isBQ=ccy===selObj.base||ccy===selObj.quote;
+    return `<div style="display:grid;grid-template-columns:18px 40px 1fr 36px;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04);${isBQ?'background:rgba(255,255,255,.025)':''}">
+      <span style="font-size:9px;color:rgba(255,255,255,.25)">${rank}</span>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col}">${ccy}${ccy===selObj.base?' *':ccy===selObj.quote?' ·':''}</span>
+      <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${col};border-radius:2px;transition:width .4s"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};text-align:right">${n>=0?'+':''}${n}</span>
+    </div>`;
+  };
+  const fxStrSection = `
+  <div style="${fxK.card}margin-bottom:14px">
+    <div style="${fxK.hd}">
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">💱 Currency Strength</span>
+      <span style="font-size:9px;color:rgba(255,255,255,.25)">* base · · quote</span>
+    </div>
+    <div>
+      <div style="padding:4px 14px 3px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.5px">Top 3</div>
+      ${cleanCS2.slice(0,3).map((e,i)=>csRankRow(e,i+1)).join('')}
+      <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0"></div>
+      <div style="padding:4px 14px 3px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.5px">Bottom 3</div>
+      ${[...cleanCS2].reverse().slice(0,3).map((e,i)=>csRankRow(e,cleanCS2.length-i)).join('')}
+    </div>
+  </div>`;
+
+  // ── ASSEMBLE — single column, identical flow to Asset Scorecard ─────────────
   try {
     document.getElementById("page-forex").innerHTML = `
-    <!-- Page header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;
-      flex-wrap:wrap;gap:10px;margin-bottom:16px">
-      <span style="font-family:var(--mono);font-size:10px;font-weight:700;
-        text-transform:uppercase;letter-spacing:1.1px;color:rgba(255,255,255,.4)">Forex Scorecard</span>
-      <select style="background:#0d1420;border:1px solid rgba(255,255,255,.12);
-        color:rgba(255,255,255,.85);font-family:var(--mono);font-size:12px;
-        padding:7px 12px;border-radius:7px;outline:none;cursor:pointer;min-width:200px"
-        onchange="state.scForexPair=this.value;renderForexScorecard()">${drop2}</select>
-    </div>
-
-    <!-- Two-column master layout -->
-    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
-
-      <!-- LEFT COLUMN: Hero + weights + history -->
-      <div style="width:248px;min-width:220px;flex-shrink:0;display:flex;flex-direction:column;gap:0">
-        ${fxHeroSection}
-        ${fxWtSection}
-        ${fxHistSection}
-      </div>
-
-      <!-- RIGHT COLUMN: Summary + drivers + strength -->
-      <div style="flex:1;min-width:280px;display:flex;flex-direction:column;gap:0">
-        ${fxSummarySection}
-        ${driverSection}
-        ${fxStrengthSection}
-        <div style="padding:8px 2px 4px;font-size:10px;color:rgba(255,255,255,.2);line-height:1.6">
-          6-factor model · T·20% I·15% G·20% Inf·15% L·10% MP·20% ·
-          Pair = Base−Quote · Not financial advice.
-        </div>
-      </div>
-    </div>`;
+  <!-- Page header (same pattern as Asset) -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35)">Forex Scorecard</div>
+    <select style="background:#0e1520;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);
+      font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none;cursor:pointer"
+      onchange="state.scForexPair=this.value;renderForexScorecard()">${fxDrop}</select>
+  </div>
+  <!-- Single-column sections (mirrors Asset Scorecard flow) -->
+  ${fxHeroSection}
+  ${fxSummarySection}
+  ${fxWtSection}
+  ${fxHistSection}
+  ${fxBreakdownSection}
+  ${fxStrSection}`;
   } catch(e) {
     console.error("[FX] render error:", e);
     const _el=document.getElementById("page-forex"); if(_el) _el.innerHTML=`<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">⚠ Render error — check console.<br><span style="color:#e05c6a;font-size:10px;">`+e.message+`</span></div>`;
