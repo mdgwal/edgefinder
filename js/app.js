@@ -718,3 +718,15 @@ async function dpUpdateCBRates() {
   dpTriggerEngine('cb_rates');
 }
 
+window.addEventListener("load", async () => {
+  await fetchAllData();
+
+  // re-render everything after data loads
+  if (typeof renderAll === "function") {
+    renderAll();
+  }
+});
+async function refreshAll() {
+  await fetchAllData();
+  renderAll();
+}
