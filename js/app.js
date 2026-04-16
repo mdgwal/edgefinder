@@ -134,8 +134,9 @@ function loadCOTData(){
   // Only re-fetch if we don't have data or data is older than 12 hours
   if(state.cotData&&state.cotLastUpdate){
     const age=(Date.now()-state.cotLastUpdate)/1000/60/60;
-    if(age<12)return; // Fresh enough
+    if(age<12)return; // Fresh enough — keep cotLive=true, no flash
   }
+  // Don't clear cotLive before fetch completes — avoids demo flash
   state.cotLoading=true;
   fetchCFTCData().then(rows=>{
     state.cotData=rows;
@@ -205,6 +206,9 @@ async function fetchMyfxbookSentiment(){
 
 function loadMyfxbookData(){
   if(!state.mfxEmail||!state.mfxPassword||state.sentimentLoading)return;
+  // Skip if sentiment is fresh (< 3hr) — avoids unnecessary re-auth
+  const sentAge = DP_CACHE.sentiment?.ts ? (Date.now()-DP_CACHE.sentiment.ts) : Infinity;
+  if(state.sentimentLive && sentAge < DP_TTL.sentiment) return;
   state.sentimentLoading=true;
   // ✅ Always show demo data immediately while fetching — never blank
   if(activeTab==="sentiment")renderSentiment();
@@ -262,7 +266,13 @@ async function refreshAll(){
   loadSeasonalityLive();
   loadPutCallData();
   loadAAIIData();
-  if(state.fredKey){state.econData=null;state.econLive=false;loadFREDData();}
+  if(state.fredKey){
+    // Only reload econ if stale (>6hr) or never loaded — don't wipe on every tab switch
+    const econAge = DP_CACHE.econ?.ts ? (Date.now() - DP_CACHE.econ.ts) : Infinity;
+    if(!state.econLive || econAge > DP_TTL.econ) {
+      state.econData = null; state.econLive = false; loadFREDData();
+    }
+  }
   const now=new Date();
   document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
   renderActive();
@@ -734,45 +744,7 @@ state.debug = {
   lastBoot:  null,
 };
 
-// ── 2. DEBUG PANEL ────────────────────────────────────────────────────────
-// Injected into Settings tab — visible on mobile, no console needed.
-window._injectDebugPanel = function() {
-  const pg = document.getElementById('page-settings');
-  if (!pg) return;
-  let panel = document.getElementById('ef-debug-panel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'ef-debug-panel';
-    panel.style.cssText = 'margin-top:14px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 14px;';
-    pg.appendChild(panel);
-  }
-  const d = state.debug || {};
-  const rows = [
-    ['Frankfurter (Rates)',    'rates'],
-    ['Fear & Greed (Alt.me)',  'feargreed'],
-    ['CFTC COT',               'cot'],
-    ['FRED Econ' + (!state.fredKey ? ' ⚠ no key' : ''), 'econ'],
-    ['Myfxbook Sentiment',     'sentiment'],
-    ['Put/Call CBOE',          'putcall'],
-  ];
-  panel.innerHTML = `
-    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">● Live Data Status</div>
-    ${rows.map(([label, key]) => {
-      const info = d[key] || {};
-      const ok   = info.ok;
-      const ts   = info.ts ? new Date(info.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
-      const err  = info.err ? `<span style="color:#e05c6a;font-size:9px;margin-left:4px">${info.err}</span>` : '';
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
-        <span style="font-size:11px;color:var(--muted)">
-          <span style="color:${ok?'#00ff88':'#e05c6a'}">●</span> ${label}${err}
-        </span>
-        <span style="font-family:var(--mono);font-size:10px;color:${ok?'#00ff88':'#e05c6a'}">${ok?'LIVE '+ts:'FAIL'}</span>
-      </div>`;
-    }).join('')}
-    <div style="margin-top:7px;font-family:var(--mono);font-size:9px;color:var(--muted)">
-      Boot: ${d.lastBoot ? new Date(d.lastBoot).toLocaleTimeString() : '—'} · Refresh: <button onclick="refreshAll()" style="background:var(--bull);color:#000;border:none;border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:9px;cursor:pointer">↻ Now</button>
-    </div>`;
-};
+
 
 // ── 3. dpBootLoad ─────────────────────────────────────────────────────────
 async function dpBootLoad() {
@@ -783,11 +755,8 @@ async function dpBootLoad() {
   setTimeout(() => dpFetchEcon(), 1500);
   setTimeout(() => dpFetchSentiment(), 2000);
   setTimeout(() => dpUpdateCBRates(), 8000);
-  // After everything has had time to settle — force re-render + debug panel
-  setTimeout(() => {
-    try { renderActive(); } catch(ex) {}
-    try { if (activeTab === 'settings') window._injectDebugPanel(); } catch(ex) {}
-  }, 12000);
+  // After everything has had time to settle — force re-render
+  setTimeout(() => { try { renderActive(); } catch(ex) {} }, 12000);
 }
 
 // ── 4. dpStaleScan ────────────────────────────────────────────────────────
@@ -810,7 +779,6 @@ async function dpScheduler() {
   if (now >= DP_STATE.econ_next)      dpFetchEcon();
   if (now >= DP_STATE.putcall_next)   dpFetchPutCall();
   dpStaleScan();
-  try { if (activeTab === 'settings') window._injectDebugPanel(); } catch(ex) {}
 }
 
 // ── 6. DEBUG STAMPS ON EACH EXISTING dpFetch* ────────────────────────────
@@ -826,8 +794,6 @@ function dpCacheSet(key, data, source) {
   if (state.debug && state.debug[key] !== undefined) {
     state.debug[key] = { ok: true, ts: Date.now(), err: null };
   }
-  // Refresh debug panel if settings tab is open
-  try { if (activeTab === 'settings') window._injectDebugPanel(); } catch(ex) {}
 }
 
 // Mark failures in debug state when dpMarkStale is called
