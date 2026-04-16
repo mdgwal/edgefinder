@@ -717,3 +717,153 @@ async function dpUpdateCBRates() {
   }
   dpTriggerEngine('cb_rates');
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  LIVE DATA DEBUG STATE + HARDENED PIPELINE + BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── 1. DEBUG STATE ────────────────────────────────────────────────────────
+state.debug = {
+  rates:     { ok: false, ts: null, err: null },
+  feargreed: { ok: false, ts: null, err: null },
+  cot:       { ok: false, ts: null, err: null },
+  econ:      { ok: false, ts: null, err: null },
+  sentiment: { ok: false, ts: null, err: null },
+  putcall:   { ok: false, ts: null, err: null },
+  lastBoot:  null,
+};
+
+// ── 2. DEBUG PANEL ────────────────────────────────────────────────────────
+// Injected into Settings tab — visible on mobile, no console needed.
+window._injectDebugPanel = function() {
+  const pg = document.getElementById('page-settings');
+  if (!pg) return;
+  let panel = document.getElementById('ef-debug-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'ef-debug-panel';
+    panel.style.cssText = 'margin-top:14px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:12px 14px;';
+    pg.appendChild(panel);
+  }
+  const d = state.debug || {};
+  const rows = [
+    ['Frankfurter (Rates)',    'rates'],
+    ['Fear & Greed (Alt.me)',  'feargreed'],
+    ['CFTC COT',               'cot'],
+    ['FRED Econ' + (!state.fredKey ? ' ⚠ no key' : ''), 'econ'],
+    ['Myfxbook Sentiment',     'sentiment'],
+    ['Put/Call CBOE',          'putcall'],
+  ];
+  panel.innerHTML = `
+    <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">● Live Data Status</div>
+    ${rows.map(([label, key]) => {
+      const info = d[key] || {};
+      const ok   = info.ok;
+      const ts   = info.ts ? new Date(info.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+      const err  = info.err ? `<span style="color:#e05c6a;font-size:9px;margin-left:4px">${info.err}</span>` : '';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">
+        <span style="font-size:11px;color:var(--muted)">
+          <span style="color:${ok?'#00ff88':'#e05c6a'}">●</span> ${label}${err}
+        </span>
+        <span style="font-family:var(--mono);font-size:10px;color:${ok?'#00ff88':'#e05c6a'}">${ok?'LIVE '+ts:'FAIL'}</span>
+      </div>`;
+    }).join('')}
+    <div style="margin-top:7px;font-family:var(--mono);font-size:9px;color:var(--muted)">
+      Boot: ${d.lastBoot ? new Date(d.lastBoot).toLocaleTimeString() : '—'} · Refresh: <button onclick="refreshAll()" style="background:var(--bull);color:#000;border:none;border-radius:4px;padding:2px 8px;font-family:var(--mono);font-size:9px;cursor:pointer">↻ Now</button>
+    </div>`;
+};
+
+// ── 3. dpBootLoad ─────────────────────────────────────────────────────────
+async function dpBootLoad() {
+  state.debug.lastBoot = Date.now();
+  try { await dpFetchRates(); } catch(ex) { console.warn('[boot] rates:', ex.message); }
+  dpTriggerEngine('boot');
+  Promise.allSettled([dpFetchFearGreed(), dpFetchCOT(), dpFetchPutCall()]);
+  setTimeout(() => dpFetchEcon(), 1500);
+  setTimeout(() => dpFetchSentiment(), 2000);
+  setTimeout(() => dpUpdateCBRates(), 8000);
+  // After everything has had time to settle — force re-render + debug panel
+  setTimeout(() => {
+    try { renderActive(); } catch(ex) {}
+    try { if (activeTab === 'settings') window._injectDebugPanel(); } catch(ex) {}
+  }, 12000);
+}
+
+// ── 4. dpStaleScan ────────────────────────────────────────────────────────
+function dpStaleScan() {
+  for (const key of Object.keys(DP_TTL)) {
+    const c = DP_CACHE[key];
+    if (c && c.ts && !c.stale && (Date.now() - c.ts) > (DP_TTL[key] || 0) * 2) {
+      c.stale = true;
+    }
+  }
+}
+
+// ── 5. dpScheduler ───────────────────────────────────────────────────────
+async function dpScheduler() {
+  const now = Date.now();
+  if (now >= DP_STATE.rates_next)     dpFetchRates();
+  if (now >= DP_STATE.feargreed_next) dpFetchFearGreed();
+  if (now >= DP_STATE.sentiment_next) dpFetchSentiment();
+  if (now >= DP_STATE.cot_next)       dpFetchCOT();
+  if (now >= DP_STATE.econ_next)      dpFetchEcon();
+  if (now >= DP_STATE.putcall_next)   dpFetchPutCall();
+  dpStaleScan();
+  try { if (activeTab === 'settings') window._injectDebugPanel(); } catch(ex) {}
+}
+
+// ── 6. DEBUG STAMPS ON EACH EXISTING dpFetch* ────────────────────────────
+// Patch the DP_STATE/DP_CACHE after each dpFetch completes.
+// We monkey-patch dpTriggerEngine to also stamp debug + refresh panel.
+const _dpTrigOrig = dpTriggerEngine._t !== undefined ? dpTriggerEngine : null;
+const _origTrigFn = typeof dpTriggerEngine === 'function' ? dpTriggerEngine : null;
+
+// Simpler approach: override dpCacheSet to stamp debug state
+const _origCacheSet = dpCacheSet;
+function dpCacheSet(key, data, source) {
+  _origCacheSet(key, data, source);
+  if (state.debug && state.debug[key] !== undefined) {
+    state.debug[key] = { ok: true, ts: Date.now(), err: null };
+  }
+  // Refresh debug panel if settings tab is open
+  try { if (activeTab === 'settings') window._injectDebugPanel(); } catch(ex) {}
+}
+
+// Mark failures in debug state when dpMarkStale is called
+const _origMarkStale = dpMarkStale;
+function dpMarkStale(key) {
+  _origMarkStale(key);
+  if (state.debug && state.debug[key] !== undefined) {
+    if (!state.debug[key].ok) {
+      state.debug[key].err = state.debug[key].err || 'stale/failed';
+      state.debug[key].ts  = Date.now();
+    }
+  }
+}
+
+// ── 7. FRED rate-limit hardening ─────────────────────────────────────────
+// Wrap fredFetch to detect "Note" (rate limit) and "Information" responses
+const _origFredFetch = typeof fredFetch === 'function' ? fredFetch : null;
+if (_origFredFetch) {
+  fredFetch = async function(id, key, lim) {
+    const result = await _origFredFetch(id, key, lim);
+    // Alpha Vantage sends a "Note" key when rate-limited
+    if (result && !Array.isArray(result) && (result['Note'] || result['Information'])) {
+      const msg = result['Note'] || result['Information'] || 'rate limited';
+      throw new Error('API limit: ' + String(msg).slice(0, 60));
+    }
+    return result;
+  };
+}
+
+// ── 8. BOOT EXECUTION ────────────────────────────────────────────────────
+// These lines were missing — this is the primary reason live data never ran.
+initTabs();
+renderActive();
+refreshAll();
+setInterval(refreshAll, 15 * 60 * 1000);   // full re-fetch every 15 min
+setTimeout(runEngine, 2000);                // scorecard engine after initial data
+setInterval(runEngine, 5 * 60 * 1000);     // scorecard engine every 5 min
+dpBootLoad();                               // priority data pipeline boot
+setInterval(dpScheduler, 60 * 1000);       // per-source TTL scheduler tick
