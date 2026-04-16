@@ -1825,7 +1825,42 @@ function renderSettings(){
       <strong style="color:var(--text)">iPhone Safari</strong> → Tap Share → "Add to Home Screen"<br>
       <span style="color:var(--bull)">✅ Opens full screen like a native app</span>
     </div>
-  </div>`;
+  </div>
+
+  <div class="apibox" id="ef-debug-panel-static">
+    <h3 style="color:var(--accent)">● LIVE DATA STATUS</h3>
+    ${renderDebugStatus()}
+  </div>\`;
+}
+
+// ── Debug status rows — called from renderSettings, no nested template literals ──
+function renderDebugStatus() {
+  const d = state.debug || {};
+  const sources = [
+    ['Frankfurter (Rates)',     'rates'],
+    ['Fear & Greed (Alt.me)',   'feargreed'],
+    ['CFTC COT',                'cot'],
+    ['FRED Econ' + (!state.fredKey ? ' ⚠ no key' : ''), 'econ'],
+    ['Myfxbook Sentiment',      'sentiment'],
+    ['Put/Call CBOE',           'putcall'],
+  ];
+  let html = '';
+  sources.forEach(function([label, key]) {
+    const info = d[key] || {};
+    const ok   = !!info.ok;
+    const col  = ok ? '#00ff88' : '#e05c6a';
+    const ts   = info.ts ? new Date(info.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+    const err  = info.err ? '<span style="color:#e05c6a;font-size:9px;margin-left:4px">' + info.err + '</span>' : '';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+          + '<span style="font-size:11px;color:var(--muted)"><span style="color:' + col + '">●</span> ' + label + err + '</span>'
+          + '<span style="font-family:var(--mono);font-size:10px;color:' + col + '">' + (ok ? 'LIVE ' + ts : 'FAIL') + '</span>'
+          + '</div>';
+  });
+  html += '<div style="margin-top:7px;font-family:var(--mono);font-size:9px;color:var(--muted)">'
+        + 'Boot: ' + (d.lastBoot ? new Date(d.lastBoot).toLocaleTimeString() : '—')
+        + ' · Now: ' + new Date().toLocaleTimeString()
+        + '</div>';
+  return html;
 }
 
 function saveMyfxbook(){
