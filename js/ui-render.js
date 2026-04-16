@@ -3568,51 +3568,6 @@ function renderForexScorecard() {
   }
 }
 
-// ── BOOT ──────────────────────────────────────────────────────────────────────
-initTabs();
-renderActive();
-refreshAll();
-setInterval(refreshAll, 15*60*1000);
-// Scorecard engine — runs after refreshAll has populated state, then every 5 min
-setTimeout(runEngine, 2000);
-setInterval(runEngine, 5*60*1000);
-
-// ── DATA PIPELINE — automatic fetch + schedule ────────────────────────────────
-// dpBootLoad: priority-ordered initial data load for the FX pipeline
-async function dpBootLoad() {
-  await dpFetchRates().catch(() => {});
-  dpTriggerEngine('boot');
-  Promise.allSettled([dpFetchFearGreed(), dpFetchCOT(), dpFetchPutCall()]);
-  setTimeout(() => dpFetchEcon(), 1500);
-  setTimeout(() => dpFetchSentiment(), 2000);
-  setTimeout(() => dpUpdateCBRates(), 8000);
-}
-
-dpBootLoad();                          // immediate priority load
-
-// ── STALE SCAN — mark cache entries stale if TTL×2 exceeded ──────────────
-function dpStaleScan() {
-  for (const key of Object.keys(DP_TTL)) {
-    const c = DP_CACHE[key];
-    if (c && c.ts && !c.stale && (Date.now() - c.ts) > (DP_TTL[key] || 0) * 2) {
-      c.stale = true;
-    }
-  }
-}
-
-// ── SCHEDULER — single 60s tick, checks each source against its own TTL ──
-async function dpScheduler() {
-  const now = Date.now();
-  if (now >= DP_STATE.rates_next)     dpFetchRates();
-  if (now >= DP_STATE.feargreed_next) dpFetchFearGreed();
-  if (now >= DP_STATE.sentiment_next) dpFetchSentiment();
-  if (now >= DP_STATE.cot_next)       dpFetchCOT();
-  if (now >= DP_STATE.econ_next)      dpFetchEcon();
-  if (now >= DP_STATE.putcall_next)   dpFetchPutCall();
-  dpStaleScan();
-}
-
-setInterval(dpScheduler, 60*1000);    // scheduler tick: every 60 s
 
 
 function renderFXExplanation(data) {
