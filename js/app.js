@@ -246,12 +246,13 @@ function pcSignal(pc){
 
 // ── MYFXBOOK API — multi-proxy fallback ──────────────────────────────────────
 const PROXIES=[
-  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+  // allorigins is most reliable for Myfxbook (trusted IP range)
   u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
   u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
   u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  u=>`https://cors-anywhere.herokuapp.com/${u}`,
   u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+  u=>`https://cors-anywhere.herokuapp.com/${u}`,
   u=>`https://yacdn.org/proxy/${u}`,
 ];
 async function proxyFetch(targetUrl){
@@ -278,39 +279,111 @@ async function proxyFetch(targetUrl){
   }
   throw new Error("All proxies failed");
 }
-async function myfxDirectFetch(url){
-  // Try direct fetch first — Myfxbook API allows direct browser requests
-  const controller=new AbortController();
-  const tid=setTimeout(()=>controller.abort(),8000);
-  const r=await fetch(url,{signal:controller.signal,mode:'cors'});
-  clearTimeout(tid);
-  if(!r.ok)throw new Error(r.status);
-  const d=await r.json();
-  return d;
+// Parse Myfxbook API response robustly — handle proxy wrapping
+function myfxParseResp(raw){
+  if(!raw)return null;
+  // allorigins wraps in {contents:"..."} — unwrap
+  if(typeof raw==='string'){
+    try{return JSON.parse(raw);}catch(e){return null;}
+  }
+  if(typeof raw==='object'){
+    if(raw.contents){try{return JSON.parse(raw.contents);}catch(e){return raw.contents;}}
+    return raw;
+  }
+  return null;
 }
+
+// Single proxy fetch dedicated to Myfxbook — uses allorigins which is most reliable
+async function myfxProxyFetch(targetUrl){
+  // Add cache-bust to prevent stale proxy caches
+  const bust=`&_cb=${Date.now()}`;
+  const urlWithBust=targetUrl+(targetUrl.includes('?')?bust:'?'+bust.slice(1));
+
+  // Try allorigins first (most reliable for Myfxbook)
+  const priorityProxies=[
+    u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+  for(const makeProxy of priorityProxies){
+    try{
+      const controller=new AbortController();
+      const tid=setTimeout(()=>controller.abort(),10000);
+      const r=await fetch(makeProxy(urlWithBust),{signal:controller.signal});
+      clearTimeout(tid);
+      if(!r.ok)continue;
+      const text=await r.text();
+      if(!text||text.length<5)continue;
+      const parsed=myfxParseResp(text);
+      if(parsed)return parsed;
+    }catch(e){continue;}
+  }
+  throw new Error("All proxies failed");
+}
+
 async function myfxLogin(email,password){
-  const url=`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
-  let d;
-  try{d=await myfxDirectFetch(url);}catch(e){d=await proxyFetch(url);}
-  if(!d||typeof d!=='object')throw new Error("Invalid login response");
-  if(d.error)throw new Error(d.message||"Login error");
+  // Always trim credentials — prevent whitespace issues
+  const em=email.trim().toLowerCase();
+  const pw=password.trim();
+  if(!em||!pw)throw new Error("Missing credentials");
+
+  // Strategy 1: standard GET request (official Myfxbook API method)
+  const loginUrl=`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(em)}&password=${encodeURIComponent(pw)}`;
+  let d=null;
+  try{d=await myfxProxyFetch(loginUrl);}catch(e){}
+
+  // Strategy 2: try without password encoding (some special chars cause issues)
+  if(!d||d.error){
+    try{
+      const loginUrl2=`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(em)}&password=${pw}`;
+      d=await myfxProxyFetch(loginUrl2);
+    }catch(e){}
+  }
+
+  if(!d||typeof d!=='object')throw new Error("No response from Myfxbook");
+  if(d.error){
+    const msg=d.message||"Login failed";
+    // Provide clearer error messages
+    if(msg.toLowerCase().includes("wrong")||msg.toLowerCase().includes("invalid"))
+      throw new Error("Wrong email or password — check on myfxbook.com");
+    throw new Error(msg);
+  }
+  if(!d.session)throw new Error("No session returned");
   return d.session;
 }
+
 async function myfxGetOutlook(session){
   const url=`https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`;
-  let d;
-  try{d=await myfxDirectFetch(url);}catch(e){d=await proxyFetch(url);}
-  if(!d||typeof d!=='object')throw new Error("Invalid outlook response");
+  let d=null;
+  try{d=await myfxProxyFetch(url);}catch(e){}
+  if(!d||typeof d!=='object')throw new Error("Outlook fetch failed");
   if(d.error)throw new Error(d.message||"Session expired");
-  if(!d.symbols||!d.symbols.length)throw new Error("No symbols in response");
+  if(!d.symbols||!d.symbols.length)throw new Error("Empty symbols list");
   return d.symbols;
 }
+
 async function fetchMyfxbookSentiment(){
   if(!state.mfxEmail||!state.mfxPassword)throw new Error("No credentials");
+  const email=state.mfxEmail.trim();
+  const password=state.mfxPassword.trim();
+
+  // Use cached session first
   let session=state.mfxSession;
-  if(session){try{return await myfxGetOutlook(session);}catch(e){session=null;}}
-  session=await myfxLogin(state.mfxEmail,state.mfxPassword);
-  state.mfxSession=session;saveKey("mfx_session",session);
+  if(session){
+    try{return await myfxGetOutlook(session);}
+    catch(e){
+      // Session expired — clear it and re-login
+      state.mfxSession="";saveKey("mfx_session","");
+      session=null;
+    }
+  }
+
+  // Fresh login
+  session=await myfxLogin(email,password);
+  state.mfxSession=session;
+  saveKey("mfx_session",session);
   return await myfxGetOutlook(session);
 }
 
