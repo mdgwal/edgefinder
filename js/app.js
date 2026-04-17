@@ -108,23 +108,35 @@ function parseCFTCcsv(csvText){
 }
 
 async function fetchCFTCData(){
-  const proxies=[
+  // CFTC publishes Futures-only and Combined files — try both URLs
+  const CFTC_URLS=[
+    "https://www.cftc.gov/files/dea/newcot/FinFutWk.txt",
+    "https://www.cftc.gov/files/dea/newcot/FinComWk.txt",  // combined file backup
+  ];
+  // Proxies in priority order — allorigins most reliable for CSV files
+  const PROXY_FNS=[
     u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+    u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u=>`https://cors.sh/${u}`,
+    u=>`https://yacdn.org/proxy/${u}`,
   ];
-  for(const makeProxy of proxies){
-    try{
-      const r=await fetch(makeProxy(CFTC_URL));
-      if(!r.ok)continue;
-      const text=await r.text();
-      // allorigins wraps in {contents:"..."}
-      let csv=text;
-      try{const j=JSON.parse(text);if(j.contents)csv=j.contents;}catch(e){}
-      if(!csv||csv.length<1000)continue;
-      const rows=parseCFTCcsv(csv);
-      if(rows.length>0)return rows;
-    }catch(e){continue;}
+  for(const cftcUrl of CFTC_URLS){
+    for(const makeProxy of PROXY_FNS){
+      try{
+        const controller=new AbortController();
+        const tid=setTimeout(()=>controller.abort(),10000); // 10s timeout per proxy
+        const r=await fetch(makeProxy(cftcUrl),{signal:controller.signal});
+        clearTimeout(tid);
+        if(!r.ok)continue;
+        const text=await r.text();
+        let csv=text;
+        try{const j=JSON.parse(text);if(j.contents)csv=j.contents;else if(j.data)csv=j.data;}catch(e){}
+        if(!csv||csv.length<500)continue;
+        const rows=parseCFTCcsv(csv);
+        if(rows&&rows.length>3)return rows;
+      }catch(e){continue;}
+    }
   }
   throw new Error("CFTC fetch failed");
 }
@@ -169,18 +181,33 @@ function pcSignal(pc){
 
 // ── MYFXBOOK API — multi-proxy fallback ──────────────────────────────────────
 const PROXIES=[
-  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
   u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-  u=>`https://thingproxy.freeboard.io/fetch/${u}`,
+  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u=>`https://cors-anywhere.herokuapp.com/${u}`,
+  u=>`https://yacdn.org/proxy/${u}`,
+  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
 ];
 async function proxyFetch(targetUrl){
   for(const makeProxy of PROXIES){
     try{
-      const r=await fetch(makeProxy(targetUrl));
+      const controller=new AbortController();
+      const tid=setTimeout(()=>controller.abort(),8000); // 8s per proxy
+      const r=await fetch(makeProxy(targetUrl),{signal:controller.signal});
+      clearTimeout(tid);
       if(!r.ok)continue;
       const text=await r.text();
-      try{const outer=JSON.parse(text);if(outer.contents)return JSON.parse(outer.contents);return outer;}
-      catch(e){return JSON.parse(text);}
+      if(!text||text.length<10)continue;
+      try{
+        const outer=JSON.parse(text);
+        if(outer.contents){
+          try{return JSON.parse(outer.contents);}catch(e){return outer.contents;}
+        }
+        return outer;
+      }catch(e){
+        // Not JSON — return raw text (needed for CSV responses)
+        return text;
+      }
     }catch(e){continue;}
   }
   throw new Error("All proxies failed");
@@ -243,8 +270,51 @@ function loadMyfxbookData(){
 }
 
 // ── OTHER API FETCHERS ────────────────────────────────────────────────────────
-async function fetchRates(){const r=await fetch("https://api.frankfurter.app/latest?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
-async function fetchPrev(){const d=new Date();d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);const r=await fetch("https://api.frankfurter.app/"+d.toISOString().split("T")[0]+"?from=USD");if(!r.ok)throw new Error();return(await r.json()).rates;}
+async function fetchRates(){
+  // Primary: Frankfurter — free, ECB-sourced, reliable
+  const sources=[
+    async()=>{
+      const r=await fetch("https://api.frankfurter.app/latest?from=USD");
+      if(!r.ok)throw new Error("frankfurter "+r.status);
+      const d=await r.json();
+      if(!d.rates)throw new Error("no rates");
+      return d.rates;
+    },
+    async()=>{
+      // Backup 1: exchangerate-api.com (free tier, no key)
+      const r=await fetch("https://open.er-api.com/v6/latest/USD");
+      if(!r.ok)throw new Error("er-api "+r.status);
+      const d=await r.json();
+      if(!d.rates)throw new Error("no rates");
+      // Rename to match Frankfurter key format (already same)
+      return d.rates;
+    },
+    async()=>{
+      // Backup 2: exchangerate.host (free, no key)
+      const r=await fetch("https://api.exchangerate.host/latest?base=USD");
+      if(!r.ok)throw new Error("xr.host "+r.status);
+      const d=await r.json();
+      if(!d.rates)throw new Error("no rates");
+      return d.rates;
+    },
+  ];
+  for(const src of sources){
+    try{const rates=await src();if(rates&&Object.keys(rates).length>5)return rates;}catch(e){continue;}
+  }
+  throw new Error("All FX rate sources failed");
+}
+async function fetchPrev(){
+  const d=new Date();d.setDate(d.getDate()-1);
+  if(d.getDay()===0)d.setDate(d.getDate()-2);
+  if(d.getDay()===6)d.setDate(d.getDate()-1);
+  const dt=d.toISOString().split("T")[0];
+  const sources=[
+    async()=>{const r=await fetch("https://api.frankfurter.app/"+dt+"?from=USD");if(!r.ok)throw new Error();const d2=await r.json();if(!d2.rates)throw new Error();return d2.rates;},
+    async()=>{const r=await fetch("https://open.er-api.com/v6/latest/USD");if(!r.ok)throw new Error();const d2=await r.json();return d2.rates;},
+  ];
+  for(const src of sources){try{const rates=await src();if(rates&&Object.keys(rates).length>5)return rates;}catch(e){continue;}}
+  return null; // prev rates optional — fails gracefully
+}
 async function fetchFearGreed(){const r=await fetch("https://api.alternative.me/fng/?limit=30&format=json");if(!r.ok)throw new Error();const d=await r.json();if(!d.data||!d.data.length)throw new Error();return d.data;}
 function buildStrength(rates){if(!rates)return null;const all={...rates,USD:1};const st={};CURRS.forEach(c=>{st[c.code]=0;});CURRS.forEach(b=>CURRS.forEach(q=>{if(b.code===q.code||!all[b.code])return;st[b.code]+=Math.log(1/all[b.code])*.1;}));const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);}
 async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error();const d=await r.json();const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error();return v;}
