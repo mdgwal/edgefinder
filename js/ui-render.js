@@ -1830,7 +1830,7 @@ function renderSettings(){
   <div class="apibox" id="ef-debug-panel-static">
     <h3 style="color:var(--accent)">● LIVE DATA STATUS</h3>
     ${renderDebugStatus()}
-  </div>\`;
+  </div>`;
 }
 
 // ── Debug status rows — called from renderSettings, no nested template literals ──
