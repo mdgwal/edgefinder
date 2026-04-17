@@ -108,24 +108,42 @@ function parseCFTCcsv(csvText){
 }
 
 async function fetchCFTCData(){
-  // CFTC publishes Futures-only and Combined files — try both URLs
+  // Strategy 1: CFTC Socrata JSON API — returns latest week only (~50KB, has CORS headers)
+  // Much more reliable than the 25MB CSV file which most proxies reject
+  const SOCRATA_URLS=[
+    // Financial futures (currencies, rates, indices)
+    "https://publicreporting.cftc.gov/resource/6dca-aqww.json?$limit=500&$order=report_date_as_yyyy_mm_dd+DESC",
+    // Disaggregated futures (commodities)
+    "https://publicreporting.cftc.gov/resource/kh3c-gbw2.json?$limit=500&$order=report_date_as_yyyy_mm_dd+DESC",
+  ];
+  for(const apiUrl of SOCRATA_URLS){
+    try{
+      const controller=new AbortController();
+      const tid=setTimeout(()=>controller.abort(),12000);
+      const r=await fetch(apiUrl,{signal:controller.signal});
+      clearTimeout(tid);
+      if(!r.ok)continue;
+      const records=await r.json();
+      if(!Array.isArray(records)||records.length<3)continue;
+      const rows=parseSocrataJSON(records);
+      if(rows&&rows.length>2)return rows;
+    }catch(e){continue;}
+  }
+  // Strategy 2: Smaller CFTC CSV via proxies — use compressed/shorter URL patterns
   const CFTC_URLS=[
     "https://www.cftc.gov/files/dea/newcot/FinFutWk.txt",
-    "https://www.cftc.gov/files/dea/newcot/FinComWk.txt",  // combined file backup
+    "https://www.cftc.gov/files/dea/newcot/FinComWk.txt",
   ];
-  // Proxies in priority order — allorigins most reliable for CSV files
   const PROXY_FNS=[
     u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
     u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    u=>`https://cors.sh/${u}`,
-    u=>`https://yacdn.org/proxy/${u}`,
   ];
   for(const cftcUrl of CFTC_URLS){
     for(const makeProxy of PROXY_FNS){
       try{
         const controller=new AbortController();
-        const tid=setTimeout(()=>controller.abort(),10000); // 10s timeout per proxy
+        const tid=setTimeout(()=>controller.abort(),15000);
         const r=await fetch(makeProxy(cftcUrl),{signal:controller.signal});
         clearTimeout(tid);
         if(!r.ok)continue;
@@ -134,11 +152,58 @@ async function fetchCFTCData(){
         try{const j=JSON.parse(text);if(j.contents)csv=j.contents;else if(j.data)csv=j.data;}catch(e){}
         if(!csv||csv.length<500)continue;
         const rows=parseCFTCcsv(csv);
-        if(rows&&rows.length>3)return rows;
+        if(rows&&rows.length>2)return rows;
       }catch(e){continue;}
     }
   }
   throw new Error("CFTC fetch failed");
+}
+
+// Parse CFTC Socrata JSON API response into same row format as parseCFTCcsv
+function parseSocrataJSON(records){
+  // Socrata field names (snake_case)
+  // Key fields: market_and_exchange_names, noncomm_positions_long_all,
+  //             noncomm_positions_short_all, open_interest_all, report_date_as_yyyy_mm_dd
+  const seen={};
+  for(const rec of records){
+    const rawName=(rec.market_and_exchange_names||"").toUpperCase();
+    let matched=null;
+    for(const key of Object.keys(CFTC_MAP)){
+      if(rawName.includes(key.toUpperCase())){matched=key;break;}
+    }
+    if(!matched)continue;
+    const id=CFTC_MAP[matched].id;
+    const longC=parseInt(rec.noncomm_positions_long_all)||0;
+    const shortC=parseInt(rec.noncomm_positions_short_all)||0;
+    const oi=parseInt(rec.open_interest_all)||0;
+    const date=rec.report_date_as_yyyy_mm_dd||"";
+    if(!seen[id]){
+      seen[id]={first:{longC,shortC,oi,date}};
+    }else if(!seen[id].second){
+      seen[id].second={longC,shortC};
+    }
+  }
+  const rows=[];
+  for(const [key,info] of Object.entries(CFTC_MAP)){
+    const s=seen[info.id];
+    if(!s||!s.first)continue;
+    const {longC,shortC,oi,date}=s.first;
+    const total=longC+shortC;
+    if(total===0)continue;
+    const longPct=parseFloat(((longC/total)*100).toFixed(2));
+    const shortPct=parseFloat(((shortC/total)*100).toFixed(2));
+    const netPos=longC-shortC;
+    let dLong=0,dShort=0,netChg=0;
+    if(s.second){
+      dLong=longC-s.second.longC;
+      dShort=shortC-s.second.shortC;
+      const prevTotal=s.second.longC+s.second.shortC;
+      const prevLongPct=prevTotal>0?(s.second.longC/prevTotal)*100:50;
+      netChg=parseFloat((longPct-prevLongPct).toFixed(2));
+    }
+    rows.push({id:info.id,name:info.name,longC,shortC,dLong,dShort,longPct,shortPct,netChg,netPos,oi,dOI:0,date});
+  }
+  return rows.sort((a,b)=>b.netChg-a.netChg);
 }
 
 function loadCOTData(){
@@ -181,12 +246,13 @@ function pcSignal(pc){
 
 // ── MYFXBOOK API — multi-proxy fallback ──────────────────────────────────────
 const PROXIES=[
-  u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
   u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   u=>`https://cors-anywhere.herokuapp.com/${u}`,
+  u=>`https://thingproxy.freeboard.io/fetch/${u}`,
   u=>`https://yacdn.org/proxy/${u}`,
-  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
 ];
 async function proxyFetch(targetUrl){
   for(const makeProxy of PROXIES){
@@ -212,14 +278,31 @@ async function proxyFetch(targetUrl){
   }
   throw new Error("All proxies failed");
 }
+async function myfxDirectFetch(url){
+  // Try direct fetch first — Myfxbook API allows direct browser requests
+  const controller=new AbortController();
+  const tid=setTimeout(()=>controller.abort(),8000);
+  const r=await fetch(url,{signal:controller.signal,mode:'cors'});
+  clearTimeout(tid);
+  if(!r.ok)throw new Error(r.status);
+  const d=await r.json();
+  return d;
+}
 async function myfxLogin(email,password){
-  const d=await proxyFetch(`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`);
+  const url=`https://www.myfxbook.com/api/login.json?email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
+  let d;
+  try{d=await myfxDirectFetch(url);}catch(e){d=await proxyFetch(url);}
+  if(!d||typeof d!=='object')throw new Error("Invalid login response");
   if(d.error)throw new Error(d.message||"Login error");
   return d.session;
 }
 async function myfxGetOutlook(session){
-  const d=await proxyFetch(`https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`);
+  const url=`https://www.myfxbook.com/api/get-community-outlook.json?session=${session}`;
+  let d;
+  try{d=await myfxDirectFetch(url);}catch(e){d=await proxyFetch(url);}
+  if(!d||typeof d!=='object')throw new Error("Invalid outlook response");
   if(d.error)throw new Error(d.message||"Session expired");
+  if(!d.symbols||!d.symbols.length)throw new Error("No symbols in response");
   return d.symbols;
 }
 async function fetchMyfxbookSentiment(){
