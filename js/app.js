@@ -249,15 +249,35 @@ async function fetchFearGreed(){const r=await fetch("https://api.alternative.me/
 function buildStrength(rates){if(!rates)return null;const all={...rates,USD:1};const st={};CURRS.forEach(c=>{st[c.code]=0;});CURRS.forEach(b=>CURRS.forEach(q=>{if(b.code===q.code||!all[b.code])return;st[b.code]+=Math.log(1/all[b.code])*.1;}));const vs=Object.values(st),mn=Math.min(...vs),mx=Math.max(...vs);return CURRS.map(c=>({...c,val:st[c.code]||0,pct:mx!==mn?((st[c.code]-mn)/(mx-mn))*100:50})).sort((a,b)=>b.val-a.val);}
 async function fredFetch(id,key,lim){const r=await fetch("https://api.stlouisfed.org/fred/series/observations?series_id="+id+"&api_key="+key+"&file_type=json&sort_order=desc&limit="+lim);if(!r.ok)throw new Error();const d=await r.json();const v=(d.observations||[]).filter(o=>o.value!==".");if(!v.length)throw new Error();return v;}
 async function fetchFREDEcon(key){const res={};for(const[cur,series]of Object.entries(FRED_SERIES)){res[cur]=[];for(const s of series){try{const obs=await fredFetch(s.id,key,13);let val=parseFloat(obs[0].value);const date=obs[0].date;let surprise=0;if(s.yoy&&obs.length>=13){const pv=parseFloat(obs[12].value);if(!isNaN(pv)&&pv!==0)val=((val-pv)/pv)*100;}if(obs.length>=2){const pv=parseFloat(obs[1].value);if(!isNaN(pv)){const diff=val-pv;if(Math.abs(diff)>.3)surprise=diff>0?.5:-.5;else if(Math.abs(diff)>.1)surprise=diff>0?.2:-.2;}}res[cur].push({l:s.label,v:isNaN(val)?"N/A":s.fmt(val),s:surprise,d:date?new Date(date).toLocaleDateString([],{month:"short",year:"numeric"}):""})}catch(e){const fb=(FALLBACK_ECON[cur]||[]).find(f=>f.l===s.label);res[cur].push(fb?{...fb}:{l:s.label,v:"N/A",s:0,d:""});}await new Promise(r=>setTimeout(r,150));}}return res;}
-function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLoading=true;fetchFREDEcon(state.fredKey).then(d=>{state.econData=d;state.econLive=true;state.econLoading=false;if(activeTab==="econ")renderEcon();}).catch(()=>{state.econLoading=false;});}
+function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLoading=true;fetchFREDEcon(state.fredKey).then(d=>{
+  state.econData=d;state.econLive=true;state.econLoading=false;
+  dpCacheSet('econ',d,'FRED');
+  if(state.debug) state.debug.econ = { ok:true, ts:Date.now(), err:null };
+  if(activeTab==="econ")renderEcon();
+}).catch((ex)=>{
+  state.econLoading=false;
+  if(state.debug && !state.debug.econ?.ok) state.debug.econ = { ok:false, ts:Date.now(), err:(ex?.message||'failed').slice(0,40) };
+});}
 
 async function refreshAll(){
   document.getElementById("rbtn-icon").classList.add("spinning");
   renderActive();
   const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
-  if(r1.status==="fulfilled")state.rates=r1.value;
+  if(r1.status==="fulfilled" && r1.value){
+    state.rates=r1.value;
+    dpCacheSet('rates', r1.value, 'Frankfurter');
+    if(state.debug) state.debug.rates = { ok:true, ts:Date.now(), err:null };
+  } else {
+    if(state.debug && !state.debug.rates?.ok) state.debug.rates = { ok:false, ts:Date.now(), err:'fetch failed' };
+  }
   if(r2.status==="fulfilled")state.prevRates=r2.value;
-  if(r3.status==="fulfilled"&&r3.value&&r3.value.length){state.fgData=r3.value;state.fgLive=true;}
+  if(r3.status==="fulfilled"&&r3.value&&r3.value.length){
+    state.fgData=r3.value; state.fgLive=true;
+    dpCacheSet('feargreed', r3.value, 'alternative.me');
+    if(state.debug) state.debug.feargreed = { ok:true, ts:Date.now(), err:null };
+  } else {
+    if(state.debug && !state.debug.feargreed?.ok) state.debug.feargreed = { ok:false, ts:Date.now(), err:'fetch failed' };
+  }
   state.cdata=buildStrength(state.rates);
   saveScoreHistory(); // ✅ Save today's scores to localStorage for History tab
   // Load live sentiment from Myfxbook
@@ -596,11 +616,19 @@ async function dpFetchRates() {
       state.rates = cur.value;
       state.cdata = buildStrength(cur.value);
       dpCacheSet('rates', cur.value, 'Frankfurter');
-    } else dpMarkStale('rates');
+      if (state.debug) state.debug.rates = { ok: true, ts: Date.now(), err: null };
+    } else {
+      dpMarkStale('rates');
+      if (state.debug) state.debug.rates = { ok: false, ts: Date.now(), err: 'fetch failed' };
+    }
     if (prev.status === 'fulfilled') state.prevRates = prev.value;
     DP_STATE.rates_next = Date.now() + DP_TTL.rates;
     dpTriggerEngine('rates');
-  } catch(ex) { console.warn('[DP] rates:', ex.message); dpMarkStale('rates'); }
+  } catch(ex) {
+    console.warn('[DP] rates:', ex.message);
+    dpMarkStale('rates');
+    if (state.debug) state.debug.rates = { ok: false, ts: Date.now(), err: ex.message?.slice(0,40) };
+  }
   finally { DP_STATE.rates_running = false; }
 }
 
@@ -612,10 +640,15 @@ async function dpFetchFearGreed() {
     if (data && data.length) {
       state.fgData = data; state.fgLive = true;
       dpCacheSet('feargreed', data, 'alternative.me');
+      if (state.debug) state.debug.feargreed = { ok: true, ts: Date.now(), err: null };
       DP_STATE.feargreed_next = Date.now() + DP_TTL.feargreed;
       dpTriggerEngine('feargreed');
     }
-  } catch(ex) { console.warn('[DP] feargreed:', ex.message); dpMarkStale('feargreed'); state.fgLive = false; }
+  } catch(ex) {
+    console.warn('[DP] feargreed:', ex.message);
+    dpMarkStale('feargreed'); state.fgLive = false;
+    if (state.debug) state.debug.feargreed = { ok: false, ts: Date.now(), err: ex.message?.slice(0,40) };
+  }
   finally { DP_STATE.feargreed_running = false; }
 }
 
@@ -637,6 +670,7 @@ async function dpFetchSentiment() {
       }));
       state.sentimentLive = true; state.sentimentLoading = false;
       dpCacheSet('sentiment', state.sentimentData, 'Myfxbook');
+      if (state.debug) state.debug.sentiment = { ok: true, ts: Date.now(), err: null };
       DP_STATE.sentiment_next = Date.now() + DP_TTL.sentiment;
       if (activeTab === 'sentiment') renderSentiment();
       dpTriggerEngine('sentiment');
@@ -645,6 +679,7 @@ async function dpFetchSentiment() {
     clearTimeout(t);
     console.warn('[DP] sentiment:', ex.message);
     state.sentimentLive = false; state.sentimentLoading = false; dpMarkStale('sentiment');
+    if (state.debug) state.debug.sentiment = { ok: false, ts: Date.now(), err: ex.message?.slice(0,40)||'failed' };
   } finally { DP_STATE.sentiment_running = false; }
 }
 
@@ -661,12 +696,16 @@ async function dpFetchCOT() {
     if (rows && rows.length) {
       state.cotData = rows; state.cotLive = true; state.cotLastUpdate = Date.now();
       dpCacheSet('cot', rows, 'CFTC');
+      if (state.debug) state.debug.cot = { ok: true, ts: Date.now(), err: null };
       localStorage.setItem('ef_dp_cot_day', today);
       DP_STATE.cot_next = Date.now() + DP_TTL.cot;
       if (activeTab === 'cot') renderCOT();
       dpTriggerEngine('cot');
     }
-  } catch(ex) { console.warn('[DP] COT:', ex.message); state.cotLive = false; dpMarkStale('cot'); }
+  } catch(ex) {
+    console.warn('[DP] COT:', ex.message); state.cotLive = false; dpMarkStale('cot');
+    if (state.debug) state.debug.cot = { ok: false, ts: Date.now(), err: ex.message?.slice(0,40) };
+  }
   finally { DP_STATE.cot_running = false; }
 }
 
@@ -679,11 +718,16 @@ async function dpFetchEcon() {
     if (data) {
       state.econData = data; state.econLive = true; state.econLoading = false;
       dpCacheSet('econ', data, 'FRED');
+      if (state.debug) state.debug.econ = { ok: true, ts: Date.now(), err: null };
       DP_STATE.econ_next = Date.now() + DP_TTL.econ;
       if (activeTab === 'econ') renderEcon();
       dpTriggerEngine('econ');
     }
-  } catch(ex) { console.warn('[DP] FRED:', ex.message); state.econLive = false; state.econLoading = false; dpMarkStale('econ'); }
+  } catch(ex) {
+    console.warn('[DP] FRED:', ex.message);
+    state.econLive = false; state.econLoading = false; dpMarkStale('econ');
+    if (state.debug) state.debug.econ = { ok: false, ts: Date.now(), err: ex.message?.slice(0,40) };
+  }
   finally { DP_STATE.econ_running = false; }
 }
 
@@ -695,10 +739,15 @@ async function dpFetchPutCall() {
     if (data && data.length) {
       state.putCallData = data; state.putCallLive = true;
       dpCacheSet('putcall', data, 'CBOE');
+      if (state.debug) state.debug.putcall = { ok: true, ts: Date.now(), err: null };
       DP_STATE.putcall_next = Date.now() + DP_TTL.putcall;
       dpTriggerEngine('putcall');
     }
-  } catch(ex) { console.warn('[DP] put/call:', ex.message); state.putCallLive = false; dpMarkStale('putcall'); }
+  } catch(ex) {
+    console.warn('[DP] put/call:', ex.message);
+    state.putCallLive = false; dpMarkStale('putcall');
+    if (state.debug) state.debug.putcall = { ok: false, ts: Date.now(), err: ex.message?.slice(0,40) };
+  }
   finally { DP_STATE.putcall_running = false; }
 }
 
@@ -787,26 +836,9 @@ async function dpScheduler() {
 const _dpTrigOrig = dpTriggerEngine._t !== undefined ? dpTriggerEngine : null;
 const _origTrigFn = typeof dpTriggerEngine === 'function' ? dpTriggerEngine : null;
 
-// Simpler approach: override dpCacheSet to stamp debug state
-const _origCacheSet = dpCacheSet;
-function dpCacheSet(key, data, source) {
-  _origCacheSet(key, data, source);
-  if (state.debug && state.debug[key] !== undefined) {
-    state.debug[key] = { ok: true, ts: Date.now(), err: null };
-  }
-}
-
-// Mark failures in debug state when dpMarkStale is called
-const _origMarkStale = dpMarkStale;
-function dpMarkStale(key) {
-  _origMarkStale(key);
-  if (state.debug && state.debug[key] !== undefined) {
-    if (!state.debug[key].ok) {
-      state.debug[key].err = state.debug[key].err || 'stale/failed';
-      state.debug[key].ts  = Date.now();
-    }
-  }
-}
+// Stamp debug state directly inside each dpFetch on success/failure.
+// Done here (not as function-declaration overrides) to avoid hoisting issues.
+// dpCacheSet and dpMarkStale remain as-is; debug is stamped explicitly below.
 
 // ── 7. FRED rate-limit hardening ─────────────────────────────────────────
 // Wrap fredFetch to detect "Note" (rate limit) and "Information" responses
