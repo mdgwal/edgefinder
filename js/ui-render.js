@@ -28,11 +28,115 @@ function cv(v){return(v>0?"+":"")+v;}  // format score cell value
 function rowBgClass(total){return total>=8?"row-vbull":total>=3?"row-bull":total<=-8?"row-vbear":total<=-3?"row-bear":"";}
 
 // ── VIEW 1: FULL TOP SETUPS ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+//  LIVE SCORING ENGINE FOR TOP SETUPS VIEWS
+//  All 4 views compute scores live from state.cotData/econData/sentimentData
+//  via calculateAssetScore() — same engine as the Asset Scorecard.
+//  Falls back to ASSETS_SCORED static data when live data isn't available.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Build the live liveData bundle once per render cycle
+function _setupsLiveData() {
+  return {
+    cotRows:   (state.cotData && state.cotData.length) ? state.cotData : COT_DATA,
+    sentiment: state.sentimentLive ? state.sentimentData : FALLBACK_SENTIMENT,
+    econ:      state.econData || FALLBACK_ECON,
+    putCall:   state.putCallLive ? (state.putCallData || PUT_CALL) : PUT_CALL,
+    aaiiData:  state.aaiiLive   ? (state.aaiiData    || AAII)     : AAII,
+    rates:     state.rates,
+  };
+}
+
+// Compute live scores for every asset in the filtered list
+// Returns array of enriched asset objects with live components
+function _computeLiveScores(assetList, liveData) {
+  return assetList.map(a => {
+    try {
+      const scored = calculateAssetScore(a, liveData);
+      const c = scored.components;
+      // Convenience sub-scores for views
+      const sentScore  = Math.max(-6, Math.min(6, Math.round(
+        c.sentiment * 2 + c.cot * 2 + c.technical * 0.5
+      )));
+      const techScore  = Math.max(-2, Math.min(2, Math.round(c.technical)));
+      const growthScore= Math.max(-2, Math.min(2, Math.round(c.growth)));
+      const inflScore  = Math.max(-2, Math.min(2, Math.round(c.inflation)));
+      const jobsScore  = Math.max(-2, Math.min(2, Math.round(c.jobs)));
+      const ecoScore   = Math.max(-8, Math.min(8, Math.round(
+        growthScore * 3 + inflScore * 2.5 + jobsScore * 2.5
+      )));
+      return {
+        ...a,
+        // Override static fields with live values
+        total:      scored.totalScore,
+        bias:       scored.bias,
+        cot:        Math.max(-2, Math.min(2, Math.round(c.cot))),
+        retail:     Math.max(-2, Math.min(2, Math.round(c.sentiment))),
+        trend:      Math.max(-2, Math.min(2, Math.round(c.technical))),
+        gdp:        Math.max(-2, Math.min(2, Math.round(c.growth))),
+        mPMI:       a.mPMI,    // kept from static (not in deriveComponents directly)
+        sPMI:       a.sPMI,
+        retailSal:  a.retailSal,
+        inflation:  Math.max(-2, Math.min(2, Math.round(c.inflation))),
+        empChg:     Math.max(-2, Math.min(2, Math.round(c.jobs))),
+        unemploy:   a.unemploy,
+        rates:      a.rates,
+        // Derived sub-scores
+        _sentScore:  sentScore,
+        _techScore:  techScore,
+        _growthScore: growthScore,
+        _inflScore:  inflScore,
+        _jobsScore:  jobsScore,
+        _ecoScore:   ecoScore,
+        _live:       !!(state.cotLive || state.econLive || state.sentimentLive),
+        _components: c,
+      };
+    } catch(e) {
+      // Fallback to static data if engine throws
+      const ecoS = a.gdp + a.mPMI + a.sPMI + a.retailSal + a.inflation + a.empChg + a.unemploy + a.rates;
+      return {
+        ...a,
+        _sentScore:  a.cot + a.retail,
+        _techScore:  a.trend,
+        _growthScore:a.gdp,
+        _inflScore:  a.inflation,
+        _jobsScore:  a.empChg + a.unemploy,
+        _ecoScore:   ecoS,
+        _live:       false,
+        _components: {},
+      };
+    }
+  });
+}
+
+// Live badge shown in table header
+function _liveTag(ld) {
+  const isLive = !!(state.cotLive || state.econLive || state.sentimentLive || state.rates);
+  const col = isLive ? 'var(--bull)' : 'var(--muted)';
+  const label = isLive ? '● LIVE' : '◌ STATIC';
+  return `<span style="font-family:var(--mono);font-size:9px;color:${col};font-weight:700;
+    background:${isLive?'rgba(0,255,136,.1)':'rgba(255,255,255,.04)'};
+    padding:2px 7px;border-radius:3px;margin-left:6px">${label}</span>`;
+}
+
+// ── VIEW 1: FULL TOP SETUPS ─────────────────────────────────────────────────
 function renderSetupsFullView(){
-  let html=catFilter()+`<div class="score-table-wrap"><table class="score-table">
+  const ld = _setupsLiveData();
+  const scored = _computeLiveScores(filtered(), ld).sort((a,b) => b.total - a.total);
+
+  let html = catFilter() + `
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
+      Ranked by EdgeFinder Score · ${scored.length} assets
+    </span>
+    ${_liveTag(ld)}
+  </div>
+  <div class="score-table-wrap"><table class="score-table">
     <thead>
       <tr>
-        <th class="left" rowspan="2">Asset</th><th rowspan="2">Bias</th><th rowspan="2">Score</th>
+        <th class="left" rowspan="2">Asset</th>
+        <th rowspan="2">Bias</th>
+        <th rowspan="2">Score</th>
         <th class="group" colspan="3">Sentiment</th>
         <th class="group" colspan="1">Technical</th>
         <th class="group" colspan="10">Economic Data</th>
@@ -45,11 +149,12 @@ function renderSetupsFullView(){
         <th>Emp Change</th><th>Unemploy</th><th>Rates</th>
       </tr>
     </thead><tbody>`;
-  filtered().forEach(a=>{
-    const tc=totalColor(a.total),bc=biasColor(a.bias);
-    // PPI derived from inflation with slight variation, PCE same
-    const ppi=a.inflation; const pce=Math.max(-2,Math.min(2,a.inflation+(a.gdp>0?1:-1)*0.5|0));
-    html+=`<tr class="${rowBgClass(a.total)}">
+
+  scored.forEach(a => {
+    const tc = totalColor(a.total), bc = biasColor(a.bias);
+    const ppi = a.inflation;
+    const pce = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 1 : -1) * 0.5 | 0));
+    html += `<tr class="${rowBgClass(a.total)}">
       <td class="asset-name" style="color:${tc}">${a.name}</td>
       <td class="bias-cell" style="color:${bc}">${a.bias}</td>
       <td class="total-cell" style="color:${tc}">${cv(a.total)}</td>
@@ -69,69 +174,93 @@ function renderSetupsFullView(){
       <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
     </tr>`;
   });
-  html+=`</tbody></table></div>`;
+  html += `</tbody></table></div>`;
   return html;
 }
 
-// ── VIEW 2: SIMPLE ────────────────────────────────────────────────────────────
+// ── VIEW 2: SIMPLE ──────────────────────────────────────────────────────────
 function renderSetupsSimpleView(){
-  let html=catFilter()+`<div style="overflow-x:auto"><table class="simple-tbl">
+  const ld = _setupsLiveData();
+  const scored = _computeLiveScores(filtered(), ld).sort((a,b) => b.total - a.total);
+  const sc = v => v > 0 ? 'var(--bull)' : v < 0 ? 'var(--bear)' : 'var(--muted)';
+
+  let html = catFilter() + `
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
+      Ranked by Total Score · ${scored.length} assets
+    </span>
+    ${_liveTag(ld)}
+  </div>
+  <div style="overflow-x:auto"><table class="simple-tbl">
     <thead><tr>
       <th>Asset</th><th>Bias</th><th>Score</th>
-      <th>Sentiment Score</th><th>Technical Score</th><th>ECO Score</th>
+      <th>Sentiment</th><th>Technical</th><th>ECO Score</th>
+      <th>COT</th><th>Retail</th>
     </tr></thead><tbody>`;
-  filtered().forEach(a=>{
-    const tc=totalColor(a.total), bc=biasColor(a.bias);
-    const sentScore=a.cot+a.retail+a.seasonal;
-    const techScore=a.trend;
-    const ecoScore=a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
-    const sc=v=>v>0?"var(--bull)":v<0?"var(--bear)":"var(--muted)";
-    html+=`<tr class="${rowBgClass(a.total)}">
-      <td style="color:${tc}">${a.name}</td>
+
+  scored.forEach(a => {
+    const tc = totalColor(a.total), bc = biasColor(a.bias);
+    html += `<tr class="${rowBgClass(a.total)}">
+      <td style="color:${tc};font-weight:600">${a.name}</td>
       <td style="color:${bc}">${a.bias}</td>
       <td><span class="score-badge" style="color:${tc}">${cv(a.total)}</span></td>
-      <td style="color:${sc(sentScore)};font-weight:bold">${cv(sentScore)}</td>
-      <td style="color:${sc(techScore)};font-weight:bold">${cv(techScore)}</td>
-      <td style="color:${sc(ecoScore)};font-weight:bold">${cv(ecoScore)}</td>
+      <td style="color:${sc(a._sentScore)};font-weight:700">${cv(a._sentScore)}</td>
+      <td style="color:${sc(a._techScore)};font-weight:700">${cv(a._techScore)}</td>
+      <td style="color:${sc(a._ecoScore)};font-weight:700">${cv(a._ecoScore)}</td>
+      <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
+      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
     </tr>`;
   });
-  html+=`</tbody></table></div>`;
+  html += `</tbody></table></div>`;
   return html;
 }
 
-// ── VIEW 3: ECO ONLY ──────────────────────────────────────────────────────────
+// ── VIEW 3: ECO ONLY ────────────────────────────────────────────────────────
 function renderSetupsEcoView(){
-  let html=catFilter()+`<div class="score-table-wrap"><table class="score-table" style="min-width:820px">
+  const ld = _setupsLiveData();
+  const isLiveFRED = !!state.econLive;
+  const scored = _computeLiveScores(filtered(), ld).sort((a,b) => b._ecoScore - a._ecoScore);
+
+  let html = catFilter() + `
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
+      Ranked by ECO Score · Macro: Growth ${(SC_MACRO_WEIGHTS.growth*100).toFixed(0)}% · Inflation ${(SC_MACRO_WEIGHTS.inflation*100).toFixed(0)}% · Jobs ${(SC_MACRO_WEIGHTS.jobs*100).toFixed(0)}%
+    </span>
+    <span style="font-family:var(--mono);font-size:9px;color:${isLiveFRED?'var(--bull)':'var(--muted)'};
+      background:${isLiveFRED?'rgba(0,255,136,.1)':'rgba(255,255,255,.04)'};padding:2px 7px;border-radius:3px">
+      ${isLiveFRED?'● FRED LIVE':'◌ FALLBACK DATA'}
+    </span>
+  </div>
+  <div class="score-table-wrap"><table class="score-table" style="min-width:820px">
     <thead>
       <tr>
         <th class="left" rowspan="2">Asset</th>
         <th rowspan="2">ECO Score</th>
-        <th class="group" colspan="4">Growth</th>
-        <th class="group" colspan="4">Inflation</th>
-        <th class="group" colspan="3">Labor Data</th>
+        <th rowspan="2">Growth</th>
+        <th rowspan="2">Inflation</th>
+        <th rowspan="2">Labor</th>
+        <th class="group" colspan="4">Growth Indicators</th>
+        <th class="group" colspan="4">Inflation Indicators</th>
+        <th class="group" colspan="3">Labor Indicators</th>
       </tr>
       <tr>
         <th>GDP</th><th>mPMI</th><th>sPMI</th><th>Retail Sales</th>
         <th>CPI</th><th>Core CPI</th><th>PPI</th><th>PCE</th>
-        <th>Emp Change</th><th>Unemploy</th><th>Interest Rates</th>
+        <th>Emp Change</th><th>Unemploy</th><th>Rates</th>
       </tr>
     </thead><tbody>`;
-  // Sort by ECO score
-  const list=[...filtered()].sort((a,b)=>{
-    const ea=a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
-    const eb=b.gdp+b.mPMI+b.sPMI+b.retailSal+b.inflation+b.empChg+b.unemploy+b.rates;
-    return eb-ea;
-  });
-  list.forEach(a=>{
-    const ecoScore=a.gdp+a.mPMI+a.sPMI+a.retailSal+a.inflation+a.empChg+a.unemploy+a.rates;
-    const tc=totalColor(ecoScore);
-    // Derive Core CPI, PPI, PCE from inflation with nuance
-    const coreCpi=Math.max(-2,Math.min(2,a.inflation));
-    const ppi=a.inflation;
-    const pce=Math.max(-2,Math.min(2,a.inflation+(a.gdp>0?0:-1)));
-    html+=`<tr class="${rowBgClass(ecoScore)}">
+
+  scored.forEach(a => {
+    const tc = totalColor(a._ecoScore);
+    const coreCpi = Math.max(-2, Math.min(2, a.inflation));
+    const ppi     = a.inflation;
+    const pce     = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 0 : -1)));
+    html += `<tr class="${rowBgClass(a._ecoScore)}">
       <td class="asset-name" style="color:${tc}">${a.name}</td>
-      <td class="total-cell" style="color:${tc}">${cv(ecoScore)}</td>
+      <td class="total-cell" style="color:${tc};font-weight:900">${cv(a._ecoScore)}</td>
+      <td class="${cellClass(a._growthScore)}" style="font-weight:700">${cv(a._growthScore)}</td>
+      <td class="${cellClass(a._inflScore)}" style="font-weight:700">${cv(a._inflScore)}</td>
+      <td class="${cellClass(a._jobsScore)}" style="font-weight:700">${cv(a._jobsScore)}</td>
       <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
       <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
       <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
@@ -145,59 +274,104 @@ function renderSetupsEcoView(){
       <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
     </tr>`;
   });
-  html+=`</tbody></table></div>`;
+  html += `</tbody></table></div>`;
   return html;
 }
 
-// ── VIEW 4: SENTIMENT ONLY ────────────────────────────────────────────────────
+// ── VIEW 4: SENTIMENT ───────────────────────────────────────────────────────
 function renderSetupsSentimentView(){
-  // Map PUT_CALL data to asset IDs for lookup
-  const pcMap={SPX500:"SPX500",NAS100:"NAS100",GOLD:"Gold",USOIL:"USOIL",BTCUSD:"BTC",EURUSD:"EUR",USDJPY:"JPY"};
-  const pcLookup={};
-  PUT_CALL.forEach(p=>{
-    const id=pcMap[p.id];
-    if(id){
-      // Convert P/C to score: <0.7=+2, 0.7-0.85=+1, 0.85-1.1=0, 1.1-1.3=-1, >1.3=-2
-      pcLookup[id]=p.pc<0.7?2:p.pc<0.85?1:p.pc<1.1?0:p.pc<1.3?-1:-2;
-    }
-  });
-  // AAII score: bearish spread → score
-  const aaiiScore=AAII.spread<-10?2:AAII.spread<-5?1:AAII.spread>10?-2:AAII.spread>5?-1:0;
+  const ld = _setupsLiveData();
+  const isLiveSent = !!state.sentimentLive;
+  const isLiveCOT  = !!state.cotLive;
 
-  let html=catFilter()+`<div style="overflow-x:auto"><table class="score-table" style="min-width:700px">
+  // Live put/call lookup — use state.putCallData if available
+  const pcSource = state.putCallLive && state.putCallData ? state.putCallData : PUT_CALL;
+  const pcMap = { SPX500:'SPX500', NAS100:'NAS100', GOLD:'Gold', USOIL:'USOIL', BTCUSD:'BTC', EURUSD:'EUR', USDJPY:'JPY' };
+  const pcLookup = {};
+  pcSource.forEach(p => {
+    const id = pcMap[p.id];
+    if (id) pcLookup[id] = p.pc < 0.7 ? 2 : p.pc < 0.85 ? 1 : p.pc < 1.1 ? 0 : p.pc < 1.3 ? -1 : -2;
+  });
+
+  // Live AAII
+  const aaiiSrc   = state.aaiiLive && state.aaiiData ? state.aaiiData : AAII;
+  const aaiiScore = aaiiSrc.spread < -10 ? 2 : aaiiSrc.spread < -5 ? 1 : aaiiSrc.spread > 10 ? -2 : aaiiSrc.spread > 5 ? -1 : 0;
+  const AAII_ASSETS = ['BTC','EUR','JPY','GBP','Gold','DOW','NASDAQ','SPX500','RUSSELL'];
+
+  const scored = _computeLiveScores(filtered(), ld).sort((a,b) => {
+    // Sentiment score = COT + retail + pc (where available)
+    const sa = a.cot + a.retail + (pcLookup[a.id] ?? 0);
+    const sb = b.cot + b.retail + (pcLookup[b.id] ?? 0);
+    return sb - sa;
+  });
+
+  let html = catFilter() + `
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 2px 10px">
+    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Ranked by Sentiment Score</span>
+    <span style="font-family:var(--mono);font-size:9px;color:${isLiveSent?'var(--bull)':'var(--muted)'};
+      background:${isLiveSent?'rgba(0,255,136,.1)':'rgba(255,255,255,.04)'};padding:2px 7px;border-radius:3px">
+      ${isLiveSent?'● Myfxbook LIVE':'◌ Retail Fallback'}
+    </span>
+    <span style="font-family:var(--mono);font-size:9px;color:${isLiveCOT?'var(--bull)':'var(--muted)'};
+      background:${isLiveCOT?'rgba(0,255,136,.1)':'rgba(255,255,255,.04)'};padding:2px 7px;border-radius:3px">
+      ${isLiveCOT?'● COT LIVE':'◌ COT Fallback'}
+    </span>
+  </div>
+  <div style="overflow-x:auto"><table class="score-table" style="min-width:700px">
     <thead><tr>
       <th class="left">Asset</th>
-      <th>Sentiment Bias</th>
-      <th>Sentiment Score</th>
-      <th>COT Data</th>
-      <th>Retail Sentiment</th>
-      <th>Put-Call Ratio</th>
-      <th>AAII Sentiment</th>
+      <th>Sent. Bias</th>
+      <th>Sent. Score</th>
+      <th>COT</th>
+      <th>Retail Pos</th>
+      <th>Retail Long%</th>
+      <th>Put/Call</th>
+      <th>AAII</th>
+      <th>Seasonal</th>
     </tr></thead><tbody>`;
-  // Sort by sentiment score
-  const list=[...filtered()].sort((a,b)=>(b.cot+b.retail)-(a.cot+a.retail));
-  list.forEach(a=>{
-    const sentScore=a.cot+a.retail+a.seasonal;
-    const sc=sentScore>=3?"var(--bull)":sentScore<=-3?"var(--bear)":sentScore>=1?"#7effc4":sentScore<=-1?"#ff8fa0":"var(--muted)";
-    const bias=sentScore>=4?"Very Bullish":sentScore>=2?"Bullish":sentScore>=1?"Mild Bullish":sentScore<=-4?"Very Bearish":sentScore<=-2?"Bearish":sentScore<=-1?"Mild Bearish":"Neutral";
-    const pc=pcLookup[a.id];
-    html+=`<tr class="${rowBgClass(sentScore*2)}">
+
+  scored.forEach(a => {
+    const sentScore = a.cot + a.retail + (pcLookup[a.id] ?? 0);
+    const sc  = sentScore >= 3 ? 'var(--bull)' : sentScore <= -3 ? 'var(--bear)'
+              : sentScore >= 1 ? '#7effc4' : sentScore <= -1 ? '#ff8fa0' : 'var(--muted)';
+    const bias = sentScore >= 4 ? 'Very Bullish' : sentScore >= 2 ? 'Bullish' : sentScore >= 1 ? 'Mild Bullish'
+               : sentScore <= -4 ? 'Very Bearish' : sentScore <= -2 ? 'Bearish' : sentScore <= -1 ? 'Mild Bearish' : 'Neutral';
+
+    // Live retail long% from Myfxbook
+    let retailLongPct = '—';
+    if (ld.sentiment && ld.sentiment.length) {
+      const mfxSym = SC_MFX_MAP[a.id];
+      const mfxRow = mfxSym ? ld.sentiment.find(s => s.name === mfxSym) : null;
+      if (mfxRow) retailLongPct = `${mfxRow.longPercentage.toFixed(1)}%`;
+    }
+
+    const pc = pcLookup[a.id];
+    const isAaiiAsset = AAII_ASSETS.includes(a.id);
+
+    html += `<tr class="${rowBgClass(sentScore * 2)}">
       <td class="asset-name" style="color:${sc}">${a.name}</td>
       <td style="color:${sc};font-family:var(--mono);font-size:11px">${bias}</td>
       <td class="total-cell" style="color:${sc}">${cv(sentScore)}</td>
       <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
       <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
-      <td class="${pc!=null?cellClass(pc):"c0"}">${pc!=null?cv(pc):"—"}</td>
-      <td class="${["BTC","EUR","JPY","GBP","Gold","DOW","NASDAQ","SPX500","RUSSELL"].includes(a.id)?cellClass(aaiiScore):"c0"}">${["BTC","EUR","JPY","GBP","Gold","DOW","NASDAQ","SPX500","RUSSELL"].includes(a.id)?cv(aaiiScore):"—"}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center">${retailLongPct}</td>
+      <td class="${pc != null ? cellClass(pc) : 'c0'}">${pc != null ? cv(pc) : '—'}</td>
+      <td class="${isAaiiAsset ? cellClass(aaiiScore) : 'c0'}">${isAaiiAsset ? cv(aaiiScore) : '—'}</td>
+      <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
     </tr>`;
   });
-  html+=`</tbody></table></div>
+
+  html += `</tbody></table></div>
   <div class="infobox ib-blue" style="margin-top:12px">
-    <span class="iblabel" style="color:var(--accent)">ℹ AAII BULL-BEAR SPREAD: ${AAII.spread>0?"+":""}${AAII.spread}% — Week of ${AAII.week}</span>
-    Score ${cv(aaiiScore)} applied to market-correlated assets. Put-Call from CBOE daily data.
+    <span class="iblabel" style="color:var(--accent)">
+      ℹ AAII Bull-Bear Spread: ${aaiiSrc.spread > 0 ? '+' : ''}${aaiiSrc.spread}% · Week of ${aaiiSrc.week || 'N/A'}
+      ${state.aaiiLive ? ' · ● LIVE' : ' · ◌ Fallback'}
+    </span>
+    Score ${cv(aaiiScore)} applied to correlated assets. Put/Call from ${state.putCallLive ? 'CBOE LIVE' : 'fallback data'}.
   </div>`;
   return html;
 }
+
 
 // ── VIEW 5: HISTORY ───────────────────────────────────────────────────────────
 function renderSetupsHistoryView(){
