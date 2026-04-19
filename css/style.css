@@ -498,3 +498,67 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 }
 .theme-btn:hover { background: var(--bg4); color: var(--text); }
 
+
+/* ─── INLINE STYLE THEME VARIABLES ─────────────────────────────────── */
+/* These are used by JS render functions via var() in inline styles      */
+:root {
+  /* Card / surface backgrounds */
+  --ef-c1:  #0e1520;          /* primary card bg */
+  --ef-c2:  #0d1117;          /* secondary card bg */
+  --ef-c3:  #080c10;          /* page/deep bg */
+  /* Card header bg (slight lightening of card bg) */
+  --ef-ch:  rgba(255,255,255,.025); /* card header overlay */
+  /* Borders */
+  --ef-b1:  rgba(255,255,255,.07);
+  --ef-b2:  rgba(255,255,255,.06);
+  --ef-b3:  rgba(255,255,255,.05);
+  --ef-b4:  rgba(255,255,255,.04);
+  --ef-b5:  rgba(255,255,255,.03);
+  --ef-b6:  rgba(255,255,255,.025);
+  /* Text opacity layers */
+  --ef-t1:  rgba(255,255,255,.8);
+  --ef-t2:  rgba(255,255,255,.7);
+  --ef-t3:  rgba(255,255,255,.5);
+  --ef-t4:  rgba(255,255,255,.45);
+  --ef-t5:  rgba(255,255,255,.4);
+  --ef-t6:  rgba(255,255,255,.35);
+  --ef-t7:  rgba(255,255,255,.3);
+  --ef-t8:  rgba(255,255,255,.25);
+}
+
+[data-theme="light"] {
+  /* Card / surface backgrounds */
+  --ef-c1:  #ffffff;
+  --ef-c2:  #f5f7fa;
+  --ef-c3:  #f0f2f5;
+  /* Card header bg */
+  --ef-ch:  rgba(0,0,0,.03);
+  /* Borders */
+  --ef-b1:  rgba(0,0,0,.10);
+  --ef-b2:  rgba(0,0,0,.08);
+  --ef-b3:  rgba(0,0,0,.07);
+  --ef-b4:  rgba(0,0,0,.06);
+  --ef-b5:  rgba(0,0,0,.05);
+  --ef-b6:  rgba(0,0,0,.04);
+  /* Text opacity layers */
+  --ef-t1:  rgba(0,0,0,.85);
+  --ef-t2:  rgba(0,0,0,.75);
+  --ef-t3:  rgba(0,0,0,.60);
+  --ef-t4:  rgba(0,0,0,.55);
+  --ef-t5:  rgba(0,0,0,.50);
+  --ef-t6:  rgba(0,0,0,.45);
+  --ef-t7:  rgba(0,0,0,.40);
+  --ef-t8:  rgba(0,0,0,.35);
+}
+
+[data-theme="light"] {
+  --sc-bg0: #f0f2f5;
+  --sc-bg1: #ffffff;
+  --sc-bg2: #f5f7fa;
+  --sc-bg3: #eaecf0;
+  --sc-border:  rgba(0,0,0,.08);
+  --sc-border2: rgba(0,0,0,.14);
+  --sc-t1: #1a1e26;
+  --sc-t2: #4b5563;
+  --sc-t3: #9ca3af;
+}
