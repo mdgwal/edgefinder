@@ -440,3 +440,61 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 }
 .sc-rank-row:last-child { border-bottom:none; }
 
+
+/* ─── LIGHT MODE ────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg:     #f0f2f5;
+  --bg2:    #ffffff;
+  --bg3:    #e8eaed;
+  --bg4:    #dde0e5;
+  --border: #c8ccd2;
+  --bull:   #0d7f3f;
+  --bear:   #c0293e;
+  --neutral:#b07a00;
+  --accent: #1a5fb4;
+  --text:   #1a1e26;
+  --muted:  #5c6370;
+  --cell-bull:         rgba(13,127,63,.14);
+  --cell-bear:         rgba(192,41,62,.14);
+  --cell-strong-bull:  rgba(13,127,63,.28);
+  --cell-strong-bear:  rgba(192,41,62,.28);
+  --blue:   #1a5fb4;
+  --red:    #c0293e;
+}
+[data-theme="light"] body          { background: var(--bg); }
+[data-theme="light"] .header       { background: #ffffff; box-shadow: 0 1px 4px rgba(0,0,0,.10); }
+[data-theme="light"] .tabs         { background: #ffffff; }
+[data-theme="light"] .tab.active   { color: var(--bull); border-bottom-color: var(--bull); }
+[data-theme="light"] .score-table td.asset-name { background: #ffffff; }
+[data-theme="light"] .cot-tbl td:first-child     { background: #ffffff; }
+[data-theme="light"] .rbtn         { background: #e8eaed; border-color: #c8ccd2; color: #5c6370; }
+[data-theme="light"] .rbtn:hover   { background: #dde0e5; }
+[data-theme="light"] .live-dot     { background: #0d7f3f; }
+[data-theme="light"] .logo-icon    { background: linear-gradient(135deg,#0d7f3f,#1a5fb4); }
+[data-theme="light"] .apibox       { background: #ffffff; border-color: #c8ccd2; }
+[data-theme="light"] .card         { background: #ffffff; border-color: #c8ccd2; }
+[data-theme="light"] .sectitle     { color: #1a1e26; }
+[data-theme="light"] .infobox      { border-color: #c8ccd2; }
+[data-theme="light"] .ib-green     { background: rgba(13,127,63,.08); border-color: rgba(13,127,63,.3); }
+[data-theme="light"] .ib-blue      { background: rgba(26,95,180,.08); border-color: rgba(26,95,180,.3); }
+[data-theme="light"] .score-table th.group { background: #e8eaed; }
+[data-theme="light"] .cbadge-live  { color: #0d7f3f; background: rgba(13,127,63,.10); }
+[data-theme="light"] .cbadge-demo  { color: #b07a00; background: rgba(176,122,0,.10); }
+[data-theme="light"] input, [data-theme="light"] select {
+  background: #ffffff; border-color: #c8ccd2; color: #1a1e26;
+}
+/* ─── THEME TOGGLE BUTTON ───────────────────────────────────────── */
+.theme-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 15px;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, color .2s;
+  flex-shrink: 0;
+}
+.theme-btn:hover { background: var(--bg4); color: var(--text); }
+
