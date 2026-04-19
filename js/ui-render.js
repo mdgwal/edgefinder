@@ -1,4 +1,31 @@
-// ui-render.js — All DOM rendering functions
+    scored.forEach(a => {
+    const tc  = totalColor(a.total), bc = biasColor(a.bias);
+    const ppi = a.inflation;
+    const pce = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 1 : -1) * 0.5 | 0));
+    const deltaStr = a.delta !== null
+      ? `<span style="font-size:9px;color:${a.delta>0?'#00ff88':a.delta<0?'#ff4d6d':'#6b7280'};margin-left:3px">${a.delta>0?'↑':a.delta<0?'↓':'→'}${a.delta>0?'+':''}${a.delta}</span>` : '';
+    const qColor = a.quality==='A'?'#00ff88':a.quality==='B'?'#f0b429':'#6b7280';
+    const qBadge = `<span style="font-family:var(--mono);font-size:8px;font-weight:700;color:${qColor};background:${qColor}1a;padding:1px 4px;border-radius:2px;margin-left:4px">${a.quality}${a.crowded?'⚠':''}</span>`;
+    html += `<tr class="${rowBgClass(a.total)}">
+      <td class="asset-name" style="color:${tc}">${a.name}</td>
+      <td class="bias-cell" style="color:${bc}">${a.bias}${qBadge}</td>
+      <td class="total-cell" style="white-space:nowrap;color:${tc}">${cv(a.total)}${deltaStr}</td>
+      <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
+      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
+      <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
+      <td class="${cellClass(a.trend)}">${cv(a.trend)}</td>
+      <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
+      <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
+      <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
+      <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
+      <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
+      <td class="${cellClass(ppi)}">${cv(ppi)}</td>
+      <td class="${cellClass(pce)}">${cv(pce)}</td>
+      <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
+      <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
+      <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
+    </tr>`;
+  })// ui-render.js — All DOM rendering functions
 
 // ── SETUPS SUB-TAB NAVIGATION ─────────────────────────────────────────────────
 const SETUPS_VIEWS=[
@@ -47,66 +74,41 @@ function _setupsLiveData() {
   };
 }
 
-// Compute live scores for every asset in the filtered list
-// Returns array of enriched asset objects with live components
+// Run every asset through calculateSetupScore — the dedicated Setup Engine (−10 to +10)
 function _computeLiveScores(assetList, liveData) {
+  const c2 = v => Math.max(-2, Math.min(2, Math.round(v || 0)));
   return assetList.map(a => {
-    try {
-      const scored = calculateAssetScore(a, liveData);
-      const c = scored.components;
-      // Convenience sub-scores for views
-      const sentScore  = Math.max(-6, Math.min(6, Math.round(
-        c.sentiment * 2 + c.cot * 2 + c.technical * 0.5
-      )));
-      const techScore  = Math.max(-2, Math.min(2, Math.round(c.technical)));
-      const growthScore= Math.max(-2, Math.min(2, Math.round(c.growth)));
-      const inflScore  = Math.max(-2, Math.min(2, Math.round(c.inflation)));
-      const jobsScore  = Math.max(-2, Math.min(2, Math.round(c.jobs)));
-      const ecoScore   = Math.max(-8, Math.min(8, Math.round(
-        growthScore * 3 + inflScore * 2.5 + jobsScore * 2.5
-      )));
-      return {
-        ...a,
-        // Override static fields with live values
-        total:      scored.totalScore,
-        bias:       scored.bias,
-        cot:        Math.max(-2, Math.min(2, Math.round(c.cot))),
-        retail:     Math.max(-2, Math.min(2, Math.round(c.sentiment))),
-        trend:      Math.max(-2, Math.min(2, Math.round(c.technical))),
-        gdp:        Math.max(-2, Math.min(2, Math.round(c.growth))),
-        mPMI:       a.mPMI,    // kept from static (not in deriveComponents directly)
-        sPMI:       a.sPMI,
-        retailSal:  a.retailSal,
-        inflation:  Math.max(-2, Math.min(2, Math.round(c.inflation))),
-        empChg:     Math.max(-2, Math.min(2, Math.round(c.jobs))),
-        unemploy:   a.unemploy,
-        rates:      a.rates,
-        // Derived sub-scores
-        _sentScore:  sentScore,
-        _techScore:  techScore,
-        _growthScore: growthScore,
-        _inflScore:  inflScore,
-        _jobsScore:  jobsScore,
-        _ecoScore:   ecoScore,
-        _live:       !!(state.cotLive || state.econLive || state.sentimentLive),
-        _components: c,
-      };
-    } catch(e) {
-      // Fallback to static data if engine throws
-      const ecoS = a.gdp + a.mPMI + a.sPMI + a.retailSal + a.inflation + a.empChg + a.unemploy + a.rates;
-      return {
-        ...a,
-        _sentScore:  a.cot + a.retail,
-        _techScore:  a.trend,
-        _growthScore:a.gdp,
-        _inflScore:  a.inflation,
-        _jobsScore:  a.empChg + a.unemploy,
-        _ecoScore:   ecoS,
-        _live:       false,
-        _components: {},
-      };
-    }
-  });
+    const ss = calculateSetupScore(a.id, liveData) || {};
+    const f  = ss.factors || {};
+    return {
+      ...a,
+      total:       ss.score  ?? a.total,
+      bias:        ss.bias   ?? a.bias,
+      quality:     ss.quality ?? 'C',
+      delta:       ss.delta  ?? null,
+      confluence:  ss.confluence ?? 0,
+      crowded:     ss.crowded ?? false,
+      cot:         c2(f.cot),
+      retail:      c2(f.sentiment),
+      trend:       c2(f.technical),
+      gdp:         c2(f.growth),
+      inflation:   c2(f.inflation),
+      empChg:      c2(f.jobs),
+      mPMI:        a.mPMI,
+      sPMI:        a.sPMI,
+      retailSal:   a.retailSal,
+      unemploy:    a.unemploy,
+      rates:       a.rates,
+      seasonal:    a.seasonal,
+      _sentScore:  c2(f.sentiment) + c2(f.cot),
+      _techScore:  c2(f.technical),
+      _growthScore:c2(f.growth),
+      _inflScore:  c2(f.inflation),
+      _jobsScore:  c2(f.jobs),
+      _ecoScore:   Math.max(-8, Math.min(8, Math.round(c2(f.growth)*3 + c2(f.inflation)*2.5 + c2(f.jobs)*2.5))),
+      _live:       !!(state.cotLive || state.econLive || state.sentimentLive || state.rates),
+    };
+  }).sort((a, b) => b.total - a.total);
 }
 
 // Live badge shown in table header
@@ -194,23 +196,27 @@ function renderSetupsSimpleView(){
   <div style="overflow-x:auto"><table class="simple-tbl">
     <thead><tr>
       <th>Asset</th><th>Bias</th><th>Score</th>
-      <th>Sentiment</th><th>Technical</th><th>ECO Score</th>
-      <th>COT</th><th>Retail</th>
+      <th>Quality</th><th>Sentiment</th><th>Technical</th><th>ECO Score</th>
+      <th>COT</th>
     </tr></thead><tbody>`;
 
   scored.forEach(a => {
     const tc = totalColor(a.total), bc = biasColor(a.bias);
+    const deltaStr = a.delta !== null
+      ? `<span style="font-size:9px;margin-left:3px;color:${a.delta>0?'#00ff88':a.delta<0?'#ff4d6d':'#6b7280'}">${a.delta>0?'↑':a.delta<0?'↓':'→'}${a.delta>0?'+':''}${a.delta}</span>` : '';
+    const qColor = a.quality==='A'?'#00ff88':a.quality==='B'?'#f0b429':'#6b7280';
+    const confDots = '●'.repeat(a.confluence||0) + '○'.repeat(4-(a.confluence||0));
     html += `<tr class="${rowBgClass(a.total)}">
       <td style="color:${tc};font-weight:600">${a.name}</td>
       <td style="color:${bc}">${a.bias}</td>
-      <td><span class="score-badge" style="color:${tc}">${cv(a.total)}</span></td>
+      <td style="white-space:nowrap"><span class="score-badge" style="color:${tc}">${cv(a.total)}</span>${deltaStr}</td>
+      <td style="color:${qColor};font-family:var(--mono);font-size:10px;font-weight:700">${a.quality}${a.crowded?'⚠':''} <span style="font-size:8px;letter-spacing:1px;color:${qColor}88">${confDots}</span></td>
       <td style="color:${sc(a._sentScore)};font-weight:700">${cv(a._sentScore)}</td>
       <td style="color:${sc(a._techScore)};font-weight:700">${cv(a._techScore)}</td>
       <td style="color:${sc(a._ecoScore)};font-weight:700">${cv(a._ecoScore)}</td>
       <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
-      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
     </tr>`;
-  });
+  })
   html += `</tbody></table></div>`;
   return html;
 }
@@ -556,7 +562,7 @@ function renderSetupsHistoryView(){
     ${xLbls}
   </svg>`;
 
-  html+=`<div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
+  html+=`<div style="background:var(--ef-c2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
     ${svg}
   </div>`;
 
@@ -1592,7 +1598,7 @@ function renderSeasonality(){
     </div>
     <div class="infobox ib-blue">
       <span class="iblabel" style="color:var(--accent)">ℹ FULL YEAR SEASONALITY — ${pair.name}</span>
-      <strong style="color:rgba(255,255,255,.8)">White dashed</strong> = 10-year cumulative % avg by week.
+      <strong style="color:var(--ef-t1)">White dashed</strong> = 10-year cumulative % avg by week.
       <strong style="color:#e05c6a">Red line</strong> = current year YTD.
       Current month (<strong style="color:var(--accent)">${MONTH_NAMES[curMonth]}</strong>): 10yr avg return <strong style="color:${sigCol}">${avg10cur>0?"+":""}${avg10cur.toFixed(2)}%</strong>
     </div>`;
@@ -2598,7 +2604,7 @@ function renderScorecard() {
   const normHint = (raw_v, score_v) => {
     const c=score_v>0?'#4a90d9':score_v<0?'#e05c6a':'#8b949e';
     return `<span style="font-family:var(--mono);font-size:9px;color:${c};
-      background:rgba(255,255,255,.04);padding:1px 5px;border-radius:3px;white-space:nowrap">
+      background:var(--ef-b4);padding:1px 5px;border-radius:3px;white-space:nowrap">
       Score ${score_v>0?'+':''}${score_v}</span>`;
   };
 
@@ -2709,7 +2715,7 @@ function renderScorecard() {
       <td></td><td></td>
     </tr>
     <!-- Interpretation layer -->
-    <tr style="background:rgba(255,255,255,.02)">
+    <tr style="background:var(--ef-b6)">
       <td colspan="6" style="padding:6px 12px">
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
           <span style="font-size:10px;color:var(--muted)">Smart Money:</span>
@@ -2744,7 +2750,7 @@ function renderScorecard() {
       comp.inflation>0?(isInflBull?'Bullish':'Bearish'):(isInflBull?'Bearish':'Bullish'),
       comp.inflation>0?'↑ Rising':comp.inflation<0?'↓ Falling':'→ Flat',
       'The 2yr yield','', f_infl)}
-    <tr style="background:rgba(255,255,255,.02)">
+    <tr style="background:var(--ef-b6)">
       <td colspan="6" style="padding:5px 12px;font-size:9px;color:var(--muted);font-style:italic">
         ${isInflBull?'↑ Inflation = Bullish for '+SC_LABELS[raw.id]+' (commodity / crypto hedge)':'↑ Inflation = Bearish for '+SC_LABELS[raw.id]+' (equity risk-off)'}
       </td>
@@ -2778,7 +2784,7 @@ function renderScorecard() {
     const pct=Math.round(Math.max(4,Math.min(96,((c.v+2)/4)*100)));
     return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
       <span style="font-size:10px;color:var(--muted);width:80px;flex-shrink:0">${c.lbl}</span>
-      <div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+      <div style="flex:1;height:4px;background:var(--ef-b2);border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${cc};border-radius:2px"></div>
       </div>
       <span style="font-family:var(--mono);font-size:9px;color:${cc};min-width:22px;text-align:right">${c.v>0?'+':''}${c.v}</span>
@@ -2927,13 +2933,13 @@ function renderScorecard() {
   // ── INJECT ────────────────────────────────────────────────────────────────────
   // ── SHARED CARD SHELL ────────────────────────────────────────────────────────
   const K = {
-    card: 'background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
-    hd:   'padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;',
+    card: 'background:var(--ef-c1);border:1px solid var(--ef-b1);border-radius:10px;overflow:hidden;',
+    hd:   'padding:10px 14px;background:var(--ef-ch);border-bottom:1px solid var(--ef-b2);display:flex;align-items:center;justify-content:space-between;',
     body: 'padding:12px 14px;',
-    row:  'display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);',
+    row:  'display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ef-b4);',
     rowLast: 'display:flex;align-items:center;justify-content:space-between;padding:6px 0;',
     mono: "font-family:var(--mono);",
-    muted:'color:rgba(255,255,255,.35);',
+    muted:'color:var(--ef-t6);',
   };
   const mkBadge = (b,sm) => {
     const s=String(b||'Neutral');
@@ -2965,7 +2971,7 @@ function renderScorecard() {
         ${scNickGaugeSVG(edgeScore, 12)}
         <div style="text-align:center;margin-top:4px">
           <span id="sc-score-num" style="font-family:var(--mono);font-size:22px;font-weight:800;color:${heroEC}">${edgeScore}</span>
-          <span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);margin-left:4px">EDGE SCORE</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--ef-t7);margin-left:4px">EDGE SCORE</span>
         </div>
       </div>
       <!-- Score breakdown -->
@@ -2976,11 +2982,11 @@ function renderScorecard() {
           ['Sentiment + COT',   sentCOTScore, null],
           ['Fundamentals',      fundScore,    null],
         ].map(([lbl,v,c])=>`<div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:rgba(255,255,255,.5)">${lbl}</span>
+          <span style="font-size:11px;color:var(--ef-t3)">${lbl}</span>
           ${c?`<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${c}">${v}</span>`:scoreChip(v)}
         </div>`).join('')}
-        <div style="margin-top:4px;padding-top:5px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.6px">T·25% I·20% G·20% F·20% L·15%</span>
+        <div style="margin-top:4px;padding-top:5px;border-top:1px solid var(--ef-b2);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:8px;color:var(--ef-t8);text-transform:uppercase;letter-spacing:.6px">T·25% I·20% G·20% F·20% L·15%</span>
           <span class="${isLive?'cbadge-live':'cbadge-demo'}" style="font-size:9px">${isLive?'● LIVE':'◌ STATIC'}</span>
         </div>
       </div>
@@ -2994,14 +3000,14 @@ function renderScorecard() {
       <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;text-transform:uppercase;letter-spacing:.8px">▶ Macro Summary</span>
       <span id="sc-bias-lbl" style="font-family:var(--mono);font-size:10px;font-weight:700;color:${heroBC}">${overallBias}</span>
     </div>
-    <div style="${K.body}font-size:11px;color:rgba(255,255,255,.5);line-height:1.75">${genNarrative()}</div>
+    <div style="${K.body}font-size:11px;color:var(--ef-t3);line-height:1.75">${genNarrative()}</div>
   </div>`;
 
   // Section 3 — Component weight bars (compact, horizontal)
   const wtSection = `
   <div style="${K.card}margin-bottom:14px">
     <div style="${K.hd}">
-      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">⚖ Component Weights</span>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ef-t5);text-transform:uppercase;letter-spacing:.8px">⚖ Component Weights</span>
       <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${heroBC}">${ws>0?'+':''}${ws.toFixed(2)} weighted</span>
     </div>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:5px">
@@ -3011,12 +3017,12 @@ function renderScorecard() {
         const contrib=(c.v*c.w).toFixed(2);
         const contribC=parseFloat(contrib)>0?'#4a90d9':parseFloat(contrib)<0?'#e05c6a':'#4b5563';
         return `<div style="display:grid;grid-template-columns:90px 1fr 28px 40px;align-items:center;gap:8px">
-          <span style="font-size:10px;color:rgba(255,255,255,.4)">${c.lbl}</span>
-          <div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+          <span style="font-size:10px;color:var(--ef-t5)">${c.lbl}</span>
+          <div style="height:3px;background:var(--ef-b2);border-radius:2px;overflow:hidden">
             <div style="width:${pct}%;height:100%;background:${cc};border-radius:2px"></div>
           </div>
           <span style="font-family:var(--mono);font-size:9px;color:${cc};text-align:right">${c.v>0?'+':''}${c.v}</span>
-          <span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-align:right">${c.wlbl}</span>
+          <span style="font-family:var(--mono);font-size:8px;color:var(--ef-t8);text-align:right">${c.wlbl}</span>
         </div>`;
       }).join('')}
     </div>
@@ -3026,7 +3032,7 @@ function renderScorecard() {
   const histSection = `
   <div style="${K.card}margin-bottom:14px;overflow:hidden">
     <div style="${K.hd}">
-      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">📈 Score Over Time</span>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ef-t5);text-transform:uppercase;letter-spacing:.8px">📈 Score Over Time</span>
     </div>
     ${scHistoryChart(raw.id, edgeScore, {height:120, showLabel:false})}
   </div>`;
@@ -3035,7 +3041,7 @@ function renderScorecard() {
   // Using exact same section/accordion builder as before
   const detailsSection = `
   <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-    <div style="flex:1;min-width:260px;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;background:#0e1520">
+    <div style="flex:1;min-width:260px;border:1px solid var(--ef-b1);border-radius:10px;overflow:hidden;background:var(--ef-c1)">
       <style>.sc-accordion:last-child{border-bottom:none}</style>
       ${section('tech',  '📈','Technical bias',            comp.technical>=1?'Bullish':comp.technical<=-1?'Bearish':'Neutral',   '25%', techFresh,  techContent,   f_tech*0.25)}
       ${section('inst',  '🏦','Institutional activity bias',f_inst>=1?'Bullish':f_inst<=-1?'Bearish':'Neutral',                   '20%', cotFresh,   instContent,   f_inst*0.20)}
@@ -3043,21 +3049,21 @@ function renderScorecard() {
       ${section('infl',  '🌡','Inflation bias',             f_infl>=1?'Bullish':f_infl<=-1?'Bearish':'Neutral',                   '20%', econFresh,  inflContent,   f_infl*0.20)}
       ${section('labor', '👷','Jobs market bias',           f_labor>=1?'Bullish':f_labor<=-1?'Bearish':'Neutral',                  '15%', econFresh,  laborContent,  f_labor*0.15)}
     </div>
-    <div style="width:176px;min-width:160px;flex-shrink:0;background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;align-self:flex-start">
+    <div style="width:176px;min-width:160px;flex-shrink:0;background:var(--ef-c1);border:1px solid var(--ef-b1);border-radius:10px;padding:12px;align-self:flex-start">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-        <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7)">Crowd signal</span>
+        <span style="font-size:11px;font-weight:600;color:var(--ef-t2)">Crowd signal</span>
         ${mkBadge(crowdSignal,true)}
       </div>
-      <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.65">
+      <div style="font-size:10px;color:var(--ef-t5);line-height:1.65">
         ${rlp>65?`Retail ${rlp.toFixed(0)}% long — contrarian bullish. Puts being bought aggressively.`:rlp<35?`Retail ${rlp.toFixed(0)}% long — contrarian bearish. Heavy short positioning.`:`Retail ${rlp.toFixed(0)}% long — balanced, no extreme signal.`}
       </div>
-      ${sentRow?`<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
-        <span style="color:rgba(255,255,255,.3)">Long %</span><span style="color:${rlp>65?'#e05c6a':rlp<35?'#4a90d9':'#6b7280'}">${rlp.toFixed(1)}%</span>
+      ${sentRow?`<div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--ef-b2);display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+        <span style="color:var(--ef-t7)">Long %</span><span style="color:${rlp>65?'#e05c6a':rlp<35?'#4a90d9':'#6b7280'}">${rlp.toFixed(1)}%</span>
       </div>`:''}
       ${pcRow?`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-top:3px">
-        <span style="color:rgba(255,255,255,.3)">Put/Call</span><span style="color:rgba(255,255,255,.7)">${pcRow.pc.toFixed(2)}</span>
+        <span style="color:var(--ef-t7)">Put/Call</span><span style="color:var(--ef-t2)">${pcRow.pc.toFixed(2)}</span>
       </div>`:''}
-      <div style="margin-top:6px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.2)">${sentFresh}</div>
+      <div style="margin-top:6px;font-family:var(--mono);font-size:8px;color:var(--ef-t8)">${sentFresh}</div>
     </div>
   </div>`;
 
@@ -3066,9 +3072,9 @@ function renderScorecard() {
   <!-- Page header -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <div>
-      <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35)">Asset Scorecard</div>
+      <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ef-t6)">Asset Scorecard</div>
     </div>
-    <select style="background:#0e1520;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);
+    <select style="background:var(--ef-c1);border:1px solid rgba(255,255,255,.1);color:var(--ef-t1);
       font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none;cursor:pointer"
       onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
   </div>
@@ -3230,7 +3236,7 @@ function renderForexScorecard() {
     const pct  = Math.round(Math.max(4, Math.min(96, ((diff+2)/4)*100)));
     return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0">
       <span style="font-size:10px;color:var(--muted);width:110px;flex-shrink:0">${c.lbl}</span>
-      <div style="flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+      <div style="flex:1;height:4px;background:var(--ef-b2);border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${cc};border-radius:2px"></div>
       </div>
       <span style="font-family:var(--mono);font-size:9px;color:${cc};min-width:22px;text-align:right">${diff>=0?'+':''}${diff}</span>
@@ -3318,14 +3324,14 @@ function renderForexScorecard() {
     ${compRow('CB Rate Level',    bc_comp.jobs, qc_comp.jobs)}
     ${compRow('Rate Differential',bc_comp.inflation, qc_comp.inflation)}
     ${compRow('CB Stance',        bc_comp.cot, qc_comp.cot)}
-    <tr style="background:rgba(255,255,255,.02)">
+    <tr style="background:var(--ef-b6)">
       <td colspan="4" style="padding:6px 12px">
         <div style="display:flex;flex-wrap:wrap;gap:8px">
           ${[selObj.base, selObj.quote].map(ccy=>{
             const cb = FX_CB_DATA[ccy];
             if(!cb) return '';
             const sc_val = cb.stance>=1?'#4a90d9':cb.stance<=-1?'#e05c6a':'#8b949e';
-            return `<div style="display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.04);padding:3px 8px;border-radius:4px">
+            return `<div style="display:flex;align-items:center;gap:5px;background:var(--ef-b4);padding:3px 8px;border-radius:4px">
               <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${sc_val}">${ccy}</span>
               <span style="font-size:10px;color:var(--muted)">${cb.name}: ${cb.rate.toFixed(2)}% · ${cb.label}</span>
             </div>`;
@@ -3351,12 +3357,12 @@ function renderForexScorecard() {
     const isBase  = ccy === selObj.base;
     const isQuote = ccy === selObj.quote;
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 12px;
-      border-bottom:1px solid rgba(255,255,255,.03);${isBase||isQuote?'background:rgba(255,255,255,.025)':''}">
+      border-bottom:1px solid var(--ef-b5);${isBase||isQuote?'background:rgba(255,255,255,.025)':''}">
       <span style="font-size:9px;color:var(--muted);width:14px">${isTop?i+1:8-i}</span>
       <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};width:36px">
         ${ccy}${isBase?' *':isQuote?' ·':''}
       </span>
-      <div style="flex:1;height:4px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden">
+      <div style="flex:1;height:4px;background:var(--ef-b3);border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${col};border-radius:2px"></div>
       </div>
       <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col};min-width:24px;text-align:right">
@@ -3367,10 +3373,10 @@ function renderForexScorecard() {
 
   const strengthContent = `
     <div style="padding:6px 12px;font-family:var(--mono);font-size:8px;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.5px;background:rgba(255,255,255,.02)">Top 3 Strongest</div>
+      text-transform:uppercase;letter-spacing:.5px;background:var(--ef-b6)">Top 3 Strongest</div>
     ${topN.map((entry,i) => strengthRow(entry, i, true)).join('')}
     <div style="padding:6px 12px;font-family:var(--mono);font-size:8px;color:var(--muted);
-      text-transform:uppercase;letter-spacing:.5px;background:rgba(255,255,255,.02);
+      text-transform:uppercase;letter-spacing:.5px;background:var(--ef-b6);
       border-top:1px solid rgba(255,255,255,.06)">Bottom 3 Weakest</div>
     ${botN.map((entry,i) => strengthRow(entry, i, false)).join('')}
     <div style="padding:5px 12px;font-size:9px;color:var(--muted);font-style:italic">
@@ -3432,7 +3438,7 @@ function renderForexScorecard() {
         <div style="display:flex;align-items:center;gap:6px;padding:5px 2px">
           <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${baseCol};
             width:30px;flex-shrink:0">${selObj.base}</span>
-          <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+          <div style="flex:1;height:5px;background:var(--ef-b2);border-radius:2px;overflow:hidden">
             <div data-fx-bar="base" style="width:${basePct}%;height:100%;background:${baseCol};border-radius:2px"></div>
           </div>
           <span data-fx-val="base" style="font-family:var(--mono);font-size:10px;font-weight:700;
@@ -3441,7 +3447,7 @@ function renderForexScorecard() {
         <div style="display:flex;align-items:center;gap:6px;padding:2px 2px">
           <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${quoteCol};
             width:30px;flex-shrink:0">${selObj.quote}</span>
-          <div style="flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+          <div style="flex:1;height:5px;background:var(--ef-b2);border-radius:2px;overflow:hidden">
             <div data-fx-bar="quote" style="width:${quotePct}%;height:100%;background:${quoteCol};border-radius:2px"></div>
           </div>
           <span data-fx-val="quote" style="font-family:var(--mono);font-size:10px;font-weight:700;
@@ -3522,8 +3528,8 @@ function renderForexScorecard() {
 
   // Shared helpers (scoped to forex, same pattern as asset K/mkBadge/scoreChip)
   const fxK = {
-    card: 'background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
-    hd:   'padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;',
+    card: 'background:var(--ef-c1);border:1px solid var(--ef-b1);border-radius:10px;overflow:hidden;',
+    hd:   'padding:10px 14px;background:var(--ef-ch);border-bottom:1px solid var(--ef-b2);display:flex;align-items:center;justify-content:space-between;',
     body: 'padding:12px 14px;',
   };
   const fxBadge2 = (b,sm) => {
@@ -3571,19 +3577,19 @@ function renderForexScorecard() {
         ${scNickGaugeSVG(pairScore, 12)}
         <div style="text-align:center;margin-top:4px">
           <span id="sc-score-num" style="font-family:var(--mono);font-size:22px;font-weight:800;color:${fxPS_EC}">${pairScore>=0?'+':''}${pairScore}</span>
-          <span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3);margin-left:4px">PAIR SCORE</span>
+          <span style="font-family:var(--mono);font-size:9px;color:var(--ef-t7);margin-left:4px">PAIR SCORE</span>
         </div>
       </div>
       <!-- Right: base / quote / equation (replaces asset score rows) -->
       <div style="flex:1;padding:10px 16px;display:flex;flex-direction:column;gap:6px">
         <!-- Base currency row -->
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:rgba(255,255,255,.5)">${selObj.base} (Base)</span>
+          <span style="font-size:11px;color:var(--ef-t3)">${selObj.base} (Base)</span>
           <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${bsC}">${baseScore>=0?'+':''}${baseScore}</span>
         </div>
         <!-- Quote currency row -->
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:11px;color:rgba(255,255,255,.5)">${selObj.quote} (Quote)</span>
+          <span style="font-size:11px;color:var(--ef-t3)">${selObj.quote} (Quote)</span>
           <span style="font-family:var(--mono);font-size:12px;font-weight:700;color:${qsC}">${quoteScore>=0?'+':''}${quoteScore}</span>
         </div>
         <!-- Strength bars -->
@@ -3600,8 +3606,8 @@ function renderForexScorecard() {
           </div>
         </div>
         <!-- Pair equation -->
-        <div style="margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:var(--mono);font-size:9px;color:rgba(255,255,255,.3)">
+        <div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--ef-b2);display:flex;justify-content:space-between;align-items:center">
+          <span style="font-family:var(--mono);font-size:9px;color:var(--ef-t7)">
             ${selObj.base}(${baseScore>=0?'+':''}${baseScore}) − ${selObj.quote}(${quoteScore>=0?'+':''}${quoteScore}) = <strong style="color:${fxPS_EC}">${pairScore>=0?'+':''}${pairScore}</strong>
           </span>
           <span class="${isLive?'cbadge-live':'cbadge-demo'}" style="font-size:9px">${isLive?'● LIVE':'◌ STATIC'}</span>
@@ -3617,7 +3623,7 @@ function renderForexScorecard() {
       <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;text-transform:uppercase;letter-spacing:.8px">▶ Forex Summary</span>
       <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${fxBiasBC}">${overallBias}</span>
     </div>
-    <div style="${fxK.body}font-size:11px;color:rgba(255,255,255,.5);line-height:1.75">${genFxNarrative()}</div>
+    <div style="${fxK.body}font-size:11px;color:var(--ef-t3);line-height:1.75">${genFxNarrative()}</div>
   </div>`;
 
   // ── S3: COMPONENT WEIGHTS (full-width horizontal bars — identical to Asset) ─
@@ -3641,19 +3647,19 @@ function renderForexScorecard() {
     const pct  = Math.round(Math.max(4, Math.min(96, ((diff+2)/4)*100)));
     const contrib = (diff * c.w).toFixed(2);
     return `<div style="display:grid;grid-template-columns:110px 1fr 32px 40px;align-items:center;gap:8px">
-      <span style="font-size:10px;color:rgba(255,255,255,.4)">${c.lbl}</span>
-      <div style="height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+      <span style="font-size:10px;color:var(--ef-t5)">${c.lbl}</span>
+      <div style="height:3px;background:var(--ef-b2);border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${cc};border-radius:2px"></div>
       </div>
       <span style="font-family:var(--mono);font-size:9px;color:${cc};text-align:right">${diff>=0?'+':''}${diff}</span>
-      <span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-align:right">${c.wlbl}</span>
+      <span style="font-family:var(--mono);font-size:8px;color:var(--ef-t8);text-align:right">${c.wlbl}</span>
     </div>`;
   }).join('');
 
   const fxWtSection = `
   <div style="${fxK.card}margin-bottom:14px">
     <div style="${fxK.hd}">
-      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">⚖ Component Weights</span>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ef-t5);text-transform:uppercase;letter-spacing:.8px">⚖ Component Weights</span>
       <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${fxPS_EC}">${pairScore>=0?'+':''}${pairScore} pair score</span>
     </div>
     <div style="padding:10px 14px;display:flex;flex-direction:column;gap:5px">${fxWtRows}</div>
@@ -3663,7 +3669,7 @@ function renderForexScorecard() {
   const fxHistSection = `
   <div style="${fxK.card}margin-bottom:14px;overflow:hidden">
     <div style="${fxK.hd}">
-      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">📈 Score Over Time — ${selObj.base}</span>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ef-t5);text-transform:uppercase;letter-spacing:.8px">📈 Score Over Time — ${selObj.base}</span>
     </div>
     ${scHistoryChart(selObj.base, baseScore, {height:120, showLabel:false})}
   </div>`;
@@ -3675,7 +3681,7 @@ function renderForexScorecard() {
     const c  = b.includes('Bull')?'#4a90d9':b.includes('Bear')?'#e05c6a':'#6b7280';
     const dot= b.includes('Bull')?'▲':b.includes('Bear')?'▼':'→';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04)">
-      <span style="font-size:11px;color:rgba(255,255,255,.45)">${label}</span>
+      <span style="font-size:11px;color:var(--ef-t4)">${label}</span>
       <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${c}">${dot} ${b}</span>
     </div>`;
   };
@@ -3688,9 +3694,9 @@ function renderForexScorecard() {
     return `<div class="sc-accordion" style="border-bottom:1px solid rgba(255,255,255,.06)">
       <div onclick="scToggle('${sid}')" style="display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;background:rgba(22,27,38,.95);user-select:none">
         <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.75);flex:1">${icon} ${title}</span>
-        <span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);margin-right:4px">${weight}</span>
+        <span style="font-family:var(--mono);font-size:8px;color:var(--ef-t7);margin-right:4px">${weight}</span>
         <span style="display:inline-block;background:${bg};color:${c};border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:9px;font-weight:700">${b}</span>
-        <span class="sc-chevron" id="${sid}-chv" style="color:rgba(255,255,255,.3);font-size:10px;margin-left:4px;transition:transform .2s">▼</span>
+        <span class="sc-chevron" id="${sid}-chv" style="color:var(--ef-t7);font-size:10px;margin-left:4px;transition:transform .2s">▼</span>
       </div>
       <div id="${sid}" style="display:block">${contentHTML}</div>
     </div>`;
@@ -3737,11 +3743,11 @@ function renderForexScorecard() {
         const bStBias=bCB.stance>=1?'Bullish':bCB.stance<=-1?'Bearish':'Neutral';
         return `<div style="padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.04)">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <span style="font-size:10px;color:rgba(255,255,255,.4)">${selObj.base} · ${bCB.name}</span>
+            <span style="font-size:10px;color:var(--ef-t5)">${selObj.base} · ${bCB.name}</span>
             <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${bCB.stance>=1?'#4a90d9':bCB.stance<=-1?'#e05c6a':'#6b7280'}">${bCB.rate.toFixed(2)}% · ${bCB.label}</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font-size:10px;color:rgba(255,255,255,.4)">${selObj.quote} · ${qCB.name}</span>
+            <span style="font-size:10px;color:var(--ef-t5)">${selObj.quote} · ${qCB.name}</span>
             <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${qCB.stance>=1?'#4a90d9':qCB.stance<=-1?'#e05c6a':'#6b7280'}">${qCB.rate.toFixed(2)}% · ${qCB.label}</span>
           </div>
         </div>` +
@@ -3757,8 +3763,8 @@ function renderForexScorecard() {
     const n=safeNum(sc2), col=n>0?'#4a90d9':n<0?'#e05c6a':'#6b7280';
     const pct=Math.round(Math.max(4,Math.min(96,50+(n/csMax3)*45)));
     const isBQ=ccy===selObj.base||ccy===selObj.quote;
-    return `<div style="display:grid;grid-template-columns:18px 40px 1fr 36px;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid rgba(255,255,255,.04);${isBQ?'background:rgba(255,255,255,.025)':''}">
-      <span style="font-size:9px;color:rgba(255,255,255,.25)">${rank}</span>
+    return `<div style="display:grid;grid-template-columns:18px 40px 1fr 36px;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--ef-b4);${isBQ?'background:rgba(255,255,255,.025)':''}">
+      <span style="font-size:9px;color:var(--ef-t8)">${rank}</span>
       <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:${col}">${ccy}${ccy===selObj.base?' *':ccy===selObj.quote?' ·':''}</span>
       <div style="height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden">
         <div style="width:${pct}%;height:100%;background:${col};border-radius:2px;transition:width .4s"></div>
@@ -3769,14 +3775,14 @@ function renderForexScorecard() {
   const fxStrSection = `
   <div style="${fxK.card}margin-bottom:14px">
     <div style="${fxK.hd}">
-      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">💱 Currency Strength</span>
-      <span style="font-size:9px;color:rgba(255,255,255,.25)">* base · · quote</span>
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ef-t5);text-transform:uppercase;letter-spacing:.8px">💱 Currency Strength</span>
+      <span style="font-size:9px;color:var(--ef-t8)">* base · · quote</span>
     </div>
     <div>
-      <div style="padding:4px 14px 3px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.5px">Top 3</div>
+      <div style="padding:4px 14px 3px;font-family:var(--mono);font-size:8px;color:var(--ef-t8);text-transform:uppercase;letter-spacing:.5px">Top 3</div>
       ${cleanCS2.slice(0,3).map((e,i)=>csRankRow(e,i+1)).join('')}
-      <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0"></div>
-      <div style="padding:4px 14px 3px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25);text-transform:uppercase;letter-spacing:.5px">Bottom 3</div>
+      <div style="height:1px;background:var(--ef-b2);margin:4px 0"></div>
+      <div style="padding:4px 14px 3px;font-family:var(--mono);font-size:8px;color:var(--ef-t8);text-transform:uppercase;letter-spacing:.5px">Bottom 3</div>
       ${[...cleanCS2].reverse().slice(0,3).map((e,i)=>csRankRow(e,cleanCS2.length-i)).join('')}
     </div>
   </div>`;
@@ -3786,8 +3792,8 @@ function renderForexScorecard() {
     document.getElementById("page-forex").innerHTML = `
   <!-- Page header (same pattern as Asset) -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-    <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35)">Forex Scorecard</div>
-    <select style="background:#0e1520;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);
+    <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ef-t6)">Forex Scorecard</div>
+    <select style="background:var(--ef-c1);border:1px solid rgba(255,255,255,.1);color:var(--ef-t1);
       font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none;cursor:pointer"
       onchange="state.scForexPair=this.value;renderForexScorecard()">${fxDrop}</select>
   </div>
@@ -3813,16 +3819,16 @@ function renderFXExplanation(data) {
   const badge = b => `<span style="background:${bBg(b)};color:${bC(b)};border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:9px;font-weight:700;display:inline-block">${b}</span>`;
   const sC = v => v>0?'#4a90d9':v<0?'#e05c6a':'#6b7280';
   const sumCols = Object.entries(data.summary).map(([k,v]) =>
-    `<div style="background:#0e1520;padding:10px 12px;text-align:center">
-      <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${k}</div>
+    `<div style="background:var(--ef-c1);padding:10px 12px;text-align:center">
+      <div style="font-size:9px;color:var(--ef-t6);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${k}</div>
       ${badge(v)}</div>`).join('');
   const LABELS = {technical:'📈 Technical',institutional:'🏦 Institutional',
     growth:'🌍 Growth',inflation:'🌡 Inflation',labor:'👷 Labor',monetaryPolicy:'🏛 Mon. Policy'};
   const W = data.weights || {};
   const diffRows = Object.entries(data.differentials).map(([fk,fd]) =>
     `<tr style="border-bottom:1px solid rgba(255,255,255,.04)">
-      <td style="padding:8px 12px;font-size:11px;color:rgba(255,255,255,.7)">${LABELS[fk]||fk}
-        ${W[fk]?`<span style="font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);margin-left:5px">${(W[fk]*100).toFixed(0)}%</span>`:''}</td>
+      <td style="padding:8px 12px;font-size:11px;color:var(--ef-t2)">${LABELS[fk]||fk}
+        ${W[fk]?`<span style="font-family:var(--mono);font-size:8px;color:var(--ef-t7);margin-left:5px">${(W[fk]*100).toFixed(0)}%</span>`:''}</td>
       <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;color:${sC(fd.base)}">${fd.base>=0?'+':''}${fd.base}</td>
       <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;color:${sC(fd.quote)}">${fd.quote>=0?'+':''}${fd.quote}</td>
       <td style="padding:8px 10px;text-align:center;font-family:var(--mono);font-size:11px;font-weight:700;color:${sC(fd.diff)}">${fd.diff>=0?'+':''}${fd.diff}</td>
@@ -3833,25 +3839,25 @@ function renderFXExplanation(data) {
   if (data.regime&&data.regime!=='Neutral Regime') flags+=`<div style="background:rgba(139,148,158,.06);border:1px solid rgba(139,148,158,.15);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:11px;color:${bC(data.regime==='Risk-On'?'Bullish':'Bearish')}">🌐 Regime: ${data.regime}</div>`;
   const baseStr=data.pair.slice(0,3), quoteStr=data.pair.slice(3);
   return flags+`
-  <div style="background:#0e1520;border:1px solid rgba(74,144,217,.2);border-radius:10px;overflow:hidden;margin-bottom:12px">
-    <div style="padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
+  <div style="background:var(--ef-c1);border:1px solid rgba(74,144,217,.2);border-radius:10px;overflow:hidden;margin-bottom:12px">
+    <div style="padding:10px 14px;background:var(--ef-ch);border-bottom:1px solid var(--ef-b2);display:flex;align-items:center;justify-content:space-between">
       <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;text-transform:uppercase;letter-spacing:.8px">▶ Macro Differential — ${data.pair}</span>
       <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${bC(data.signal)}">${data.signal} · ${data.finalScore>=0?'+':''}${data.finalScore}</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.04)">${sumCols}</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--ef-b4)">${sumCols}</div>
   </div>
-  <div style="background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-bottom:12px">
-    <div style="padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
-      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">Component Breakdown</span>
-      <span style="font-size:9px;color:rgba(255,255,255,.25)">${baseStr} vs ${quoteStr}</span>
+  <div style="background:var(--ef-c1);border:1px solid var(--ef-b1);border-radius:10px;overflow:hidden;margin-bottom:12px">
+    <div style="padding:10px 14px;background:var(--ef-ch);border-bottom:1px solid var(--ef-b2);display:flex;align-items:center;justify-content:space-between">
+      <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:var(--ef-t5);text-transform:uppercase;letter-spacing:.8px">Component Breakdown</span>
+      <span style="font-size:9px;color:var(--ef-t8)">${baseStr} vs ${quoteStr}</span>
     </div>
     <table style="width:100%;border-collapse:collapse">
       <tr style="background:rgba(255,255,255,.03)">
-        <th style="padding:5px 12px;text-align:left;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);font-weight:400;text-transform:uppercase">Factor</th>
-        <th style="padding:5px 10px;text-align:center;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);font-weight:400">${baseStr}</th>
-        <th style="padding:5px 10px;text-align:center;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);font-weight:400">${quoteStr}</th>
-        <th style="padding:5px 10px;text-align:center;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);font-weight:400">Diff</th>
-        <th style="padding:5px 10px;text-align:right;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.3);font-weight:400">Signal</th>
+        <th style="padding:5px 12px;text-align:left;font-family:var(--mono);font-size:8px;color:var(--ef-t7);font-weight:400;text-transform:uppercase">Factor</th>
+        <th style="padding:5px 10px;text-align:center;font-family:var(--mono);font-size:8px;color:var(--ef-t7);font-weight:400">${baseStr}</th>
+        <th style="padding:5px 10px;text-align:center;font-family:var(--mono);font-size:8px;color:var(--ef-t7);font-weight:400">${quoteStr}</th>
+        <th style="padding:5px 10px;text-align:center;font-family:var(--mono);font-size:8px;color:var(--ef-t7);font-weight:400">Diff</th>
+        <th style="padding:5px 10px;text-align:right;font-family:var(--mono);font-size:8px;color:var(--ef-t7);font-weight:400">Signal</th>
       </tr>${diffRows}
     </table>
   </div>`;
