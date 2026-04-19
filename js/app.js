@@ -1082,28 +1082,6 @@ if (_origFredFetch) {
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  THEME SYSTEM — dark (default) / light
-// ═══════════════════════════════════════════════════════════════════════════
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('theme-btn');
-  if (btn) btn.textContent = theme === 'light' ? '☀️' : '🌙';
-  try { localStorage.setItem('ef_theme', theme); } catch(e) {}
-  // Re-render active tab so inline styles pick up new CSS variables
-  try { renderActive(); } catch(e) {}
-}
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme') || 'dark';
-  applyTheme(current === 'dark' ? 'light' : 'dark');
-}
-// Init theme on load — default dark
-(function initTheme() {
-  let saved = 'dark';
-  try { saved = localStorage.getItem('ef_theme') || 'dark'; } catch(e) {}
-  applyTheme(saved);
-})();
-
 
 // ── 8. BOOT EXECUTION ────────────────────────────────────────────────────
 // These lines were missing — this is the primary reason live data never ran.
