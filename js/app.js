@@ -486,8 +486,8 @@ function loadFREDData(){if(!state.fredKey||state.econLoading)return;state.econLo
 });}
 
 async function refreshAll(){
-  document.getElementById("rbtn-icon").classList.add("spinning");
-  renderActive();
+  try { document.getElementById("rbtn-icon").classList.add("spinning"); } catch(e){}
+  try { renderActive(); } catch(e){ console.warn('renderActive error:', e.message); }
   const[r1,r2,r3]=await Promise.allSettled([fetchRates(),fetchPrev(),fetchFearGreed()]);
   if(r1.status==="fulfilled" && r1.value){
     state.rates=r1.value;
@@ -519,10 +519,12 @@ async function refreshAll(){
       state.econData = null; state.econLive = false; loadFREDData();
     }
   }
-  const now=new Date();
-  document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
-  renderActive();
-  document.getElementById("rbtn-icon").classList.remove("spinning");
+  try {
+    const now=new Date();
+    document.getElementById("last-update").textContent=now.toLocaleDateString([],{month:"short",day:"numeric"})+" "+now.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+  } catch(e){}
+  try { renderActive(); } catch(e){ console.warn('renderActive final error:', e.message); }
+  try { document.getElementById("rbtn-icon").classList.remove("spinning"); } catch(e){}
 }
 
 // ── TOP SETUPS ────────────────────────────────────────────────────────────────
