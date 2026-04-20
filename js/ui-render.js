@@ -853,12 +853,20 @@ function renderTradeIdeasView(){
 function renderSetups(){
   const nav = setupsNav();
   let body="";
-  if(state.setupsView==="full")     body=renderSetupsFullView();
-  else if(state.setupsView==="simple")   body=renderSetupsSimpleView();
-  else if(state.setupsView==="eco")      body=renderSetupsEcoView();
-  else if(state.setupsView==="sentiment")body=renderSetupsSentimentView();
-  else if(state.setupsView==="history")  body=renderSetupsHistoryView();
-  else if(state.setupsView==="trade")    body=renderTradeIdeasView();
+  try {
+    if(state.setupsView==="full")     body=renderSetupsFullView();
+    else if(state.setupsView==="simple")   body=renderSetupsSimpleView();
+    else if(state.setupsView==="eco")      body=renderSetupsEcoView();
+    else if(state.setupsView==="sentiment")body=renderSetupsSentimentView();
+    else if(state.setupsView==="history")  body=renderSetupsHistoryView();
+    else if(state.setupsView==="trade")    body=renderTradeIdeasView();
+  } catch(e) {
+    console.error('[renderSetups] Error:', e.message);
+    body = `<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+      ⚠ Setup view error: <span style="color:var(--bear)">${e.message}</span><br>
+      <button onclick="renderSetups()" style="margin-top:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:5px;cursor:pointer">↻ Retry</button>
+    </div>`;
+  }
   document.getElementById("page-setups").innerHTML=nav+body;
 }
 function setFilter(cat){state.filterCat=cat;renderSetups();}
@@ -2115,17 +2123,27 @@ function switchTab(id){
   renderActive();
 }
 function renderActive(){
-  if(activeTab==="scorecard")  renderScorecard();
-  else if(activeTab==="forex")       renderForexScorecard();
-  else if(activeTab==="setups")     renderSetups();
-  else if(activeTab==="cot")        renderCOT();
-  else if(activeTab==="sentiment")  renderSentiment();
-  else if(activeTab==="econ")       renderEcon();
-  else if(activeTab==="currency")   renderCurrency();
-  else if(activeTab==="carry")      renderCarry();
-  else if(activeTab==="feargreed")  renderFearGreed();
-  else if(activeTab==="seasonality") renderSeasonality();
-  else if(activeTab==="settings")   renderSettings();
+  try {
+    if(activeTab==="scorecard")   renderScorecard();
+    else if(activeTab==="forex")       renderForexScorecard();
+    else if(activeTab==="setups")      renderSetups();
+    else if(activeTab==="cot")         renderCOT();
+    else if(activeTab==="sentiment")   renderSentiment();
+    else if(activeTab==="econ")        renderEcon();
+    else if(activeTab==="currency")    renderCurrency();
+    else if(activeTab==="carry")       renderCarry();
+    else if(activeTab==="feargreed")   renderFearGreed();
+    else if(activeTab==="seasonality") renderSeasonality();
+    else if(activeTab==="settings")    renderSettings();
+  } catch(e) {
+    console.error('[renderActive] Error on tab', activeTab, ':', e.message);
+    const pg = document.getElementById('page-' + activeTab);
+    if (pg) pg.innerHTML = `<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+      ⚠ Error rendering <strong style="color:var(--accent)">${activeTab}</strong><br>
+      <span style="color:var(--bear);font-size:10px">${e.message}</span><br><br>
+      <button onclick="renderActive()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:10px;padding:6px 14px;border-radius:5px;cursor:pointer">↻ Retry</button>
+    </div>`;
+  }
 }
 
 
