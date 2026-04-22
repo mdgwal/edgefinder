@@ -1,31 +1,4 @@
-    scored.forEach(a => {
-    const tc  = totalColor(a.total), bc = biasColor(a.bias);
-    const ppi = a.inflation;
-    const pce = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 1 : -1) * 0.5 | 0));
-    const deltaStr = a.delta !== null
-      ? `<span style="font-size:9px;color:${a.delta>0?'#00ff88':a.delta<0?'#ff4d6d':'#6b7280'};margin-left:3px">${a.delta>0?'↑':a.delta<0?'↓':'→'}${a.delta>0?'+':''}${a.delta}</span>` : '';
-    const qColor = a.quality==='A'?'#00ff88':a.quality==='B'?'#f0b429':'#6b7280';
-    const qBadge = `<span style="font-family:var(--mono);font-size:8px;font-weight:700;color:${qColor};background:${qColor}1a;padding:1px 4px;border-radius:2px;margin-left:4px">${a.quality}${a.crowded?'⚠':''}</span>`;
-    html += `<tr class="${rowBgClass(a.total)}">
-      <td class="asset-name" style="color:${tc}">${a.name}</td>
-      <td class="bias-cell" style="color:${bc}">${a.bias}${qBadge}</td>
-      <td class="total-cell" style="white-space:nowrap;color:${tc}">${cv(a.total)}${deltaStr}</td>
-      <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
-      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
-      <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
-      <td class="${cellClass(a.trend)}">${cv(a.trend)}</td>
-      <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
-      <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
-      <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
-      <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
-      <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
-      <td class="${cellClass(ppi)}">${cv(ppi)}</td>
-      <td class="${cellClass(pce)}">${cv(pce)}</td>
-      <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
-      <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
-      <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
-    </tr>`;
-  })// ui-render.js — All DOM rendering functions
+// ui-render.js — All DOM rendering functions
 
 // ── SETUPS SUB-TAB NAVIGATION ─────────────────────────────────────────────────
 const SETUPS_VIEWS=[
