@@ -1900,14 +1900,272 @@ function renderCurrency(){
 
 // ── CARRY ─────────────────────────────────────────────────────────────────────
 function renderCarry(){
-  let html=`<div class="sectitle">Carry Trade Scanner</div><div class="infobox ib-blue"><span class="iblabel" style="color:var(--accent)">ℹ CARRY TRADE</span>Buy high interest rate currency, sell low rate currency. Best in low volatility trending markets.</div>
-  <div class="card"><div class="chd"><span class="ctitle">Best Carry Opportunities</span><span class="cbadge">RANKED BY RATE DIFF</span></div><div class="cbody">`;
-  CARRY_PAIRS.forEach(p=>{
-    const col=p.score>=2?"var(--bull)":p.score>=1?"#7effc4":p.score<=0?"var(--bear)":"var(--neutral)";
-    const stars="★".repeat(Math.max(0,p.score+2))+"☆".repeat(Math.max(0,2-p.score));
-    html+=`<div class="carry-row"><div style="font-family:var(--mono);font-size:12px;font-weight:bold;width:80px;flex-shrink:0;color:${col}">${p.pair}</div><div style="flex:1"><div style="font-family:var(--mono);font-size:11px;color:var(--text)">Long ${p.long} / Short ${p.short}</div><div style="font-family:var(--mono);font-size:10px;color:var(--muted)">Rate diff: ${p.rate.toFixed(2)}%</div></div><div style="text-align:right"><div style="font-family:var(--mono);font-size:14px;font-weight:bold;color:${col}">${p.rate.toFixed(2)}%</div><div style="font-family:var(--mono);font-size:10px;color:${col}">${stars}</div></div></div>`;
+  // ── Derive regime from live data ──────────────────────────────────────────
+  const fgVal  = state.fgData && state.fgData[0] ? parseInt(state.fgData[0].value) : 45;
+  const regime = fgVal >= 55 ? {label:'RISK ON',  cls:'ye-pill-on',  volLabel:'LOW',  volCls:'ye-pill-on',  bias:'Bullish', biasCls:'bull'}
+               : fgVal <= 35 ? {label:'RISK OFF', cls:'ye-pill-off', volLabel:'HIGH', volCls:'ye-pill-off', bias:'Bearish', biasCls:'bear'}
+               :               {label:'NEUTRAL',  cls:'ye-pill-neut',volLabel:'MED',  volCls:'ye-pill-neut',bias:'Mixed',   biasCls:'warn'};
+  const condText = fgVal >= 55
+    ? 'Risk-on conditions favor carry. Rate differentials are being rewarded. Maintain exposure with disciplined stops.'
+    : fgVal <= 35
+    ? 'Risk-off conditions suppress carry returns. Elevated volatility erodes differential gains. Reduce or hedge.'
+    : 'Neutral conditions. Carry trades moderately viable. Select high-differential, low-volatility pairs only.';
+
+  // ── Sort pairs ─────────────────────────────────────────────────────────────
+  const sorted = [...CARRY_PAIRS].sort((a,b) => b.score - a.score);
+  const top3   = sorted.slice(0, 3);
+  const rest   = sorted.slice(3);
+
+  // ── Score helpers ──────────────────────────────────────────────────────────
+  const sCls  = s => s >= 7 ? 'bull' : s >= 4 ? 'warn' : 'weak';
+  const tCls  = t => t === 'Bullish' ? 'bull' : t === 'Bearish' ? 'bear' : 'warn';
+  const vCls  = v => v === 'Low' ? 'bull' : v === 'High' ? 'bear' : 'warn';
+  const cCls  = c => c === 'High' ? 'bull' : c === 'Low' ? 'bear' : 'warn';
+  const cardCls = s => s >= 7 ? '' : s >= 4 ? 'ye-card-warn' : 'ye-card-weak';
+  const pctW  = s => (s / 10 * 100).toFixed(0);
+
+  // ── Top 3 cards ────────────────────────────────────────────────────────────
+  const cardsHtml = top3.map((p, idx) => `
+    <div class="ye-card ${cardCls(p.score)}" onclick="yeToggleCard(this)" data-pair="${p.pair}" style="animation-delay:${idx*80}ms">
+      <div class="ye-card-header">
+        <div>
+          <div class="ye-pair-name">${p.pair}</div>
+          <div class="ye-position">LONG ${p.long} &nbsp;/&nbsp; SHORT ${p.short}</div>
+        </div>
+        <div class="ye-score-block">
+          <div class="ye-score-num ${sCls(p.score)}">${p.score}</div>
+          <div class="ye-score-label">SCORE / 10</div>
+        </div>
+      </div>
+      <div class="ye-score-bar-wrap">
+        <div class="ye-score-bar-track">
+          <div class="ye-score-bar-fill ${sCls(p.score)} ye-animate-bar" data-width="${pctW(p.score)}%"></div>
+        </div>
+      </div>
+      <div class="ye-meta-row">
+        <div class="ye-meta-item">
+          <span class="ye-meta-label">Yield</span>
+          <span class="ye-yield-large">${p.rate.toFixed(2)}%</span>
+        </div>
+        <div class="ye-meta-item">
+          <span class="ye-meta-label">Trend</span>
+          <span class="ye-meta-value ${tCls(p.trend)}">${p.trend}</span>
+        </div>
+        <div class="ye-meta-item">
+          <span class="ye-meta-label">Volatility</span>
+          <span class="ye-meta-value ${vCls(p.vol)}">${p.vol}</span>
+        </div>
+        <div class="ye-meta-item">
+          <span class="ye-meta-label">Confidence</span>
+          <span class="ye-meta-value ${cCls(p.confidence)}">${p.confidence}</span>
+        </div>
+      </div>
+      <div class="ye-reasons">
+        ${p.reasons.map(r => `<div class="ye-reason">${r}</div>`).join('')}
+      </div>
+      <div class="ye-expanded-body">
+        <div class="ye-detail-grid">
+          <div class="ye-detail-cell">
+            <div class="ye-detail-key">Rate Differential</div>
+            <div class="ye-detail-val" style="color:#58a6ff">${p.rate.toFixed(2)}% p.a.</div>
+          </div>
+          <div class="ye-detail-cell">
+            <div class="ye-detail-key">Direction Bias</div>
+            <div class="ye-detail-val ${tCls(p.trend)}">${p.trend}</div>
+          </div>
+          <div class="ye-detail-cell">
+            <div class="ye-detail-key">Vol Regime</div>
+            <div class="ye-detail-val ${vCls(p.vol)}">${p.vol}</div>
+          </div>
+          <div class="ye-detail-cell">
+            <div class="ye-detail-key">Setup Quality</div>
+            <div class="ye-detail-val ${cCls(p.confidence)}">${p.confidence}</div>
+          </div>
+        </div>
+      </div>
+      <div class="ye-cta-row">
+        <button class="ye-cta" onclick="event.stopPropagation();yeFocusPair('${p.pair}')">VIEW SETUP</button>
+      </div>
+    </div>`).join('');
+
+  // ── Full data table ────────────────────────────────────────────────────────
+  const tableRows = sorted.map(p => {
+    const sc   = sCls(p.score);
+    const barCls = sc === 'bull' ? 'ye-tbl-bull' : sc === 'warn' ? 'ye-tbl-warn' : 'ye-tbl-bear';
+    const barBg  = sc === 'bull' ? '#00ff88' : sc === 'warn' ? '#f0b429' : '#ff3b5c';
+    return `<tr>
+      <td class="ye-tbl-pair" style="color:${sc==='bull'?'#e2e8f0':sc==='warn'?'rgba(255,255,255,.65)':'rgba(255,255,255,.4)'}">${p.pair}</td>
+      <td style="color:#58a6ff">${p.rate.toFixed(2)}%</td>
+      <td class="${tCls(p.trend)==='bull'?'ye-tbl-bull':tCls(p.trend)==='bear'?'ye-tbl-bear':'ye-tbl-warn'}">${p.trend}</td>
+      <td class="${vCls(p.vol)==='bull'?'ye-tbl-bull':vCls(p.vol)==='bear'?'ye-tbl-bear':'ye-tbl-warn'}">${p.vol}</td>
+      <td>
+        <span class="ye-score-mini">
+          <span class="ye-score-mini-bar">
+            <span class="ye-score-mini-fill ye-animate-bar" data-width="${pctW(p.score)}%" style="background:${barBg}"></span>
+          </span>
+          <span class="${barCls}">${p.score}</span>
+        </span>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // ── Full HTML ──────────────────────────────────────────────────────────────
+  const html = `<div class="ye-page">
+
+    <!-- CONTEXT BAR -->
+    <div class="ye-context-bar">
+      <div class="ye-title-block">
+        <div class="ye-title"><span class="ye-live-dot"></span>YIELD ENGINE</div>
+        <div class="ye-title-sub">Carry Trade Opportunity Scanner</div>
+        <div class="ye-regime-pills" style="margin-top:6px">
+          <span class="ye-pill ${regime.cls}">${regime.label}</span>
+          <span class="ye-pill ${regime.volCls}">VOL ${regime.volLabel}</span>
+          <span class="ye-pill ${regime.biasCls === 'bull' ? 'ye-pill-on' : regime.biasCls === 'bear' ? 'ye-pill-off' : 'ye-pill-neut'}">${regime.bias}</span>
+        </div>
+      </div>
+      <div class="ye-controls">
+        <select class="ye-select" onchange="yeSortCarry(this.value)">
+          <option value="score">Score</option>
+          <option value="yield">Yield</option>
+          <option value="confidence">Confidence</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- TOP OPPORTUNITIES -->
+    <div class="ye-section-label">Top Opportunities</div>
+    <div class="ye-cards">${cardsHtml}</div>
+
+    <!-- FULL TABLE -->
+    <div class="ye-section-label">All Pairs</div>
+    <div class="ye-table-wrap">
+      <table class="ye-table">
+        <thead><tr>
+          <th>Pair</th><th>Yield</th><th>Trend</th><th>Vol</th><th>Score</th>
+        </tr></thead>
+        <tbody id="ye-table-body">${tableRows}</tbody>
+      </table>
+    </div>
+
+    <!-- CARRY CONDITIONS INTEL -->
+    <div class="ye-section-label">Carry Conditions</div>
+    <div class="ye-intel-panel">
+      <div class="ye-intel-title">Context Intelligence</div>
+      <div class="ye-intel-body">
+        Carry trades generate returns by borrowing in a <strong>low-rate currency</strong> and investing
+        in a <strong>high-rate currency</strong>. The position profits from the interest rate differential
+        as long as exchange rate movements do not exceed the yield earned.
+      </div>
+      <div class="ye-intel-conditions">
+        <div class="ye-condition-block">
+          <div class="ye-condition-title green">Favorable When</div>
+          <div class="ye-condition-item">Low realized volatility</div>
+          <div class="ye-condition-item">Risk-on environment</div>
+          <div class="ye-condition-item">Stable rate expectations</div>
+          <div class="ye-condition-item">Trending FX markets</div>
+        </div>
+        <div class="ye-condition-block">
+          <div class="ye-condition-title red">Adverse When</div>
+          <div class="ye-condition-item">VIX spike or risk-off</div>
+          <div class="ye-condition-item">CB policy reversal</div>
+          <div class="ye-condition-item">Geopolitical shock</div>
+          <div class="ye-condition-item">Rapid trend reversal</div>
+        </div>
+      </div>
+      <div class="ye-current-condition">
+        <div class="ye-current-condition-label">Current Assessment</div>
+        <div class="ye-current-condition-text">${condText}</div>
+      </div>
+    </div>
+
+    <!-- SYSTEM INTEGRATION -->
+    <div class="ye-section-label">System Integration</div>
+    <div class="ye-system-block">
+      <div class="ye-system-header">Yield Engine Weight in Scoring Model</div>
+      <div class="ye-weights-row">
+        <div class="ye-weight-item">
+          <div class="ye-weight-pct">30%</div>
+          <div class="ye-weight-label">Technical</div>
+          <div class="ye-weight-bar-track"><div class="ye-weight-bar-fill ye-animate-bar" data-width="30%"></div></div>
+        </div>
+        <div class="ye-weight-item">
+          <div class="ye-weight-pct">30%</div>
+          <div class="ye-weight-label">Macro</div>
+          <div class="ye-weight-bar-track"><div class="ye-weight-bar-fill ye-animate-bar" data-width="30%"></div></div>
+        </div>
+        <div class="ye-weight-item active">
+          <div class="ye-weight-pct ye-weight-highlight">20%</div>
+          <div class="ye-weight-label">Carry Yield</div>
+          <div class="ye-weight-bar-track"><div class="ye-weight-bar-fill ye-animate-bar" data-width="20%"></div></div>
+        </div>
+        <div class="ye-weight-item">
+          <div class="ye-weight-pct">20%</div>
+          <div class="ye-weight-label">Sentiment</div>
+          <div class="ye-weight-bar-track"><div class="ye-weight-bar-fill ye-animate-bar" data-width="20%"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>`;
+
+  document.getElementById('page-carry').innerHTML = html;
+
+  // Animate score bars after render
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.ye-animate-bar').forEach(el => {
+      const w = el.getAttribute('data-width') || '0%';
+      el.style.width = '0%';
+      setTimeout(() => { el.style.width = w; }, 60);
+    });
   });
-  html+=`</div></div>`;document.getElementById("page-carry").innerHTML=html;
+}
+
+// Toggle card expand/collapse
+function yeToggleCard(card) {
+  const wasExpanded = card.classList.contains('expanded');
+  document.querySelectorAll('.ye-card.expanded').forEach(c => c.classList.remove('expanded'));
+  if (!wasExpanded) card.classList.add('expanded');
+}
+
+// Focus pair — scroll to table row
+function yeFocusPair(pair) {
+  const rows = document.querySelectorAll('#ye-table-body tr');
+  rows.forEach(r => {
+    if (r.querySelector('.ye-tbl-pair') && r.querySelector('.ye-tbl-pair').textContent === pair) {
+      r.style.background = 'rgba(88,166,255,.08)';
+      r.scrollIntoView({behavior:'smooth', block:'nearest'});
+      setTimeout(() => { r.style.background = ''; }, 1800);
+    }
+  });
+}
+
+// Sort carry table
+function yeSortCarry(key) {
+  const sorted = [...CARRY_PAIRS].sort((a,b) =>
+    key === 'yield' ? b.rate - a.rate :
+    key === 'confidence' ? (b.confidence==='High'?2:b.confidence==='Medium'?1:0) - (a.confidence==='High'?2:a.confidence==='Medium'?1:0) :
+    b.score - a.score
+  );
+  const sCls = s => s >= 7 ? 'bull' : s >= 4 ? 'warn' : 'weak';
+  const tCls = t => t==='Bullish'?'bull':t==='Bearish'?'bear':'warn';
+  const vCls = v => v==='Low'?'bull':v==='High'?'bear':'warn';
+  const pctW = s => (s/10*100).toFixed(0);
+  const tbody = document.getElementById('ye-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = sorted.map(p => {
+    const sc  = sCls(p.score);
+    const barBg = sc==='bull'?'#00ff88':sc==='warn'?'#f0b429':'#ff3b5c';
+    return `<tr>
+      <td class="ye-tbl-pair" style="color:${sc==='bull'?'#e2e8f0':sc==='warn'?'rgba(255,255,255,.65)':'rgba(255,255,255,.4)'}">${p.pair}</td>
+      <td style="color:#58a6ff">${p.rate.toFixed(2)}%</td>
+      <td class="${tCls(p.trend)==='bull'?'ye-tbl-bull':tCls(p.trend)==='bear'?'ye-tbl-bear':'ye-tbl-warn'}">${p.trend}</td>
+      <td class="${vCls(p.vol)==='bull'?'ye-tbl-bull':vCls(p.vol)==='bear'?'ye-tbl-bear':'ye-tbl-warn'}">${p.vol}</td>
+      <td><span class="ye-score-mini">
+        <span class="ye-score-mini-bar"><span class="ye-score-mini-fill" style="width:${pctW(p.score)}%;background:${barBg}"></span></span>
+        <span style="color:${barBg}">${p.score}</span>
+      </span></td>
+    </tr>`;
+  }).join('');
 }
 
 // ── FEAR & GREED ──────────────────────────────────────────────────────────────
