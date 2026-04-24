@@ -20,7 +20,7 @@
   /* Transition default */
   --trans:.2s ease;
 }
-body{background:#051937;color:var(--text);font-family:var(--sans);min-height:100vh;background-image:linear-gradient(to bottom,#051937,#1a3362,#334e90,#506cc1,#6f8af4);background-attachment:fixed;}
+body{background:#04171a;color:var(--text);font-family:var(--sans);min-height:100vh;background-image:radial-gradient(circle,#1e345c,#032f4c,#00273a,#011f29,#04171a,#04171a,#04171a,#04171a,#011f29,#00273a,#032f4c,#1e345c);background-attachment:fixed;background-size:cover;}
 .header{background:rgba(10,16,26,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.055);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;}
 .hlogo{display:flex;align-items:center;gap:10px;}
 .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--bull),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:bold;color:#000;}
