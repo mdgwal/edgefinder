@@ -219,6 +219,32 @@ let state={
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 function biasColor(b){if(b.includes("Very Bullish")||b.includes("Bullish"))return"var(--bull)";if(b.includes("Mild Bullish"))return"#7effc4";if(b.includes("Very Bearish")||b.includes("Bearish"))return"var(--bear)";if(b.includes("Mild Bearish"))return"#ff8fa0";return"var(--neutral)";}
 function cellClass(v){if(v>=2)return"c2";if(v===1)return"c1";if(v===0)return"c0";if(v===-1)return"cm1";return"cm2";}
+// hm(v): inline style for heatmap gradient cells (-2..+2 typical, up to ±10)
+function hm(v){
+  var n = Math.max(-10, Math.min(10, v));
+  var abs = Math.abs(n);
+  var bull = n > 0;
+  var bg_a = abs===0 ? 0 : abs<=1 ? 0.07 : abs<=2 ? 0.13 : abs<=3 ? 0.20 : abs<=5 ? 0.24 : 0.28;
+  var tx_a = abs===0 ? 0.35 : abs<=1 ? 0.55 : abs<=2 ? 0.72 : abs<=3 ? 0.88 : abs<=5 ? 0.96 : 1.0;
+  if (abs === 0) return 'background:var(--bg2);color:rgba(255,255,255,.35);transition:background-color .3s ease';
+  var r = bull ? 0   : (abs<=1 ? 210 : abs<=2 ? 230 : 250);
+  var g = bull ? (abs<=1 ? 200 : abs<=2 ? 220 : abs<=3 ? 240 : 255) : 50;
+  var b = bull ? (abs<=1 ? 160 : abs<=2 ? 120 : 80) : 60;
+  return 'background:rgba('+r+','+g+','+b+','+bg_a+');color:rgba('+r+','+g+','+b+','+tx_a+');transition:background-color .3s ease,color .3s ease';
+}
+// hmTotal(v): heatmap style for score column (-10..+10)
+function hmTotal(v){
+  var n = Math.max(-10, Math.min(10, v));
+  var abs = Math.abs(n);
+  var bull = n >= 0;
+  var bg_a = abs<=1 ? 0.04 : abs<=4 ? 0.08 : abs<=7 ? 0.13 : 0.18;
+  var tx_a = abs<=1 ? 0.55 : abs<=4 ? 0.75 : abs<=7 ? 0.92 : 1.0;
+  if (abs === 0) return 'color:rgba(255,255,255,.4)';
+  var r = bull ? 0   : (abs<=4 ? 220 : 255);
+  var g = bull ? (abs<=4 ? 220 : 255) : 55;
+  var bv= bull ? (abs<=4 ? 130 : 88)  : 65;
+  return 'background:rgba('+r+','+g+','+bv+','+bg_a+');color:rgba('+r+','+g+','+bv+','+tx_a+');transition:background-color .3s ease,color .3s ease';
+}
 function totalColor(t){if(t>=8)return"var(--bull)";if(t>=4)return"#7effc4";if(t<=-8)return"var(--bear)";if(t<=-4)return"#ff8fa0";return"var(--neutral)";}
 function fgColor(v){if(v>=75)return"var(--bull)";if(v>=55)return"#7effc4";if(v>=45)return"var(--neutral)";if(v>=25)return"#ff8fa0";return"var(--bear)";}
 function fgLabel(v){if(v>=75)return"EXTREME GREED";if(v>=55)return"GREED";if(v>=45)return"NEUTRAL";if(v>=25)return"FEAR";return"EXTREME FEAR";}
