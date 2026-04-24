@@ -1900,253 +1900,222 @@ function renderCurrency(){
 
 // ── CARRY ─────────────────────────────────────────────────────────────────────
 function renderCarry(){
-  // ── Live regime from Fear & Greed ─────────────────────────────────────────
-  const fgVal = state.fgData && state.fgData[0] ? parseInt(state.fgData[0].value) : 45;
-  const isFav  = fgVal >= 55;
-  const isUnfav= fgVal <= 35;
-  const regime = {
-    risk:     isFav ? 'RISK ON'   : isUnfav ? 'RISK OFF' : 'NEUTRAL',
-    riskCls:  isFav ? 'ye2-on'    : isUnfav ? 'ye2-off'  : 'ye2-neut',
-    vol:      isFav ? 'LOW'       : isUnfav ? 'HIGH'     : 'MODERATE',
-    volCls:   isFav ? 'ye2-on'    : isUnfav ? 'ye2-off'  : 'ye2-neut',
-    suit:     isFav ? 'FAVORABLE' : isUnfav ? 'UNFAVORABLE' : 'NEUTRAL',
-    suitCls:  isFav ? 'ye2-on'    : isUnfav ? 'ye2-off'  : 'ye2-neut',
-    interp:   isFav
-      ? 'Carry trades are currently favorable. Low volatility and risk-on sentiment are rewarding rate differentials. Prioritize high-yield pairs with confirmed trends.'
+  const fgVal   = state.fgData?.[0] ? parseInt(state.fgData[0].value) : 45;
+  const isFav   = fgVal >= 55;
+  const isUnfav = fgVal <= 35;
+
+  // Regime object
+  const R = {
+    risk:    isFav ? 'RISK ON'      : isUnfav ? 'RISK OFF'     : 'NEUTRAL',
+    rCls:    isFav ? 'ye2-on'       : isUnfav ? 'ye2-off'      : 'ye2-neut',
+    vol:     isFav ? 'LOW'          : isUnfav ? 'HIGH'          : 'MODERATE',
+    vCls:    isFav ? 'ye2-on'       : isUnfav ? 'ye2-off'       : 'ye2-neut',
+    suit:    isFav ? 'FAVORABLE'    : isUnfav ? 'UNFAVORABLE'   : 'NEUTRAL',
+    sCls:    isFav ? 'ye2-on'       : isUnfav ? 'ye2-off'       : 'ye2-neut',
+    status:  isFav ? 'FAVORABLE'    : isUnfav ? 'UNFAVORABLE'   : 'MODERATELY FAVORABLE',
+    stCls:   isFav ? 'ye2-status-on': isUnfav ? 'ye2-status-off': 'ye2-status-neut',
+    brief: isFav
+      ? `Carry trades are viable under current conditions. <strong>Low volatility and risk-on sentiment</strong> are rewarding rate differentials. Prioritize high-yield pairs.`
       : isUnfav
-      ? 'Carry trades are unfavorable. Elevated volatility and risk-off flows erode differential gains. Reduce exposure or use tight risk parameters.'
-      : 'Carry trades are moderately viable. Select only highest-conviction setups with strong rate differentials and low realized volatility.'
+      ? `Carry trades are under stress. <strong>Elevated volatility and risk-off flows</strong> erode differential gains. Reduce exposure and tighten stops.`
+      : `Carry trades are moderately viable. <strong>Focus on high-yield, low-volatility pairs</strong> with confirmed directional trend.`
   };
 
-  // ── Sort + split ───────────────────────────────────────────────────────────
-  const sorted    = [...CARRY_PAIRS].sort((a,b) => b.score - a.score);
-  const primary   = sorted[0];
-  const secondary = sorted.slice(1, 4);
-  const remaining = sorted.slice(4);
+  const sorted  = [...CARRY_PAIRS].sort((a,b) => b.score - a.score);
+  const pr      = sorted[0];
+  const alts    = sorted.slice(1, 4);
+  const tail    = sorted.slice(4);
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-  const sCol  = s => s >= 7 ? '#00ff88' : s >= 4 ? '#f0b429' : '#ff4d6d';
-  const sCls  = s => s >= 7 ? 'ye2-bull': s >= 4 ? 'ye2-warn': 'ye2-bear';
-  const tCol  = t => t==='Bullish'?'#00ff88':t==='Bearish'?'#ff4d6d':'#f0b429';
-  const vCol  = v => v==='Low'?'#00ff88':v==='High'?'#ff4d6d':'#f0b429';
-  const pct   = s => (s/10*100).toFixed(0)+'%';
-  const convLabel = s => s >= 8 ? 'HIGH CONVICTION' : s >= 6 ? 'MODERATE' : s >= 4 ? 'WATCHLIST' : 'AVOID';
+  // Helpers
+  const sCol  = s => s >= 7 ? '#00d97e' : s >= 4 ? '#e8ab00' : '#e84050';
+  const sGlow = s => s >= 7 ? 'rgba(0,217,126,.12)' : s >= 4 ? 'rgba(232,171,0,.08)' : 'rgba(232,64,80,.07)';
+  const tCol  = t => t==='Bullish'?'#00d97e':t==='Bearish'?'#e84050':'#e8ab00';
+  const vCol  = v => v==='Low'?'#00d97e':v==='High'?'#e84050':'#e8ab00';
+  const pW    = s => (s/10*100).toFixed(0)+'%';
+  const conv  = s => s >= 8 ? 'HIGH CONVICTION · EXECUTION READY'
+                   : s >= 6 ? 'STRONG SETUP · FAVORABLE CONDITIONS'
+                   : s >= 4 ? 'WATCHLIST · MONITOR CLOSELY'
+                   : 'WEAK SETUP · AVOID';
+  const convSub = s => s >= 8 ? 'HIGH CONVICTION' : s >= 6 ? 'MODERATE' : 'LOW';
+  const scoreStr = s => s.toFixed(1);
 
   // ── PRIMARY CARD ──────────────────────────────────────────────────────────
-  const p = primary;
-  const primaryHtml = `
+  const pCard = `
 <div class="ye2-primary" onclick="ye2Toggle(this)">
-  <div class="ye2-primary-rank">01 · PRIMARY SETUP</div>
-  <div class="ye2-primary-body">
-    <div class="ye2-primary-left">
-      <div class="ye2-pair">${p.pair}</div>
-      <div class="ye2-pos">LONG ${p.long} / SHORT ${p.short}</div>
-      <div class="ye2-primary-meta">
-        <div class="ye2-meta-cell">
-          <span class="ye2-mlbl">Yield</span>
-          <span class="ye2-mval" style="color:#58a6ff;font-size:17px;font-weight:700">${p.rate.toFixed(2)}%</span>
-        </div>
-        <div class="ye2-meta-cell">
-          <span class="ye2-mlbl">Trend</span>
-          <span class="ye2-mval" style="color:${tCol(p.trend)}">${p.trend}</span>
-        </div>
-        <div class="ye2-meta-cell">
-          <span class="ye2-mlbl">Vol</span>
-          <span class="ye2-mval" style="color:${vCol(p.vol)}">${p.vol}</span>
-        </div>
-        <div class="ye2-meta-cell">
-          <span class="ye2-mlbl">Confidence</span>
-          <span class="ye2-mval" style="color:${sCol(p.score)}">${p.confidence}</span>
-        </div>
+  <div class="ye2-rank-tag">PRIMARY SETUP</div>
+  <div class="ye2-p-layout">
+    <div class="ye2-p-left">
+      <div class="ye2-pair">${pr.pair}</div>
+      <div class="ye2-pos">LONG ${pr.long} &nbsp;/&nbsp; SHORT ${pr.short}</div>
+      <div class="ye2-p-meta">
+        <div class="ye2-mc"><span class="ye2-mk">Yield</span><span class="ye2-mv ye2-yield">${pr.rate.toFixed(2)}%</span></div>
+        <div class="ye2-mc"><span class="ye2-mk">Trend</span><span class="ye2-mv" style="color:${tCol(pr.trend)}">${pr.trend}</span></div>
+        <div class="ye2-mc"><span class="ye2-mk">Vol</span><span class="ye2-mv" style="color:${vCol(pr.vol)}">${pr.vol}</span></div>
+        <div class="ye2-mc"><span class="ye2-mk">Confidence</span><span class="ye2-mv" style="color:${sCol(pr.score)}">${pr.confidence}</span></div>
+      </div>
+      <div class="ye2-conviction-line" style="color:${sCol(pr.score)}">${conv(pr.score)}</div>
+    </div>
+    <div class="ye2-p-right">
+      <div class="ye2-score-wrap" style="--sg:${sGlow(pr.score)}">
+        <div class="ye2-score-val" style="color:${sCol(pr.score)}">${scoreStr(pr.score)}</div>
+        <div class="ye2-score-sub" style="color:${sCol(pr.score)}">${convSub(pr.score)}</div>
       </div>
     </div>
-    <div class="ye2-score-col">
-      <div class="ye2-score-num" style="color:${sCol(p.score)}">${p.score}<span class="ye2-score-denom">/10</span></div>
-      <div class="ye2-conv-label" style="color:${sCol(p.score)}">${convLabel(p.score)}</div>
-    </div>
   </div>
-  <div class="ye2-bar-row">
-    <div class="ye2-bar-track">
-      <div class="ye2-bar-fill ye2-anim" data-w="${pct(p.score)}" style="background:${sCol(p.score)}"></div>
-    </div>
-    <span class="ye2-bar-pct" style="color:${sCol(p.score)}">${pct(p.score)}</span>
+  <div class="ye2-bar-wrap">
+    <div class="ye2-bar-track"><div class="ye2-bar-fill ye2-anim" data-w="${pW(pr.score)}" style="background:${sCol(pr.score)}"></div></div>
   </div>
   <div class="ye2-reasons">
-    ${p.reasons.map(r=>`<div class="ye2-reason">${r}</div>`).join('')}
+    ${pr.reasons.map(r=>`<div class="ye2-reason">${r}</div>`).join('')}
   </div>
-  <div class="ye2-primary-expand">
-    <div class="ye2-expand-grid">
-      <div class="ye2-eg-cell"><div class="ye2-eg-k">Rate Differential</div><div class="ye2-eg-v" style="color:#58a6ff">${p.rate.toFixed(2)}% p.a.</div></div>
-      <div class="ye2-eg-cell"><div class="ye2-eg-k">Direction</div><div class="ye2-eg-v" style="color:${tCol(p.trend)}">${p.trend}</div></div>
-      <div class="ye2-eg-cell"><div class="ye2-eg-k">Volatility</div><div class="ye2-eg-v" style="color:${vCol(p.vol)}">${p.vol}</div></div>
-      <div class="ye2-eg-cell"><div class="ye2-eg-k">Setup Quality</div><div class="ye2-eg-v" style="color:${sCol(p.score)}">${p.confidence}</div></div>
+  <div class="ye2-expand-body">
+    <div class="ye2-exp-grid">
+      <div class="ye2-eg"><div class="ye2-ek">Rate Differential</div><div class="ye2-ev" style="color:#4d9de0">${pr.rate.toFixed(2)}% p.a.</div></div>
+      <div class="ye2-eg"><div class="ye2-ek">Direction Bias</div><div class="ye2-ev" style="color:${tCol(pr.trend)}">${pr.trend}</div></div>
+      <div class="ye2-eg"><div class="ye2-ek">Volatility Regime</div><div class="ye2-ev" style="color:${vCol(pr.vol)}">${pr.vol}</div></div>
+      <div class="ye2-eg"><div class="ye2-ek">Setup Quality</div><div class="ye2-ev" style="color:${sCol(pr.score)}">${pr.confidence}</div></div>
     </div>
-  </div>
-  <div class="ye2-cta-row">
-    <button class="ye2-cta" onclick="event.stopPropagation()">VIEW SETUP</button>
   </div>
 </div>`;
 
-  // ── SECONDARY CARDS ────────────────────────────────────────────────────────
-  const secondaryHtml = secondary.map((p,i) => `
-<div class="ye2-secondary" onclick="ye2Toggle(this)">
-  <div class="ye2-sec-rank">0${i+2}</div>
-  <div class="ye2-sec-body">
-    <div>
-      <div class="ye2-sec-pair">${p.pair}</div>
-      <div class="ye2-sec-pos">LONG ${p.long} / SHORT ${p.short}</div>
+  // ── SECONDARY CARDS with progressive de-emphasis ──────────────────────────
+  const opacities  = [1, 0.88, 0.76];
+  const scoreSizes = ['17px','15px','13px'];
+  const altsHtml = alts.map((p,i) => `
+<div class="ye2-alt" style="opacity:${opacities[i]}" onclick="ye2Toggle(this)">
+  <div class="ye2-alt-layout">
+    <div class="ye2-alt-left">
+      <div class="ye2-alt-rank">0${i+2}</div>
+      <div class="ye2-alt-pair">${p.pair}</div>
+      <div class="ye2-alt-pos">LONG ${p.long} / SHORT ${p.short}</div>
     </div>
-    <div class="ye2-sec-right">
-      <div class="ye2-sec-yield" style="color:#58a6ff">${p.rate.toFixed(2)}%</div>
-      <div class="ye2-sec-score" style="color:${sCol(p.score)}">${p.score}<span style="font-size:9px;opacity:.5">/10</span></div>
+    <div class="ye2-alt-right">
+      <div class="ye2-alt-yield">${p.rate.toFixed(2)}%</div>
+      <div class="ye2-alt-score" style="color:${sCol(p.score)};font-size:${scoreSizes[i]}">${scoreStr(p.score)}</div>
     </div>
   </div>
-  <div class="ye2-sec-bar-track">
-    <div class="ye2-bar-fill ye2-anim" data-w="${pct(p.score)}" style="background:${sCol(p.score)};opacity:.7"></div>
-  </div>
-  <div class="ye2-sec-expand">
-    <div class="ye2-sec-meta">
+  <div class="ye2-alt-bar"><div class="ye2-bar-fill ye2-anim" data-w="${pW(p.score)}" style="background:${sCol(p.score)};opacity:.55"></div></div>
+  <div class="ye2-alt-expand">
+    <div class="ye2-alt-tags">
       <span style="color:${tCol(p.trend)}">${p.trend}</span>
-      <span class="ye2-sep">·</span>
+      <span class="ye2-dot">·</span>
       <span style="color:${vCol(p.vol)}">Vol ${p.vol}</span>
-      <span class="ye2-sep">·</span>
+      <span class="ye2-dot">·</span>
       <span style="color:${sCol(p.score)}">${p.confidence}</span>
     </div>
-    ${p.reasons.map(r=>`<div class="ye2-sec-reason">${r}</div>`).join('')}
+    ${p.reasons.map(r=>`<div class="ye2-alt-reason">${r}</div>`).join('')}
   </div>
 </div>`).join('');
 
-  // ── REMAINING TABLE ────────────────────────────────────────────────────────
-  const tableHtml = remaining.map(p => `
+  // ── TAIL TABLE ────────────────────────────────────────────────────────────
+  const tailRows = tail.map(p=>`
 <tr class="ye2-tr">
-  <td class="ye2-td-pair" style="color:rgba(255,255,255,.45)">${p.pair}</td>
-  <td class="ye2-td" style="color:rgba(88,166,255,.6)">${p.rate.toFixed(2)}%</td>
-  <td class="ye2-td" style="color:${tCol(p.trend)};opacity:.6">${p.trend}</td>
-  <td class="ye2-td" style="color:${vCol(p.vol)};opacity:.6">${p.vol}</td>
-  <td class="ye2-td">
-    <span style="color:${sCol(p.score)};opacity:.65;font-family:var(--mono)">${p.score}</span>
-  </td>
+  <td class="ye2-tc-pair">${p.pair}</td>
+  <td class="ye2-tc-num" style="color:#4d7faa">${p.rate.toFixed(2)}%</td>
+  <td class="ye2-tc-num" style="color:${tCol(p.trend)}">${p.trend}</td>
+  <td class="ye2-tc-num" style="color:${vCol(p.vol)}">${p.vol}</td>
+  <td class="ye2-tc-num" style="color:${sCol(p.score)}">${scoreStr(p.score)}</td>
 </tr>`).join('');
 
-  // ── FULL HTML ──────────────────────────────────────────────────────────────
+  // ── FULL RENDER ───────────────────────────────────────────────────────────
   document.getElementById('page-carry').innerHTML = `
 <div class="ye2-page">
 
-  <!-- 1. YIELD CONDITIONS — CONTEXT FIRST -->
-  <div class="ye2-conditions-banner">
-    <div class="ye2-cond-header">
-      <span class="ye2-cond-title">YIELD CONDITIONS</span>
-      <span class="ye2-live-dot"></span>
+  <!-- 1. YIELD CONDITIONS -->
+  <div class="ye2-cond-block">
+    <div class="ye2-cond-top">
+      <div>
+        <div class="ye2-cond-eyebrow">YIELD CONDITIONS</div>
+        <div class="ye2-cond-status ${R.stCls}">${R.status}</div>
+      </div>
+      <div class="ye2-live-badge"><span class="ye2-dot-live"></span>LIVE</div>
     </div>
-    <div class="ye2-cond-pills">
-      <div class="ye2-cond-pill">
-        <span class="ye2-pill-lbl">Risk Environment</span>
-        <span class="ye2-pill-val ${regime.riskCls}">${regime.risk}</span>
-      </div>
-      <div class="ye2-cond-pill">
-        <span class="ye2-pill-lbl">Volatility Regime</span>
-        <span class="ye2-pill-val ${regime.volCls}">${regime.vol}</span>
-      </div>
-      <div class="ye2-cond-pill">
-        <span class="ye2-pill-lbl">Carry Suitability</span>
-        <span class="ye2-pill-val ${regime.suitCls}">${regime.suit}</span>
-      </div>
+    <div class="ye2-cond-row">
+      <div class="ye2-cond-cell"><span class="ye2-ck">Risk Environment</span><span class="ye2-cv ${R.rCls}">${R.risk}</span></div>
+      <div class="ye2-cond-divider"></div>
+      <div class="ye2-cond-cell"><span class="ye2-ck">Volatility</span><span class="ye2-cv ${R.vCls}">${R.vol}</span></div>
+      <div class="ye2-cond-divider"></div>
+      <div class="ye2-cond-cell"><span class="ye2-ck">Carry Suitability</span><span class="ye2-cv ${R.sCls}">${R.suit}</span></div>
     </div>
-    <div class="ye2-cond-interp">${regime.interp}</div>
+    <div class="ye2-cond-brief">${R.brief}</div>
   </div>
 
   <!-- 2. PRIMARY TRADE -->
-  <div class="ye2-label">Primary Setup</div>
-  ${primaryHtml}
+  <div class="ye2-section-lbl">Primary Setup</div>
+  ${pCard}
 
-  <!-- 3. SECONDARY TRADES -->
-  <div class="ye2-label" style="margin-top:20px">Alternatives</div>
-  <div class="ye2-secondaries">${secondaryHtml}</div>
+  <!-- 3. ALTERNATIVES -->
+  <div class="ye2-section-lbl" style="margin-top:20px">Alternatives</div>
+  <div class="ye2-alts">${altsHtml}</div>
 
-  <!-- 4. REMAINING TABLE -->
-  <div class="ye2-label" style="margin-top:20px;opacity:.5">Remaining Pairs</div>
-  <div class="ye2-table-wrap">
-    <table class="ye2-table">
-      <thead><tr>
-        <th>Pair</th><th>Yield</th><th>Trend</th><th>Vol</th><th>Score</th>
-      </tr></thead>
-      <tbody>${tableHtml}</tbody>
+  <!-- 4. TAIL TABLE -->
+  <div class="ye2-section-lbl" style="margin-top:20px;opacity:.45">Remaining Pairs</div>
+  <div class="ye2-tbl-wrap">
+    <table class="ye2-tbl">
+      <thead><tr><th>Pair</th><th>Yield</th><th>Trend</th><th>Vol</th><th>Score</th></tr></thead>
+      <tbody>${tailRows}</tbody>
     </table>
   </div>
 
   <!-- 5. CARRY CONDITIONS INTELLIGENCE -->
-  <div class="ye2-label" style="margin-top:20px">Carry Conditions</div>
-  <div class="ye2-intel">
-    <div class="ye2-intel-top">
-      <div class="ye2-intel-col">
-        <div class="ye2-intel-head ye2-intel-head-bull">When it works</div>
-        <div class="ye2-intel-item">Low realized volatility environment</div>
-        <div class="ye2-intel-item">Risk appetite expanding (risk-on)</div>
-        <div class="ye2-intel-item">Central bank rate paths diverging</div>
-        <div class="ye2-intel-item">Stable, trending FX price action</div>
+  <div class="ye2-section-lbl" style="margin-top:20px">Carry Conditions</div>
+  <div class="ye2-intel-block">
+    <div class="ye2-intel-cols">
+      <div class="ye2-ic">
+        <div class="ye2-ic-head ye2-ic-bull">Favorable When</div>
+        <div class="ye2-ic-item">Low realized volatility</div>
+        <div class="ye2-ic-item">Risk appetite expanding</div>
+        <div class="ye2-ic-item">Rate paths diverging</div>
+        <div class="ye2-ic-item">Trending FX structure</div>
       </div>
-      <div class="ye2-intel-col">
-        <div class="ye2-intel-head ye2-intel-head-bear">When it fails</div>
-        <div class="ye2-intel-item">Volatility spikes (VIX > 25)</div>
-        <div class="ye2-intel-item">Risk-off flight to safety</div>
-        <div class="ye2-intel-item">Unexpected CB policy reversals</div>
-        <div class="ye2-intel-item">Macro shocks / geopolitical stress</div>
+      <div class="ye2-ic">
+        <div class="ye2-ic-head ye2-ic-bear">Adverse When</div>
+        <div class="ye2-ic-item">Volatility spike (VIX &gt; 25)</div>
+        <div class="ye2-ic-item">Risk-off flight to safety</div>
+        <div class="ye2-ic-item">Unexpected CB reversals</div>
+        <div class="ye2-ic-item">Macro or geopolitical shock</div>
       </div>
     </div>
-    <div class="ye2-intel-current">
+    <div class="ye2-intel-cur">
       <span class="ye2-intel-cur-lbl">CURRENT INTERPRETATION</span>
-      <span class="ye2-intel-cur-text">${regime.interp}</span>
+      <span class="ye2-intel-cur-txt">${R.brief}</span>
     </div>
   </div>
 
-  <!-- 6. SYSTEM INTEGRATION -->
-  <div class="ye2-label" style="margin-top:20px">System Integration</div>
-  <div class="ye2-system">
-    <div class="ye2-sys-title">This module contributes to the EdgeFinder scoring model</div>
-    <div class="ye2-sys-weights">
-      <div class="ye2-sw-item">
-        <div class="ye2-sw-bar-track"><div class="ye2-bar-fill ye2-anim" data-w="30%" style="background:rgba(255,255,255,.15)"></div></div>
-        <div class="ye2-sw-pct">30%</div>
-        <div class="ye2-sw-lbl">Technical</div>
-      </div>
-      <div class="ye2-sw-item">
-        <div class="ye2-sw-bar-track"><div class="ye2-bar-fill ye2-anim" data-w="30%" style="background:rgba(255,255,255,.15)"></div></div>
-        <div class="ye2-sw-pct">30%</div>
-        <div class="ye2-sw-lbl">Macro</div>
-      </div>
-      <div class="ye2-sw-item ye2-sw-active">
-        <div class="ye2-sw-bar-track"><div class="ye2-bar-fill ye2-anim" data-w="20%" style="background:#58a6ff"></div></div>
-        <div class="ye2-sw-pct" style="color:#58a6ff">20%</div>
-        <div class="ye2-sw-lbl" style="color:#58a6ff">Carry Yield</div>
-      </div>
-      <div class="ye2-sw-item">
-        <div class="ye2-sw-bar-track"><div class="ye2-bar-fill ye2-anim" data-w="20%" style="background:rgba(255,255,255,.15)"></div></div>
-        <div class="ye2-sw-pct">20%</div>
-        <div class="ye2-sw-lbl">Sentiment</div>
-      </div>
+  <!-- 6. SCORING MODEL WEIGHTS -->
+  <div class="ye2-section-lbl" style="margin-top:20px">Scoring Model Weights</div>
+  <div class="ye2-weights-block">
+    <div class="ye2-wt-label">This module contributes carry yield signals to the EdgeFinder scoring engine</div>
+    <div class="ye2-wt-row">
+      ${[['Technical','30%','30'],['Macro','30%','30'],['Carry Yield','20%','20',true],['Sentiment','20%','20']].map(([lbl,pct,pw,active])=>`
+      <div class="ye2-wt-item${active?' ye2-wt-active':''}">
+        <div class="ye2-wt-track"><div class="ye2-bar-fill ye2-anim" data-w="${pw}%" style="background:${active?'#4d9de0':'rgba(255,255,255,.12)'}"></div></div>
+        <div class="ye2-wt-pct">${pct}</div>
+        <div class="ye2-wt-lbl">${lbl}</div>
+      </div>`).join('')}
     </div>
   </div>
 
 </div>`;
 
-  // Animate bars
+  // Animate bars on next frame
   requestAnimationFrame(() => {
     setTimeout(() => {
       document.querySelectorAll('#page-carry .ye2-anim').forEach(el => {
-        const w = el.getAttribute('data-w') || '0%';
+        const w = el.getAttribute('data-w');
         el.style.width = '0%';
         requestAnimationFrame(() => { el.style.width = w; });
       });
-    }, 80);
+    }, 60);
   });
 }
 
 function ye2Toggle(card) {
-  const wasOpen = card.classList.contains('ye2-open');
-  document.querySelectorAll('.ye2-primary.ye2-open, .ye2-secondary.ye2-open')
-    .forEach(c => c.classList.remove('ye2-open'));
-  if (!wasOpen) card.classList.add('ye2-open');
+  const was = card.classList.contains('ye2-open');
+  document.querySelectorAll('#page-carry .ye2-open').forEach(c=>c.classList.remove('ye2-open'));
+  if (!was) card.classList.add('ye2-open');
 }
+
 
 // ── FEAR & GREED
 // ── FEAR & GREED ──────────────────────────────────────────────────────────────
