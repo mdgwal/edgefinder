@@ -922,3 +922,143 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOP SETUPS — Bloomberg-style heatmap table
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Top 3 label */
+.ts-top3-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: #d4af37; margin-bottom: 12px; padding-left: 2px;
+}
+
+/* Hero cards row */
+.ts-hero-row {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  margin-bottom: 18px;
+}
+@media(max-width:580px){ .ts-hero-row{grid-template-columns:1fr;} }
+
+.ts-hero-card {
+  background: #0c1420;
+  border: 2px solid #d4af37;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex; align-items: center; gap: 10px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 0 20px rgba(0,0,0,.4);
+  transition: box-shadow .2s ease;
+}
+.ts-hero-card:hover { box-shadow: 0 0 30px rgba(212,175,55,.12); }
+
+.ts-hero-rank {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.ts-hero-flag { font-size: 24px; flex-shrink: 0; }
+.ts-hero-info { flex: 1; min-width: 0; }
+.ts-hero-name {
+  font-family: var(--mono); font-size: 18px; font-weight: 900;
+  color: #e8e0c8; letter-spacing: .5px; line-height: 1;
+}
+.ts-hero-bias {
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  margin-top: 4px;
+}
+.ts-hero-score { text-align: right; flex-shrink: 0; }
+.ts-hero-score-lbl {
+  font-family: var(--mono); font-size: 7px; letter-spacing: 2px;
+  text-transform: uppercase; color: rgba(255,255,255,.3);
+  margin-bottom: 2px;
+}
+.ts-hero-score-val {
+  font-family: var(--mono); font-size: 28px; font-weight: 900;
+  line-height: 1; letter-spacing: -1px;
+}
+
+/* Live row */
+.ts-live-row {
+  display: flex; justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+/* Table shell */
+.ts-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 11px;
+  min-width: 1080px;
+  background: #080e14;
+}
+
+/* Group header */
+.ts-th-group th, .ts-th-sub th {
+  background: #0a1220;
+  color: rgba(255,255,255,.35);
+  text-align: center;
+  padding: 7px 6px;
+  border: 1px solid rgba(255,255,255,.05);
+  font-size: 8px; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  white-space: nowrap;
+}
+.ts-th-asset { text-align: left !important; padding-left: 12px !important; }
+.ts-th-section {
+  font-size: 9px !important; letter-spacing: 1.5px !important;
+  border-bottom: 2px solid rgba(77,158,224,.2) !important;
+}
+.ts-th-insight, .ts-th-conf { min-width: 80px; }
+
+/* Data rows */
+.ts-data-row td {
+  padding: 9px 7px;
+  border: 1px solid rgba(255,255,255,.04);
+  text-align: center;
+  font-size: 11px;
+  transition: background-color .2s ease, filter .2s ease;
+}
+.ts-data-row:hover td { filter: brightness(1.18); }
+.ts-data-row:hover .ts-asset-cell { background: rgba(255,255,255,.04) !important; }
+
+/* Asset cell */
+.ts-asset-cell {
+  text-align: left !important;
+  padding-left: 10px !important;
+  white-space: nowrap;
+  position: sticky; left: 0; z-index: 2;
+  background: #080e14;
+}
+.ts-asset-name {
+  font-weight: 800; font-size: 12px; letter-spacing: .3px;
+}
+.ts-bias-cell {
+  font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.ts-score-cell {
+  font-size: 16px; font-weight: 900; white-space: nowrap;
+}
+
+/* Confidence bar */
+.ts-conf-wrap {
+  display: flex; align-items: center; gap: 5px; justify-content: flex-end;
+  padding-right: 2px;
+}
+.ts-conf-bar-track {
+  width: 60px; height: 5px; background: rgba(255,255,255,.08);
+  border-radius: 3px; overflow: hidden; flex-shrink: 0;
+}
+.ts-conf-bar-fill {
+  height: 100%; border-radius: 3px;
+  transition: width .8s cubic-bezier(.4,0,.2,1);
+}
+.ts-conf-pct {
+  font-size: 10px; font-weight: 700; white-space: nowrap; min-width: 28px;
+  text-align: right;
+}
+
+/* Zebra rows */
+.ts-data-row:nth-child(4n+3) td:not([style*="rgba"]) {
+  background: rgba(255,255,255,.008);
+}
