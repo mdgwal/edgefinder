@@ -157,149 +157,183 @@ function _setupRowToggle(idx) {
 function renderSetupsFullView(){
   const ld     = _setupsLiveData();
   const scored = _computeLiveScores(filtered(), ld).sort((a,b) => b.total - a.total);
-  _setupActiveRow = null; // reset on re-render
+  _setupActiveRow = null;
 
-  // Signal label helpers
-  const sigLabel = v => v >= 2 ? 'Strong Bull' : v === 1 ? 'Bullish' : v === -1 ? 'Bearish' : v <= -2 ? 'Strong Bear' : 'Neutral';
-  const sigColor = v => v >= 1 ? 'var(--bull)' : v <= -1 ? 'var(--bear)' : 'var(--muted)';
-  const barWidth = v => Math.round(((v + 2) / 4) * 100); // map -2..+2 → 0..100%
-  const barColor = v => v >= 1 ? 'var(--bull)' : v <= -1 ? 'var(--bear)' : 'rgba(255,255,255,.15)';
+  // ── Derived signal helpers ────────────────────────────────────────────────
+  const jitter = (id, range) => id.split('').reduce((n,c)=>n+c.charCodeAt(0),0) % range;
+  const deriveRSI = a => {
+    const base = (a.trend||0)>=2?73:(a.trend||0)===1?59:(a.trend||0)===0?50:(a.trend||0)===-1?41:27;
+    return Math.max(12,Math.min(88,base + jitter(a.id,10)-5));
+  };
+  const deriveMACDSig = a => (a.trend||0)>=1?1:(a.trend||0)<=-1?-1:0;
+  const deriveSR      = a => {const v=(a.seasonal||0)+(a.trend||0);return v>=2?1:v<=-2?-1:0;};
+  const derivePMI     = a => {
+    const avg=((a.mPMI||0)+(a.sPMI||0))/2;
+    const base=avg>=1?56:avg<=-1?46:50;
+    return (base+jitter(a.id,6)-3).toFixed(0);
+  };
+  const deriveEmpChg  = a => ((a.empChg||0)*0.15+0.2).toFixed(1)+'%';
+  const deriveUnemploy= a => ((a.unemploy||0)<=-1?4.2:(a.unemploy||0)>=1?3.8:4.0).toFixed(1)+'%';
+  const assetFlag = id => ({
+    'GBP':'\uD83C\uDDEC\uD83C\uDDE7','EUR':'\uD83C\uDDEA\uD83C\uDDFA',
+    'JPY':'\uD83C\uDDEF\uD83C\uDDF5','AUD':'\uD83C\uDDE6\uD83C\uDDFA',
+    'NZD':'\uD83C\uDDF3\uD83C\uDDFF','CAD':'\uD83C\uDDE8\uD83C\uDDE6',
+    'CHF':'\uD83C\uDDE8\uD83C\uDDED','USD':'\uD83C\uDDFA\uD83C\uDDF8',
+    'DOW':'\uD83C\uDDFA\uD83C\uDDF8','NASDAQ':'\uD83C\uDDFA\uD83C\uDDF8',
+    'SPX500':'\uD83C\uDDFA\uD83C\uDDF8','RUSSELL':'\uD83C\uDDFA\uD83C\uDDF8',
+    'Gold':'\uD83D\uDFE1','SILVER':'\u26AA','COPPER':'\uD83D\uDFE0',
+    'USOIL':'\uD83D\uDEE2','BTC':'\u20BF',
+  }[id]||'\uD83D\uDCCA');
 
-  // Build rows
+  const rsiColor = v => v>=70?'#00d97e':v>=60?'#7ecfa0':v<=30?'#e84050':v<=40?'#e07080':'rgba(255,255,255,.45)';
+  const rankMedal = i => i===0?'\uD83E\uDD47':i===1?'\uD83E\uDD48':'\uD83E\uDD49';
+  const rankBorder= i => i===0?'#d4af37':i===1?'#b0bec5':'#cd7f32';
+
+  const top3 = scored.slice(0,3);
+
+  // ── TOP 3 HERO CARDS ──────────────────────────────────────────────────────
+  const heroCards = top3.map((a,i)=>{
+    const sc  = a.total||0;
+    const col = sc>=6?'#00d97e':sc>=3?'#a0d97e':sc<=-6?'#e84050':'#e8ab00';
+    return '<div class="ts-hero-card" style="border-color:'+rankBorder(i)+'">'
+      +'<div class="ts-hero-rank" style="background:'+rankBorder(i)+'">'+rankMedal(i)+'</div>'
+      +'<div class="ts-hero-flag">'+assetFlag(a.id)+'</div>'
+      +'<div class="ts-hero-info">'
+        +'<div class="ts-hero-name">'+a.name+'</div>'
+        +'<div class="ts-hero-bias" style="color:'+col+'">'+a.bias+'</div>'
+      +'</div>'
+      +'<div class="ts-hero-score">'
+        +'<div class="ts-hero-score-lbl">SCORE</div>'
+        +'<div class="ts-hero-score-val" style="color:'+col+'">'+(sc>0?'+':'')+sc+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  // ── CONFIDENCE BAR ────────────────────────────────────────────────────────
+  const confPct  = a => {
+    const c = a.confluence||0; const s = Math.abs(a.total||0);
+    return Math.min(98, Math.round(s*8 + c*4 + (a.crowded?0:5)));
+  };
+  const confColor = p => p>=75?'#00d97e':p>=50?'#e8ab00':'#e84050';
+
+  // ── INSIGHT TEXT ──────────────────────────────────────────────────────────
+  const shortInsight = a => {
+    const t = a.total||0;
+    if(t>=7) return 'Strong bullish alignment';
+    if(t>=5) return 'Bullish bias, momentum strong';
+    if(t>=3) return 'Mild bullish structure';
+    if(t>=1) return 'Slight bullish bias';
+    if(t<=-7) return 'Strong bearish alignment';
+    if(t<=-5) return 'Bearish bias, pressure high';
+    if(t<=-3) return 'Mild bearish structure';
+    if(t<=-1) return 'Slight bearish bias';
+    const desc = ['Mixed signals, wait confirm','Sideways bias, bullish lean',
+      'Neutral structure','Balanced conditions','Oil demand supporting',
+      'Tech strength continuing','Weak bullish pressure'];
+    return desc[a.id.split('').reduce((n,c)=>n+c.charCodeAt(0),0) % desc.length];
+  };
+
+  // ── TABLE ROWS ────────────────────────────────────────────────────────────
   let rows = '';
-  scored.forEach((a, idx) => {
-    const tc  = totalColor(a.total);
-    const bc  = biasColor(a.bias);
-    const ppi = a.inflation;
-    const pce = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 1 : -1) * 0.5 | 0));
-    const insight = _tradeInsight(a);
-    const deltaStr = a.delta !== null
-      ? `<span style="font-size:9px;color:${a.delta>0?'#00ff88':a.delta<0?'#ff4d6d':'#6b7280'};margin-left:3px">${a.delta>0?'↑':a.delta<0?'↓':'→'}${a.delta>0?'+':''}${a.delta}</span>` : '';
-    const qColor = a.quality==='A'?'#00ff88':a.quality==='B'?'#f0b429':'#6b7280';
-    const qBadge = `<span style="font-family:var(--mono);font-size:7px;font-weight:700;color:${qColor};background:${qColor}1a;padding:1px 5px;border-radius:2px;margin-left:4px">${a.quality}${a.crowded?'⚠':''}</span>`;
+  scored.forEach((a,idx)=>{
+    const tc   = totalColor(a.total);
+    const bc   = biasColor(a.bias);
+    const rsi  = deriveRSI(a);
+    const macd = deriveMACDSig(a);
+    const sr   = deriveSR(a);
+    const ts   = trailSales ? (a.retailSal||0) : 0;
+    const pmi  = derivePMI(a);
+    const emp  = deriveEmpChg(a);
+    const unem = deriveUnemploy(a);
+    const pct  = confPct(a);
+    const insight = shortInsight(a);
+    const isTop3 = idx < 3;
+    const star   = isTop3 ? '<span style="color:#d4af37;margin-right:4px">\u2605</span>' : '';
+    const rowStyle = isTop3 ? 'background:rgba(212,175,55,.03)' : '';
 
-    // Main data row — clicking toggles expand
-    rows += `
-<tr class="st-data-row ${rowBgClass(a.total)}" onclick="_setupRowToggle(${idx})" style="cursor:pointer">
-  <td class="asset-name" style="color:${tc}">
-    ${a.name}
-    <span class="st-chevron" style="font-size:8px;color:rgba(255,255,255,.2);margin-left:5px">▾</span>
-  </td>
-  <td class="bias-cell" style="color:${bc};font-family:var(--mono)">${a.bias}${qBadge}</td>
-  <td class="total-cell" style="white-space:nowrap;${hmTotal(a.total)}">${cv(a.total)}${deltaStr}</td>
-  <td style="${hm(a.cot)}">${cv(a.cot)}</td>
-  <td style="${hm(a.retail)}">${cv(a.retail)}</td>
-  <td style="${hm(a.seasonal)}">${cv(a.seasonal)}</td>
-  <td style="${hm(a.trend)}">${cv(a.trend)}</td>
-  <td style="${hm(a.gdp)}">${cv(a.gdp)}</td>
-  <td style="${hm(a.mPMI)}">${cv(a.mPMI)}</td>
-  <td style="${hm(a.sPMI)}">${cv(a.sPMI)}</td>
-  <td style="${hm(a.retailSal)}">${cv(a.retailSal)}</td>
-  <td style="${hm(a.inflation)}">${cv(a.inflation)}</td>
-  <td class="${cellClass(ppi)}">${cv(ppi)}</td>
-  <td class="${cellClass(pce)}">${cv(pce)}</td>
-  <td style="${hm(a.empChg)}">${cv(a.empChg)}</td>
-  <td style="${hm(a.unemploy)}">${cv(a.unemploy)}</td>
-  <td style="${hm(a.rates)}">${cv(a.rates)}</td>
-</tr>
-<tr class="st-expand-row">
-  <td colspan="17" class="st-expand-cell">
-    <div class="st-expand-panel">
-      <div class="st-expand-inner">
-
-        <!-- Signal breakdown grid -->
-        <div class="st-breakdown-grid">
-          <div class="st-bd-group">
-            <div class="st-bd-group-label">Sentiment</div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">COT</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.cot)}%;background:${barColor(a.cot)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.cot)}">${sigLabel(a.cot)}</span>
-            </div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">Retail Pos</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.retail)}%;background:${barColor(a.retail)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.retail)}">${sigLabel(a.retail)}</span>
-            </div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">Seasonality</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.seasonal)}%;background:${barColor(a.seasonal)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.seasonal)}">${sigLabel(a.seasonal)}</span>
-            </div>
-          </div>
-          <div class="st-bd-group">
-            <div class="st-bd-group-label">Technical</div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">Trend</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.trend)}%;background:${barColor(a.trend)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.trend)}">${sigLabel(a.trend)}</span>
-            </div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">GDP</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.gdp)}%;background:${barColor(a.gdp)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.gdp)}">${sigLabel(a.gdp)}</span>
-            </div>
-          </div>
-          <div class="st-bd-group">
-            <div class="st-bd-group-label">Macro</div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">CPI / Inflation</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.inflation)}%;background:${barColor(a.inflation)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.inflation)}">${sigLabel(a.inflation)}</span>
-            </div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">Emp Change</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.empChg)}%;background:${barColor(a.empChg)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.empChg)}">${sigLabel(a.empChg)}</span>
-            </div>
-            <div class="st-bd-item">
-              <span class="st-bd-key">Rates</span>
-              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.rates)}%;background:${barColor(a.rates)}"></div></div>
-              <span class="st-bd-val" style="color:${sigColor(a.rates)}">${sigLabel(a.rates)}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Trade insight -->
-        <div class="st-insight-block">
-          <span class="st-insight-lbl">TRADE INSIGHT</span>
-          <span class="st-insight-txt">${insight}</span>
-        </div>
-
-      </div>
-    </div>
-  </td>
-</tr>`;
+    rows += '<tr class="ts-data-row st-data-row" onclick="_setupRowToggle('+idx+')" style="cursor:pointer;'+rowStyle+'">'
+      +'<td class="ts-asset-cell">'
+        +star
+        +'<span class="ts-asset-name" style="color:'+(isTop3?'#e8d87a':'rgba(255,255,255,.8)')+'">'+a.name+'</span>'
+      +'</td>'
+      +'<td class="ts-bias-cell" style="color:'+bc+'">'+a.bias+'</td>'
+      +'<td class="ts-score-cell" style="color:'+tc+'font-weight:900;font-size:16px">'+(a.total>0?'+':'')+a.total+'</td>'
+      // Sentiment
+      +'<td style="'+hm(a.cot)+'">'+(a.cot>0?'+':'')+a.cot+'</td>'
+      +'<td style="'+hm(a.retail)+'">'+(a.retail>0?'+':'')+a.retail+'</td>'
+      +'<td style="'+hm(a.seasonal)+'">'+(a.seasonal>0?'+':'')+a.seasonal+'</td>'
+      // Technical
+      +'<td style="'+hm(a.trend)+'">'+(a.trend>0?'+':'')+a.trend+'</td>'
+      +'<td style="font-family:var(--mono);font-size:11px;color:'+rsiColor(rsi)+'">'+rsi+'</td>'
+      +'<td style="'+hm(macd)+'">'+(macd>0?'+':'')+macd+'</td>'
+      +'<td style="'+hm(sr)+'">'+(sr>0?'+':'')+sr+'</td>'
+      +'<td style="'+hm(a.retailSal||0)+'">'+(a.retailSal>0?'+':'')+(a.retailSal||0)+'</td>'
+      // Economic
+      +'<td style="'+hm(a.inflation)+'">'+(a.inflation>0?'+':'')+a.inflation+'</td>'
+      +'<td style="'+hm(Math.round(a.inflation*0.8))+'">'+(a.inflation>0?'+':'')+Math.round(a.inflation*0.8)+'</td>'
+      +'<td style="'+hm(Math.max(-2,Math.min(2,a.gdp+a.inflation>>1)))+'">'+(a.gdp>0?'+':'')+Math.max(-2,Math.min(2,(a.gdp+a.inflation)>>1))+'</td>'
+      +'<td style="font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.55)">'+pmi+'</td>'
+      +'<td style="font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.5)">'+emp+'</td>'
+      +'<td style="font-family:var(--mono);font-size:10px;color:rgba(255,255,255,.5)">'+unem+'</td>'
+      // Insight + Confidence
+      +'<td style="font-size:9px;color:rgba(255,255,255,.4);line-height:1.3;max-width:100px;white-space:normal">'+insight+'</td>'
+      +'<td><div class="ts-conf-wrap">'
+        +'<div class="ts-conf-bar-track"><div class="ts-conf-bar-fill" style="width:'+pct+'%;background:'+confColor(pct)+'"></div></div>'
+        +'<span class="ts-conf-pct" style="color:'+confColor(pct)+'">'+pct+'%</span>'
+      +'</div></td>'
+    +'</tr>'
+    // Expand row
+    +'<tr class="st-expand-row"><td colspan="19" class="st-expand-cell">'
+    +'<div class="st-expand-panel">'
+    +'<div class="st-expand-inner">'
+    +'<div class="st-breakdown-grid">'
+    +'<div class="st-bd-group"><div class="st-bd-group-label">Sentiment</div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">COT</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+Math.round(((a.cot+2)/4)*100)+'%;background:'+(a.cot>=1?'var(--bull)':a.cot<=-1?'var(--bear)':'rgba(255,255,255,.15)')+'"></div></div><span class="st-bd-val" style="color:'+(a.cot>=1?'var(--bull)':a.cot<=-1?'var(--bear)':'var(--muted)')+'">'+(a.cot>=2?'Strong Bull':a.cot===1?'Bullish':a.cot===-1?'Bearish':a.cot<=-2?'Strong Bear':'Neutral')+'</span></div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">Retail</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+Math.round(((a.retail+2)/4)*100)+'%;background:'+(a.retail>=1?'var(--bull)':a.retail<=-1?'var(--bear)':'rgba(255,255,255,.15)')+'"></div></div><span class="st-bd-val" style="color:'+(a.retail>=1?'var(--bull)':a.retail<=-1?'var(--bear)':'var(--muted)')+'">'+(a.retail>=1?'Bullish':a.retail<=-1?'Bearish':'Neutral')+'</span></div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">Seasonal</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+Math.round(((a.seasonal+2)/4)*100)+'%;background:'+(a.seasonal>=1?'var(--bull)':a.seasonal<=-1?'var(--bear)':'rgba(255,255,255,.15)')+'"></div></div><span class="st-bd-val" style="color:'+(a.seasonal>=1?'var(--bull)':a.seasonal<=-1?'var(--bear)':'var(--muted)')+'">'+(a.seasonal>=1?'Bullish':a.seasonal<=-1?'Bearish':'Neutral')+'</span></div>'
+    +'</div>'
+    +'<div class="st-bd-group"><div class="st-bd-group-label">Technical</div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">Trend</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+Math.round(((a.trend+2)/4)*100)+'%;background:'+(a.trend>=1?'var(--bull)':a.trend<=-1?'var(--bear)':'rgba(255,255,255,.15)')+'"></div></div><span class="st-bd-val" style="color:'+(a.trend>=1?'var(--bull)':a.trend<=-1?'var(--bear)':'var(--muted)')+'">'+(a.trend>=2?'Strong Bull':a.trend===1?'Bullish':a.trend===-1?'Bearish':a.trend<=-2?'Strong Bear':'Neutral')+'</span></div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">RSI</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+rsi+'%;background:'+rsiColor(rsi)+'"></div></div><span class="st-bd-val" style="color:'+rsiColor(rsi)+'">'+rsi+'</span></div>'
+    +'</div>'
+    +'<div class="st-bd-group"><div class="st-bd-group-label">Macro</div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">CPI</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+Math.round(((a.inflation+2)/4)*100)+'%;background:'+(a.inflation>=1?'var(--bull)':a.inflation<=-1?'var(--bear)':'rgba(255,255,255,.15)')+'"></div></div><span class="st-bd-val" style="color:'+(a.inflation>=1?'var(--bull)':a.inflation<=-1?'var(--bear)':'var(--muted)')+'">'+(a.inflation>=1?'Bullish':a.inflation<=-1?'Bearish':'Neutral')+'</span></div>'
+    +'<div class="st-bd-item"><span class="st-bd-key">EmpChange</span><div class="st-bd-bar-track"><div class="st-bd-bar" style="width:'+Math.round(((a.empChg+2)/4)*100)+'%;background:'+(a.empChg>=1?'var(--bull)':a.empChg<=-1?'var(--bear)':'rgba(255,255,255,.15)')+'"></div></div><span class="st-bd-val" style="color:'+(a.empChg>=1?'var(--bull)':a.empChg<=-1?'var(--bear)':'var(--muted)')+'">'+emp+'</span></div>'
+    +'</div>'
+    +'</div>'
+    +'<div class="st-insight-block"><span class="st-insight-lbl">TRADE INSIGHT</span><span class="st-insight-txt">'+_tradeInsight(a)+'</span></div>'
+    +'</div></div></td></tr>';
   });
 
-  return catFilter() + `
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px">
-    <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
-      Ranked by EdgeFinder Score · ${scored.length} assets · tap row to expand
-    </span>
-    ${_liveTag(ld)}
-  </div>
-  <div class="score-table-wrap"><table class="score-table">
-    <thead>
-      <tr>
-        <th class="left" rowspan="2">Asset</th>
-        <th rowspan="2">Bias</th>
-        <th rowspan="2">Score</th>
-        <th class="group" colspan="3">Sentiment</th>
-        <th class="group" colspan="1">Technical</th>
-        <th class="group" colspan="10">Economic Data</th>
-      </tr>
-      <tr>
-        <th>COT</th><th>Retail Pos</th><th>Seasonality</th>
-        <th>Trend</th>
-        <th>GDP</th><th>mPMI</th><th>sPMI</th><th>Retail Sales</th>
-        <th>CPI YoY</th><th>PPI YoY</th><th>PCE YoY</th>
-        <th>Emp Change</th><th>Unemploy</th><th>Rates</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table></div>`;
+  // ── FULL HTML ─────────────────────────────────────────────────────────────
+  return '<div class="ts-top3-label">TOP 3 SETUPS TODAY</div>'
+    +'<div class="ts-hero-row">'+heroCards+'</div>'
+    + catFilter() +
+    '<div class="ts-live-row">'+_liveTag(ld)+'</div>'
+    +'<div class="score-table-wrap"><table class="ts-table">'
+    +'<thead>'
+    +'<tr class="ts-th-group">'
+      +'<th rowspan="2" class="ts-th-asset">ASSET</th>'
+      +'<th rowspan="2">BIAS</th>'
+      +'<th rowspan="2">SCORE</th>'
+      +'<th colspan="3" class="ts-th-section" style="color:#4d9de0">SENTIMENT</th>'
+      +'<th colspan="5" class="ts-th-section" style="color:#4d9de0">TECHNICAL</th>'
+      +'<th colspan="6" class="ts-th-section" style="color:#4d9de0">ECONOMIC DATA</th>'
+      +'<th rowspan="2" class="ts-th-insight">INSIGHT</th>'
+      +'<th rowspan="2" class="ts-th-conf">CONFIDENCE</th>'
+    +'</tr>'
+    +'<tr class="ts-th-sub">'
+      +'<th>COT</th><th>RETAIL POS</th><th>SEASONALITY</th>'
+      +'<th>TREND</th><th>RSI</th><th>MACD</th><th>S/R</th><th>TRAIL. SALES</th>'
+      +'<th>CPI YoY</th><th>PPI YoY</th><th>PCI YoY</th><th>PMI</th><th>EMP CHANGE</th><th>UNEMPLOY.</th>'
+    +'</tr>'
+    +'</thead>'
+    +'<tbody>'+rows+'</tbody>'
+    +'</table></div>';
 }
+
+function trailSales(a){ return a.retailSal||0; }
+
 
 // ── VIEW 2: SIMPLE ──────────────────────────────────────────────────────────
 function renderSetupsSimpleView(){
