@@ -185,22 +185,22 @@ function renderSetupsFullView(){
     ${a.name}
     <span class="st-chevron" style="font-size:8px;color:rgba(255,255,255,.2);margin-left:5px">▾</span>
   </td>
-  <td class="bias-cell" style="color:${bc}">${a.bias}${qBadge}</td>
-  <td class="total-cell" style="white-space:nowrap;color:${tc}">${cv(a.total)}${deltaStr}</td>
-  <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
-  <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
-  <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
-  <td class="${cellClass(a.trend)}">${cv(a.trend)}</td>
-  <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
-  <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
-  <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
-  <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
-  <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
+  <td class="bias-cell" style="color:${bc};font-family:var(--mono)">${a.bias}${qBadge}</td>
+  <td class="total-cell" style="white-space:nowrap;${hmTotal(a.total)}">${cv(a.total)}${deltaStr}</td>
+  <td style="${hm(a.cot)}">${cv(a.cot)}</td>
+  <td style="${hm(a.retail)}">${cv(a.retail)}</td>
+  <td style="${hm(a.seasonal)}">${cv(a.seasonal)}</td>
+  <td style="${hm(a.trend)}">${cv(a.trend)}</td>
+  <td style="${hm(a.gdp)}">${cv(a.gdp)}</td>
+  <td style="${hm(a.mPMI)}">${cv(a.mPMI)}</td>
+  <td style="${hm(a.sPMI)}">${cv(a.sPMI)}</td>
+  <td style="${hm(a.retailSal)}">${cv(a.retailSal)}</td>
+  <td style="${hm(a.inflation)}">${cv(a.inflation)}</td>
   <td class="${cellClass(ppi)}">${cv(ppi)}</td>
   <td class="${cellClass(pce)}">${cv(pce)}</td>
-  <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
-  <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
-  <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
+  <td style="${hm(a.empChg)}">${cv(a.empChg)}</td>
+  <td style="${hm(a.unemploy)}">${cv(a.unemploy)}</td>
+  <td style="${hm(a.rates)}">${cv(a.rates)}</td>
 </tr>
 <tr class="st-expand-row">
   <td colspan="17" class="st-expand-cell">
