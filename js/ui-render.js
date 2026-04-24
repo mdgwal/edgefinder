@@ -3384,34 +3384,46 @@ function renderScorecard() {
     ${scHistoryChart(raw.id, edgeScore, {height:120, showLabel:false})}
   </div>`;
 
-  // Section 5 — 5 accordion detail sections + crowd sidebar
-  // Using exact same section/accordion builder as before
-  const detailsSection = `
-  <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-    <div style="flex:1;min-width:260px;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;background:#0e1520">
-      <style>.sc-accordion:last-child{border-bottom:none}</style>
-      ${section('tech',  '📈','Technical bias',            comp.technical>=1?'Bullish':comp.technical<=-1?'Bearish':'Neutral',   '25%', techFresh,  techContent,   f_tech*0.25)}
-      ${section('inst',  '🏦','Institutional activity bias',f_inst>=1?'Bullish':f_inst<=-1?'Bearish':'Neutral',                   '20%', cotFresh,   instContent,   f_inst*0.20)}
-      ${section('growth','🌍','Economic growth bias',       f_growth>=1?'Bullish':f_growth<=-1?'Bearish':'Neutral',               '20%', econFresh,  growthContent, f_growth*0.20)}
-      ${section('infl',  '🌡','Inflation bias',             f_infl>=1?'Bullish':f_infl<=-1?'Bearish':'Neutral',                   '20%', econFresh,  inflContent,   f_infl*0.20)}
-      ${section('labor', '👷','Jobs market bias',           f_labor>=1?'Bullish':f_labor<=-1?'Bearish':'Neutral',                  '15%', econFresh,  laborContent,  f_labor*0.15)}
-    </div>
-    <div style="width:176px;min-width:160px;flex-shrink:0;background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;align-self:flex-start">
+  // Section 5 — 5 accordion detail sections + crowd signal at bottom
+  const crowdBlock = `
+    <div style="border-top:1px solid rgba(255,255,255,.06);padding:12px 14px">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-        <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.7)">Crowd signal</span>
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.8px">Crowd Signal</span>
         ${mkBadge(crowdSignal,true)}
       </div>
       <div style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.65">
         ${rlp>65?`Retail ${rlp.toFixed(0)}% long — contrarian bullish. Puts being bought aggressively.`:rlp<35?`Retail ${rlp.toFixed(0)}% long — contrarian bearish. Heavy short positioning.`:`Retail ${rlp.toFixed(0)}% long — balanced, no extreme signal.`}
       </div>
-      ${sentRow?`<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
-        <span style="color:rgba(255,255,255,.3)">Long %</span><span style="color:${rlp>65?'#e05c6a':rlp<35?'#4a90d9':'#6b7280'}">${rlp.toFixed(1)}%</span>
-      </div>`:''}
-      ${pcRow?`<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;margin-top:3px">
-        <span style="color:rgba(255,255,255,.3)">Put/Call</span><span style="color:rgba(255,255,255,.7)">${pcRow.pc.toFixed(2)}</span>
-      </div>`:''}
-      <div style="margin-top:6px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25)">${sentFresh}</div>
-    </div>
+      <div style="display:flex;gap:16px;margin-top:10px">
+        ${sentRow?`<div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+            <span style="color:rgba(255,255,255,.3)">Long %</span>
+            <span style="color:${rlp>65?'#e05c6a':rlp<35?'#4a90d9':'#6b7280'}">${rlp.toFixed(1)}%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px">
+            <span style="color:rgba(255,255,255,.3)">Short %</span>
+            <span style="color:rgba(255,255,255,.3)">${(100-rlp).toFixed(1)}%</span>
+          </div>
+        </div>`:''}
+        ${pcRow?`<div style="display:flex;flex-direction:column;gap:4px;justify-content:center">
+          <div style="display:flex;justify-content:space-between;gap:16px;font-family:var(--mono);font-size:10px">
+            <span style="color:rgba(255,255,255,.3)">Put/Call</span>
+            <span style="color:rgba(255,255,255,.65)">${pcRow.pc.toFixed(2)}</span>
+          </div>
+        </div>`:''}
+      </div>
+      <div style="margin-top:8px;font-family:var(--mono);font-size:8px;color:rgba(255,255,255,.25)">${sentFresh}</div>
+    </div>`;
+
+  const detailsSection = `
+  <div style="border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;background:#0e1520">
+    <style>.sc-accordion:last-child{border-bottom:none}</style>
+    ${section('tech',  '📈','Technical bias',            comp.technical>=1?'Bullish':comp.technical<=-1?'Bearish':'Neutral',   '25%', techFresh,  techContent,   f_tech*0.25)}
+    ${section('inst',  '🏦','Institutional activity bias',f_inst>=1?'Bullish':f_inst<=-1?'Bearish':'Neutral',                   '20%', cotFresh,   instContent,   f_inst*0.20)}
+    ${section('growth','🌍','Economic growth bias',       f_growth>=1?'Bullish':f_growth<=-1?'Bearish':'Neutral',               '20%', econFresh,  growthContent, f_growth*0.20)}
+    ${section('infl',  '🌡','Inflation bias',             f_infl>=1?'Bullish':f_infl<=-1?'Bearish':'Neutral',                   '20%', econFresh,  inflContent,   f_infl*0.20)}
+    ${section('labor', '👷','Jobs market bias',           f_labor>=1?'Bullish':f_labor<=-1?'Bearish':'Neutral',                  '15%', econFresh,  laborContent,  f_labor*0.15)}
+    ${crowdBlock}
   </div>`;
 
   try {
