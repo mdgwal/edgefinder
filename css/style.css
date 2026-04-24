@@ -756,3 +756,98 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 }
 .ye2-wt-active .ye2-wt-pct { color: #4d9de0; }
 .ye2-wt-active .ye2-wt-lbl { color: rgba(77,158,224,.6); }
+
+/* ── TOP SETUPS: Expandable Rows ──────────────────────────────── */
+
+/* Data row — clickable */
+.st-data-row { transition: background .15s; }
+.st-data-row:hover td { background: rgba(255,255,255,.025) !important; }
+.st-row-active td { background: rgba(255,255,255,.04) !important; }
+.st-row-active .st-chevron { transform: rotate(180deg); color: rgba(255,255,255,.45) !important; }
+.st-chevron { display: inline-block; transition: transform .25s; }
+
+/* Expand row — always in DOM, collapsed by default */
+.st-expand-row td { padding: 0 !important; border: none !important; }
+.st-expand-cell { padding: 0 !important; }
+
+/* Panel: max-height transition for smooth open/close */
+.st-expand-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .32s cubic-bezier(.4,0,.2,1);
+  background: #080c10;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.st-expand-panel.st-open { max-height: 400px; }
+
+/* Inner content */
+.st-expand-inner { padding: 14px 16px 14px; }
+
+/* Breakdown grid — 3 columns on desktop, stacked on mobile */
+.st-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+@media (max-width: 640px) {
+  .st-breakdown-grid { grid-template-columns: 1fr; gap: 8px; }
+}
+
+/* Group block */
+.st-bd-group {
+  background: rgba(255,255,255,.025);
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 5px;
+  padding: 10px;
+}
+.st-bd-group-label {
+  font-family: var(--mono); font-size: 7px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,.22);
+  margin-bottom: 9px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+
+/* Signal item: key | bar | value */
+.st-bd-item {
+  display: flex; align-items: center;
+  gap: 8px; margin-bottom: 7px;
+}
+.st-bd-item:last-child { margin-bottom: 0; }
+.st-bd-key {
+  font-family: var(--mono); font-size: 8px; letter-spacing: .5px;
+  color: rgba(255,255,255,.3); white-space: nowrap; width: 72px; flex-shrink: 0;
+}
+.st-bd-bar-track {
+  flex: 1; height: 3px; background: rgba(255,255,255,.06);
+  border-radius: 2px; overflow: hidden;
+}
+.st-bd-bar {
+  height: 100%; border-radius: 2px;
+  transition: width .5s ease;
+}
+.st-bd-val {
+  font-family: var(--mono); font-size: 8px; font-weight: 600;
+  white-space: nowrap; width: 64px; text-align: right; flex-shrink: 0;
+}
+
+/* Trade Insight */
+.st-insight-block {
+  display: flex; flex-direction: column; gap: 5px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.05);
+  border-left: 2px solid rgba(255,255,255,.1);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.st-insight-lbl {
+  font-family: var(--mono); font-size: 7px; font-weight: 700;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: rgba(255,255,255,.22);
+}
+.st-insight-txt {
+  font-family: var(--mono); font-size: 10px; line-height: 1.75;
+  color: rgba(255,255,255,.45);
+}
