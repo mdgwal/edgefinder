@@ -95,14 +95,187 @@ function _liveTag(ld) {
 }
 
 // ── VIEW 1: FULL TOP SETUPS ─────────────────────────────────────────────────
-function renderSetupsFullView(){
-  const ld = _setupsLiveData();
-  const scored = _computeLiveScores(filtered(), ld).sort((a,b) => b.total - a.total);
+// ── Active expanded row tracker (module-level, no re-render on click) ──────
+let _setupActiveRow = null;
 
-  let html = catFilter() + `
+// Generate a short Trade Insight from the asset's live score factors
+function _tradeInsight(a) {
+  const bullFactors = [];
+  const bearFactors = [];
+  if (a.cot >= 1)       bullFactors.push('institutional positioning bullish');
+  if (a.cot <= -1)      bearFactors.push('institutional positioning bearish');
+  if (a.retail <= -1)   bullFactors.push('retail crowd heavily short (contra-bullish)');
+  if (a.retail >= 1)    bearFactors.push('retail crowd heavily long (contra-bearish)');
+  if (a.trend >= 1)     bullFactors.push('price trend confirming');
+  if (a.trend <= -1)    bearFactors.push('price trend declining');
+  if (a.seasonal >= 1)  bullFactors.push('seasonal tailwind');
+  if (a.seasonal <= -1) bearFactors.push('seasonal headwind');
+  if (a.gdp >= 1)       bullFactors.push('growth outlook above-trend');
+  if (a.gdp <= -1)      bearFactors.push('growth outlook deteriorating');
+  if (a.inflation >= 1) bullFactors.push('inflation supportive of asset');
+  if (a.empChg >= 1)    bullFactors.push('employment trend positive');
+  if (a.empChg <= -1)   bearFactors.push('employment trend weakening');
+
+  const total = a.total || 0;
+  if (total >= 7)
+    return `Strong confluence detected. ${bullFactors.slice(0,3).join(', ')}. High-quality setup — all primary signals aligned.`;
+  if (total >= 4)
+    return `Moderate bullish bias. ${bullFactors.slice(0,2).join(', ')}${bearFactors.length ? '. Watch: '+bearFactors[0] : ''}. Monitor for technical confirmation.`;
+  if (total >= 1)
+    return `Mild bullish lean with mixed signals. ${bullFactors.slice(0,1).join(', ')}${bearFactors.length ? '. Headwinds: '+bearFactors.slice(0,2).join(', ') : ''}. Position sizing should reflect uncertainty.`;
+  if (total <= -7)
+    return `Strong bearish confluence. ${bearFactors.slice(0,3).join(', ')}. High-quality short setup — signals broadly aligned to the downside.`;
+  if (total <= -4)
+    return `Moderate bearish bias. ${bearFactors.slice(0,2).join(', ')}${bullFactors.length ? '. Counter-signal: '+bullFactors[0] : ''}. Downside risk elevated.`;
+  if (total <= -1)
+    return `Mild bearish lean. ${bearFactors.slice(0,1).join(', ')}. Mixed environment — avoid overcommitting. Watch macro releases closely.`;
+  return `Neutral setup — signals are conflicting or insufficient for a directional bias. Hold and monitor for developing confluence.`;
+}
+
+// Toggle expand/collapse for a clicked row (by index, no re-render)
+function _setupRowToggle(idx) {
+  const panels = document.querySelectorAll('.st-expand-panel');
+  const rows   = document.querySelectorAll('.st-data-row');
+  if (_setupActiveRow === idx) {
+    // Close
+    panels[idx].classList.remove('st-open');
+    rows[idx].classList.remove('st-row-active');
+    _setupActiveRow = null;
+  } else {
+    // Close previous
+    if (_setupActiveRow !== null && panels[_setupActiveRow]) {
+      panels[_setupActiveRow].classList.remove('st-open');
+      rows[_setupActiveRow].classList.remove('st-row-active');
+    }
+    // Open new
+    panels[idx].classList.add('st-open');
+    rows[idx].classList.add('st-row-active');
+    _setupActiveRow = idx;
+  }
+}
+
+function renderSetupsFullView(){
+  const ld     = _setupsLiveData();
+  const scored = _computeLiveScores(filtered(), ld).sort((a,b) => b.total - a.total);
+  _setupActiveRow = null; // reset on re-render
+
+  // Signal label helpers
+  const sigLabel = v => v >= 2 ? 'Strong Bull' : v === 1 ? 'Bullish' : v === -1 ? 'Bearish' : v <= -2 ? 'Strong Bear' : 'Neutral';
+  const sigColor = v => v >= 1 ? 'var(--bull)' : v <= -1 ? 'var(--bear)' : 'var(--muted)';
+  const barWidth = v => Math.round(((v + 2) / 4) * 100); // map -2..+2 → 0..100%
+  const barColor = v => v >= 1 ? 'var(--bull)' : v <= -1 ? 'var(--bear)' : 'rgba(255,255,255,.15)';
+
+  // Build rows
+  let rows = '';
+  scored.forEach((a, idx) => {
+    const tc  = totalColor(a.total);
+    const bc  = biasColor(a.bias);
+    const ppi = a.inflation;
+    const pce = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 1 : -1) * 0.5 | 0));
+    const insight = _tradeInsight(a);
+    const deltaStr = a.delta !== null
+      ? `<span style="font-size:9px;color:${a.delta>0?'#00ff88':a.delta<0?'#ff4d6d':'#6b7280'};margin-left:3px">${a.delta>0?'↑':a.delta<0?'↓':'→'}${a.delta>0?'+':''}${a.delta}</span>` : '';
+    const qColor = a.quality==='A'?'#00ff88':a.quality==='B'?'#f0b429':'#6b7280';
+    const qBadge = `<span style="font-family:var(--mono);font-size:7px;font-weight:700;color:${qColor};background:${qColor}1a;padding:1px 5px;border-radius:2px;margin-left:4px">${a.quality}${a.crowded?'⚠':''}</span>`;
+
+    // Main data row — clicking toggles expand
+    rows += `
+<tr class="st-data-row ${rowBgClass(a.total)}" onclick="_setupRowToggle(${idx})" style="cursor:pointer">
+  <td class="asset-name" style="color:${tc}">
+    ${a.name}
+    <span class="st-chevron" style="font-size:8px;color:rgba(255,255,255,.2);margin-left:5px">▾</span>
+  </td>
+  <td class="bias-cell" style="color:${bc}">${a.bias}${qBadge}</td>
+  <td class="total-cell" style="white-space:nowrap;color:${tc}">${cv(a.total)}${deltaStr}</td>
+  <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
+  <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
+  <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
+  <td class="${cellClass(a.trend)}">${cv(a.trend)}</td>
+  <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
+  <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
+  <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
+  <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
+  <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
+  <td class="${cellClass(ppi)}">${cv(ppi)}</td>
+  <td class="${cellClass(pce)}">${cv(pce)}</td>
+  <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
+  <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
+  <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
+</tr>
+<tr class="st-expand-row">
+  <td colspan="17" class="st-expand-cell">
+    <div class="st-expand-panel">
+      <div class="st-expand-inner">
+
+        <!-- Signal breakdown grid -->
+        <div class="st-breakdown-grid">
+          <div class="st-bd-group">
+            <div class="st-bd-group-label">Sentiment</div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">COT</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.cot)}%;background:${barColor(a.cot)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.cot)}">${sigLabel(a.cot)}</span>
+            </div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">Retail Pos</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.retail)}%;background:${barColor(a.retail)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.retail)}">${sigLabel(a.retail)}</span>
+            </div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">Seasonality</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.seasonal)}%;background:${barColor(a.seasonal)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.seasonal)}">${sigLabel(a.seasonal)}</span>
+            </div>
+          </div>
+          <div class="st-bd-group">
+            <div class="st-bd-group-label">Technical</div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">Trend</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.trend)}%;background:${barColor(a.trend)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.trend)}">${sigLabel(a.trend)}</span>
+            </div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">GDP</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.gdp)}%;background:${barColor(a.gdp)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.gdp)}">${sigLabel(a.gdp)}</span>
+            </div>
+          </div>
+          <div class="st-bd-group">
+            <div class="st-bd-group-label">Macro</div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">CPI / Inflation</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.inflation)}%;background:${barColor(a.inflation)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.inflation)}">${sigLabel(a.inflation)}</span>
+            </div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">Emp Change</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.empChg)}%;background:${barColor(a.empChg)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.empChg)}">${sigLabel(a.empChg)}</span>
+            </div>
+            <div class="st-bd-item">
+              <span class="st-bd-key">Rates</span>
+              <div class="st-bd-bar-track"><div class="st-bd-bar" style="width:${barWidth(a.rates)}%;background:${barColor(a.rates)}"></div></div>
+              <span class="st-bd-val" style="color:${sigColor(a.rates)}">${sigLabel(a.rates)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Trade insight -->
+        <div class="st-insight-block">
+          <span class="st-insight-lbl">TRADE INSIGHT</span>
+          <span class="st-insight-txt">${insight}</span>
+        </div>
+
+      </div>
+    </div>
+  </td>
+</tr>`;
+  });
+
+  return catFilter() + `
   <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px">
     <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
-      Ranked by EdgeFinder Score · ${scored.length} assets
+      Ranked by EdgeFinder Score · ${scored.length} assets · tap row to expand
     </span>
     ${_liveTag(ld)}
   </div>
@@ -123,34 +296,9 @@ function renderSetupsFullView(){
         <th>CPI YoY</th><th>PPI YoY</th><th>PCE YoY</th>
         <th>Emp Change</th><th>Unemploy</th><th>Rates</th>
       </tr>
-    </thead><tbody>`;
-
-  scored.forEach(a => {
-    const tc = totalColor(a.total), bc = biasColor(a.bias);
-    const ppi = a.inflation;
-    const pce = Math.max(-2, Math.min(2, a.inflation + (a.gdp > 0 ? 1 : -1) * 0.5 | 0));
-    html += `<tr class="${rowBgClass(a.total)}">
-      <td class="asset-name" style="color:${tc}">${a.name}</td>
-      <td class="bias-cell" style="color:${bc}">${a.bias}</td>
-      <td class="total-cell" style="color:${tc}">${cv(a.total)}</td>
-      <td class="${cellClass(a.cot)}">${cv(a.cot)}</td>
-      <td class="${cellClass(a.retail)}">${cv(a.retail)}</td>
-      <td class="${cellClass(a.seasonal)}">${cv(a.seasonal)}</td>
-      <td class="${cellClass(a.trend)}">${cv(a.trend)}</td>
-      <td class="${cellClass(a.gdp)}">${cv(a.gdp)}</td>
-      <td class="${cellClass(a.mPMI)}">${cv(a.mPMI)}</td>
-      <td class="${cellClass(a.sPMI)}">${cv(a.sPMI)}</td>
-      <td class="${cellClass(a.retailSal)}">${cv(a.retailSal)}</td>
-      <td class="${cellClass(a.inflation)}">${cv(a.inflation)}</td>
-      <td class="${cellClass(ppi)}">${cv(ppi)}</td>
-      <td class="${cellClass(pce)}">${cv(pce)}</td>
-      <td class="${cellClass(a.empChg)}">${cv(a.empChg)}</td>
-      <td class="${cellClass(a.unemploy)}">${cv(a.unemploy)}</td>
-      <td class="${cellClass(a.rates)}">${cv(a.rates)}</td>
-    </tr>`;
-  });
-  html += `</tbody></table></div>`;
-  return html;
+    </thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
 }
 
 // ── VIEW 2: SIMPLE ──────────────────────────────────────────────────────────
