@@ -3498,6 +3498,12 @@ function renderScorecard() {
           ${histSection}
         </div>
 
+        <!-- Macro summary (left panel) -->
+        <div class="sc2-left-section">
+          <div class="sc2-left-section-title">Macro Summary</div>
+          ${macroSection}
+        </div>
+
       </div>
 
       <!-- RIGHT PANEL: sections accordion -->
@@ -3505,9 +3511,6 @@ function renderScorecard() {
         ${detailsSection}
       </div>
     </div>
-
-    <!-- Macro summary (below layout) -->
-    ${macroSection}
 
   </div>`;
   } catch(e) {
