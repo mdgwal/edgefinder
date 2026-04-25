@@ -3474,6 +3474,30 @@ function renderScorecard() {
         <div class="sc2-live-row">
           <span class="cbadge-live" style="font-size:9px;padding:2px 8px">● LIVE</span>
         </div>
+
+        <!-- Component weights (left panel compact) -->
+        <div class="sc2-left-section">
+          <div class="sc2-left-section-title">Component Weights</div>
+          ${contributions.map(c => {
+            const col = c.v >= 1 ? '#4a90d9' : c.v <= -1 ? '#e05c6a' : 'rgba(255,255,255,.2)';
+            const pct = Math.round(((c.v + 2) / 4) * 100);
+            return `<div class="sc2-wt-row">
+              <span class="sc2-wt-lbl">${c.lbl}</span>
+              <div class="sc2-wt-track">
+                <div class="sc2-wt-fill" style="width:${pct}%;background:${col}"></div>
+              </div>
+              <span class="sc2-wt-val" style="color:${col}">${c.v > 0 ? '+' : ''}${c.v}</span>
+              <span class="sc2-wt-pct">${c.wlbl}</span>
+            </div>`;
+          }).join('')}
+        </div>
+
+        <!-- Score over time mini chart (left panel) -->
+        <div class="sc2-left-section">
+          <div class="sc2-left-section-title">Score Over Time</div>
+          ${histSection}
+        </div>
+
       </div>
 
       <!-- RIGHT PANEL: sections accordion -->
@@ -3484,12 +3508,6 @@ function renderScorecard() {
 
     <!-- Macro summary (below layout) -->
     ${macroSection}
-
-    <!-- Component weight bars -->
-    ${wtSection}
-
-    <!-- Score history chart -->
-    ${histSection}
 
   </div>`;
   } catch(e) {
