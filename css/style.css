@@ -1002,3 +1002,50 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 /* The accordion sections go full-width in the right column */
 .sc2-right .sc-accordion { border-radius: 0; }
 .sc2-right > div { border-radius: 8px; overflow: hidden; }
+
+/* ── Left panel sections (weights + history) ────────────────────── */
+.sc2-left-section {
+  width: 100%;
+  border-top: 1px solid rgba(255,255,255,.05);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+.sc2-left-section-title {
+  font-family: var(--mono); font-size: 8px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(255,255,255,.25); margin-bottom: 9px;
+}
+.sc2-wt-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 6px;
+}
+.sc2-wt-lbl {
+  font-family: var(--mono); font-size: 9px;
+  color: rgba(255,255,255,.4); width: 72px; flex-shrink: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sc2-wt-track {
+  flex: 1; height: 3px; background: rgba(255,255,255,.06);
+  border-radius: 2px; overflow: hidden;
+}
+.sc2-wt-fill {
+  height: 100%; border-radius: 2px;
+  transition: width .7s cubic-bezier(.4,0,.2,1);
+}
+.sc2-wt-val {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  min-width: 22px; text-align: right; flex-shrink: 0;
+}
+.sc2-wt-pct {
+  font-family: var(--mono); font-size: 8px;
+  color: rgba(255,255,255,.22); flex-shrink: 0; min-width: 24px; text-align: right;
+}
+
+/* Score over time chart inside left panel — tighten it */
+.sc2-left-section .sc-hist-wrap {
+  max-height: 90px; overflow: hidden;
+}
+.sc2-left-section canvas,
+.sc2-left-section .chart-wrap {
+  height: 80px !important; max-height: 80px;
+}
