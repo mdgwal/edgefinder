@@ -219,9 +219,9 @@ function renderSetupsFullView(){
   return catFilter() + `
   <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 2px 10px">
     <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">
-      Ranked by EdgeFinder Score · \${scored.length} assets · tap row to expand
+      Ranked by EdgeFinder Score · ${scored.length} assets · tap row to expand
     </span>
-    \${_liveTag(ld)}
+    ${_liveTag(ld)}
   </div>
   <div class="score-table-wrap"><table class="score-table">
     <thead>
@@ -241,7 +241,7 @@ function renderSetupsFullView(){
         <th>Emp Change</th><th>Unemploy</th><th>Rates</th>
       </tr>
     </thead>
-    <tbody>\${rows}</tbody>
+    <tbody>${rows}</tbody>
   </table></div>`;
 }
 
