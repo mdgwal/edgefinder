@@ -3372,22 +3372,126 @@ function renderScorecard() {
   </div>`;
 
   try {
+    // ── Reference-style two-column layout ─────────────────────────────────
+    const overallBiasColor = biasC(overallBias);
+    const deltaStr = delta!==null
+      ? `<span style="font-family:var(--mono);font-size:11px;color:${delta>0?'#4a90d9':'#e05c6a'}">
+          ${delta>0?'↑':'↓'} ${delta>0?'+':''}${delta} vs yesterday · ${delta>0?'Strengthening':'Weakening'}
+         </span>` : '';
+
+    // Gauge SVG (semicircle, needle points to score position)
+    const needleAngle = Math.max(-90, Math.min(90, ws * 45)); // -90=bear, 0=neutral, +90=bull
+    const rad = (needleAngle - 90) * Math.PI / 180;
+    const nx = 90 + 55 * Math.cos(rad), ny = 90 + 55 * Math.sin(rad);
+    const gaugeHtml = `
+      <svg viewBox="0 0 180 100" style="width:100%;max-width:220px;margin:0 auto;display:block">
+        <defs>
+          <linearGradient id="gBear" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#e05c6a"/><stop offset="100%" stop-color="#c0392b"/>
+          </linearGradient>
+          <linearGradient id="gBull" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#2980b9"/><stop offset="100%" stop-color="#4a90d9"/>
+          </linearGradient>
+        </defs>
+        <!-- Background arcs -->
+        <path d="M10,90 A80,80 0 0,1 90,10" fill="none" stroke="#c0392b" stroke-width="14" stroke-linecap="round" opacity=".35"/>
+        <path d="M90,10 A80,80 0 0,1 170,90" fill="none" stroke="#2980b9" stroke-width="14" stroke-linecap="round" opacity=".35"/>
+        <!-- Active arc highlight -->
+        ${ws>0?`<path d="M90,10 A80,80 0 0,1 ${nx.toFixed(1)},${ny.toFixed(1)}" fill="none" stroke="#4a90d9" stroke-width="14" stroke-linecap="round" opacity=".7"/>`
+              :`<path d="M${nx.toFixed(1)},${ny.toFixed(1)} A80,80 0 0,1 90,10" fill="none" stroke="#e05c6a" stroke-width="14" stroke-linecap="round" opacity=".7"/>`}
+        <!-- Labels -->
+        <text x="12" y="96" font-family="monospace" font-size="9" fill="rgba(255,255,255,.35)">Bear</text>
+        <text x="72" y="14" font-family="monospace" font-size="9" fill="rgba(255,255,255,.35)">Neutral</text>
+        <text x="142" y="96" font-family="monospace" font-size="9" fill="rgba(255,255,255,.35)">Bull</text>
+        <!-- Tick marks -->
+        <line x1="10" y1="90" x2="18" y2="90" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+        <line x1="37" y1="33" x2="42" y2="39" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+        <line x1="90" y1="10" x2="90" y2="18" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+        <line x1="143" y1="33" x2="138" y2="39" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+        <line x1="170" y1="90" x2="162" y2="90" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>
+        <!-- Sub labels -->
+        <text x="24" y="56" font-family="monospace" font-size="7" fill="rgba(255,255,255,.25)">+ Bear</text>
+        <text x="130" y="56" font-family="monospace" font-size="7" fill="rgba(255,255,255,.25)">+ Bull</text>
+        <!-- Needle -->
+        <line x1="90" y1="90" x2="${nx.toFixed(1)}" y2="${ny.toFixed(1)}" stroke="rgba(255,255,255,.85)" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="90" cy="90" r="5" fill="#1a2340" stroke="rgba(255,255,255,.4)" stroke-width="1.5"/>
+        <!-- Score in center -->
+        <text x="90" y="82" font-family="monospace" font-size="16" font-weight="900" fill="${overallBiasColor}" text-anchor="middle">${edgeScore>0?'+':''}${edgeScore}</text>
+        <text x="90" y="100" font-family="monospace" font-size="7" fill="rgba(255,255,255,.3)" text-anchor="middle">EDGE SCORE</text>
+      </svg>`;
+
+    // Symbol label
+    const symbolLabel = SC_LABELS[raw.id] || raw.name || raw.id;
+
     document.getElementById("page-scorecard").innerHTML = `
-  <!-- Page header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-    <div>
-      <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35)">Asset Scorecard</div>
+  <div class="sc2-page">
+
+    <!-- Symbol bar -->
+    <div class="sc2-symbol-bar">
+      <div class="sc2-symbol-label">
+        <span class="sc2-symbol-tag">Symbol: ${symbolLabel}</span>
+        <select class="sc2-select" onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
+      </div>
+      <div class="sc2-live-badge">${techFresh}</div>
     </div>
-    <select style="background:#0e1520;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);
-      font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none;cursor:pointer"
-      onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
-  </div>
-  <!-- Sections -->
-  ${heroSection}
-  ${macroSection}
-  ${wtSection}
-  ${histSection}
-  ${detailsSection}`;
+
+    <!-- Main two-column layout -->
+    <div class="sc2-layout">
+
+      <!-- LEFT PANEL: Gauge + scores -->
+      <div class="sc2-left">
+        <!-- Bias headline -->
+        <div class="sc2-bias-headline" style="color:${overallBiasColor}">${overallBias}</div>
+        ${deltaStr}
+
+        <!-- Gauge -->
+        <div class="sc2-gauge-wrap">${gaugeHtml}</div>
+
+        <!-- Score breakdown -->
+        <div class="sc2-scores">
+          <div class="sc2-score-row">
+            <span class="sc2-score-lbl">EdgeFinder score</span>
+            <span class="sc2-score-val" style="background:${biasC(overallBias)}22;color:${biasC(overallBias)}">${edgeScore>0?'+':''}${edgeScore}</span>
+          </div>
+          <div class="sc2-score-row">
+            <span class="sc2-score-lbl">Technical</span>
+            <span class="sc2-score-val" style="background:${f_tech>0?'rgba(74,144,217,.18)':f_tech<0?'rgba(224,92,106,.18)':'rgba(139,148,158,.1)'};color:${f_tech>0?'#4a90d9':f_tech<0?'#e05c6a':'#8b949e'}">${f_tech>0?'+':''}${f_tech}</span>
+          </div>
+          <div class="sc2-score-row">
+            <span class="sc2-score-lbl">Sentiment + COT</span>
+            <span class="sc2-score-val" style="background:${sentCOTScore>0?'rgba(224,92,106,.18)':sentCOTScore<0?'rgba(224,92,106,.18)':'rgba(139,148,158,.1)'};color:${sentCOTScore>0?'#4a90d9':sentCOTScore<0?'#e05c6a':'#8b949e'}">${sentCOTScore>0?'+':''}${sentCOTScore}</span>
+          </div>
+          <div class="sc2-score-row">
+            <span class="sc2-score-lbl">Fundamentals</span>
+            <span class="sc2-score-val" style="background:${fundScore>0?'rgba(74,144,217,.18)':fundScore<0?'rgba(224,92,106,.18)':'rgba(139,148,158,.1)'};color:${fundScore>0?'#4a90d9':fundScore<0?'#e05c6a':'#8b949e'}">${fundScore>0?'+':''}${fundScore}</span>
+          </div>
+        </div>
+
+        <!-- Component weights (small) -->
+        <div class="sc2-weights-label">T·25% I·20% G·20% F·20% L·15%</div>
+
+        <!-- Live badge -->
+        <div class="sc2-live-row">
+          <span class="cbadge-live" style="font-size:9px;padding:2px 8px">● LIVE</span>
+        </div>
+      </div>
+
+      <!-- RIGHT PANEL: sections accordion -->
+      <div class="sc2-right">
+        ${detailsSection}
+      </div>
+    </div>
+
+    <!-- Macro summary (below layout) -->
+    ${macroSection}
+
+    <!-- Component weight bars -->
+    ${wtSection}
+
+    <!-- Score history chart -->
+    ${histSection}
+
+  </div>`;
   } catch(e) {
     console.error("[SC] render error:", e);
     const _el=document.getElementById("page-scorecard"); if(_el) _el.innerHTML=`<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">⚠ Render error — check console.<br><span style="color:#e05c6a;font-size:10px;">`+e.message+`</span></div>`;
