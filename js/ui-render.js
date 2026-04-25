@@ -3379,92 +3379,103 @@ function renderScorecard() {
           ${delta>0?'↑':'↓'} ${delta>0?'+':''}${delta} vs yesterday · ${delta>0?'Strengthening':'Weakening'}
          </span>` : '';
 
-    // ── Improved Gauge SVG ─────────────────────────────────────────────────────
-    // Needle angle: ws is -2..+2 range → map to -90°..+90° (pivot at bottom centre)
+    // ── Premium Gauge SVG ──────────────────────────────────────────────────────
     const clampedWs   = Math.max(-2, Math.min(2, ws));
-    const needleAngle = clampedWs * 45; // degrees from top: -90=far left, 0=top, +90=far right
-    const rad = (needleAngle - 90) * Math.PI / 180;
-    const cx  = 100, cy = 105, R = 75; // centre + radius
-    const nx  = cx + R * Math.cos(rad);
-    const ny  = cy + R * Math.sin(rad);
+    // Needle: -2→-90°, 0→0°, +2→+90° from vertical top
+    const needleAngle = clampedWs * 45;
+    const toRad = d => (d - 90) * Math.PI / 180;
+    const CX = 110, CY = 106, R = 80;
+    const ptOnArc = (deg, r) => [CX + r * Math.cos(toRad(deg)), CY + r * Math.sin(toRad(deg))];
+    const [nx, ny] = ptOnArc(needleAngle, R - 10);
 
-    // Helper: point on arc at angle (degrees from top, 0=12 o'clock)
-    const arc = (deg, r) => {
-      const a = (deg - 90) * Math.PI / 180;
-      return [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+    // SVG arc path helper
+    const arcD = (fromDeg, toDeg, r) => {
+      const [sx, sy] = ptOnArc(fromDeg, r);
+      const [ex, ey] = ptOnArc(toDeg, r);
+      const large = Math.abs(toDeg - fromDeg) > 180 ? 1 : 0;
+      return 'M'+sx.toFixed(2)+','+sy.toFixed(2)+' A'+r+','+r+' 0 '+large+',1 '+ex.toFixed(2)+','+ey.toFixed(2);
     };
 
-    // Gradient arc segments: bear(-90°) → neutral(0°) → bull(+90°)
-    // We draw 5 coloured band arcs across the sweep
-    const bands = [
-      { from:-90, to:-54, color:'#b03040', op:.9 },
-      { from:-54, to:-18, color:'#c05060', op:.7 },
-      { from:-18, to: 18, color:'#4a5568', op:.6 },
-      { from: 18, to: 54, color:'#2a6090', op:.7 },
-      { from: 54, to: 90, color:'#1a7fd4', op:.9 },
-    ];
-    const arcPath = (fromDeg, toDeg, r) => {
-      const [sx,sy] = arc(fromDeg, r);
-      const [ex,ey] = arc(toDeg, r);
-      const large = Math.abs(toDeg-fromDeg) > 180 ? 1 : 0;
-      const sweep = toDeg > fromDeg ? 1 : 0;
-      return 'M'+sx.toFixed(2)+','+sy.toFixed(2)+' A'+r+','+r+' 0 '+large+','+sweep+' '+ex.toFixed(2)+','+ey.toFixed(2);
-    };
+    // Needle color
+    const nCol = clampedWs >= 0.5 ? '#4a90d9' : clampedWs <= -0.5 ? '#e05c6a' : 'rgba(255,255,255,.6)';
+    const scoreLabel = (edgeScore > 0 ? '+' : '') + edgeScore;
 
-    // Active needle glow colour
-    const needleCol = clampedWs >= 0.5 ? '#4a90d9' : clampedWs <= -0.5 ? '#e05c6a' : '#8b949e';
-
-    // 9 tick marks across the 180° sweep
-    const ticks = [-90,-67.5,-45,-22.5,0,22.5,45,67.5,90].map(deg => {
-      const isMaj = deg % 45 === 0;
-      const [ox,oy] = arc(deg, R+2);
-      const [ix,iy] = arc(deg, R + (isMaj?10:6));
-      return '<line x1="'+ox.toFixed(1)+'" y1="'+oy.toFixed(1)+'" x2="'+ix.toFixed(1)+'" y2="'+iy.toFixed(1)+'" stroke="rgba(255,255,255,'+(isMaj?'.35':'.18')+')" stroke-width="'+(isMaj?1.5:1)+'" stroke-linecap="round"/>';
+    // Tick positions (9 ticks over 180°)
+    const tickAngles = [-90, -67.5, -45, -22.5, 0, 22.5, 45, 67.5, 90];
+    const ticksSvg = tickAngles.map(deg => {
+      const major = deg % 45 === 0;
+      const [ox, oy] = ptOnArc(deg, R + 4);
+      const [ix, iy] = ptOnArc(deg, R + (major ? 14 : 9));
+      return '<line x1="'+ox.toFixed(1)+'" y1="'+oy.toFixed(1)+'" x2="'+ix.toFixed(1)+'" y2="'+iy.toFixed(1)+'"'
+           + ' stroke="rgba(255,255,255,'+(major?'.3':'.12')+')" stroke-width="'+(major?1.5:1)+'" stroke-linecap="round"/>';
     }).join('');
 
-    const gaugeHtml = '<svg viewBox="0 0 200 130" style="width:100%;max-width:260px;margin:0 auto;display:block;overflow:visible">'
-      +'<defs>'
-        +'<filter id="glow"><feGaussianBlur stdDeviation="2.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
-        +'<radialGradient id="hubGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#3a4d6a"/><stop offset="100%" stop-color="#1a2a40"/></radialGradient>'
-      +'</defs>'
+    const gaugeHtml = '<svg viewBox="0 0 220 140" style="width:100%;max-width:280px;margin:0 auto;display:block;overflow:visible">'
+      + '<defs>'
+        // Track gradient: red → grey → blue
+        + '<linearGradient id="trackGrad" x1="0%" y1="0%" x2="100%" y2="0%">'
+          + '<stop offset="0%"   stop-color="#b03040" stop-opacity=".9"/>'
+          + '<stop offset="35%"  stop-color="#8b4060" stop-opacity=".6"/>'
+          + '<stop offset="50%"  stop-color="#3a4558" stop-opacity=".5"/>'
+          + '<stop offset="65%"  stop-color="#2a6090" stop-opacity=".6"/>'
+          + '<stop offset="100%" stop-color="#1a7fd4" stop-opacity=".9"/>'
+        + '</linearGradient>'
+        // Active glow
+        + '<filter id="gl" x="-50%" y="-50%" width="200%" height="200%">'
+          + '<feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>'
+          + '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>'
+        + '</filter>'
+        // Hub gradient
+        + '<radialGradient id="hubG" cx="40%" cy="35%" r="60%"><stop offset="0%" stop-color="#4a5f7a"/><stop offset="100%" stop-color="#111c2a"/></radialGradient>'
+        // Inner shadow for depth
+        + '<filter id="innerShadow"><feOffset dx="0" dy="1"/><feGaussianBlur stdDeviation="2"/><feComposite in2="SourceGraphic" operator="arithmetic" k2="-1" k3="1"/></filter>'
+      + '</defs>'
 
-      // Band arcs (outer track)
-      + bands.map(b =>
-          '<path d="'+arcPath(b.from,b.to,R+6)+'" fill="none" stroke="'+b.color+'" stroke-width="10" stroke-linecap="butt" opacity="'+b.op+'"/>'
-        ).join('')
+      // ── Outer track ring (full 180°) ──
+      + '<path d="'+arcD(-90,90,R+2)+'" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="18" stroke-linecap="butt"/>'
+      // Gradient overlay (using a wider mask approach via multiple arcs)
+      + '<path d="'+arcD(-90,-18,R+2)+'" fill="none" stroke="url(#trackGrad)" stroke-width="16" stroke-linecap="butt" opacity=".75"/>'
+      + '<path d="'+arcD(-18,90,R+2)+'"  fill="none" stroke="url(#trackGrad)" stroke-width="16" stroke-linecap="butt" opacity=".75"/>'
+      // Inner edge line (subtle)
+      + '<path d="'+arcD(-90,90,R-6)+'" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1"/>'
 
-      // Inner gloss ring
-      +'<path d="'+arcPath(-90,90,R-2)+'" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="4"/>'
+      // ── Active filled arc (needle side) ──
+      + (clampedWs !== 0
+          ? '<path d="'+arcD(0,needleAngle,R+2)+'" fill="none" stroke="'+nCol+'" stroke-width="16" stroke-linecap="butt" opacity=".9" filter="url(#gl)"/>'
+          : '')
 
-      // Active arc (filled needle side)
-      +(clampedWs !== 0
-        ? '<path d="'+arcPath(0, needleAngle, R+1)+'" fill="none" stroke="'+needleCol+'" stroke-width="7" stroke-linecap="round" opacity=".85" filter="url(#glow)"/>'
-        : '')
+      // ── Tick marks ──
+      + ticksSvg
 
-      // Tick marks
-      + ticks
+      // ── Labels ──
+      + '<text x="16"  y="122" font-family="monospace" font-size="10" fill="rgba(255,255,255,.4)" text-anchor="middle">Bear</text>'
+      + '<text x="110" y="24"  font-family="monospace" font-size="10" fill="rgba(255,255,255,.3)" text-anchor="middle">Neutral</text>'
+      + '<text x="204" y="122" font-family="monospace" font-size="10" fill="rgba(255,255,255,.4)" text-anchor="middle">Bull</text>'
 
-      // Axis labels
-      +'<text x="18" y="112" font-family="monospace" font-size="9" fill="rgba(255,255,255,.4)" text-anchor="middle">Bear</text>'
-      +'<text x="100" y="30" font-family="monospace" font-size="9" fill="rgba(255,255,255,.35)" text-anchor="middle">Neutral</text>'
-      +'<text x="182" y="112" font-family="monospace" font-size="9" fill="rgba(255,255,255,.4)" text-anchor="middle">Bull</text>'
+      // Zone sub-labels
+      + '<text x="48"  y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.2)" text-anchor="middle">+Bear</text>'
+      + '<text x="172" y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.2)" text-anchor="middle">+Bull</text>'
 
-      // Sub-zone labels
-      +'<text x="42" y="76" font-family="monospace" font-size="7" fill="rgba(255,255,255,.2)" text-anchor="middle">+ Bear</text>'
-      +'<text x="158" y="76" font-family="monospace" font-size="7" fill="rgba(255,255,255,.2)" text-anchor="middle">+ Bull</text>'
+      // ── Score display inside arc ──
+      + '<text x="'+CX+'" y="'+(CY-16)+'" font-family="monospace" font-size="28" font-weight="900" fill="'+nCol+'" text-anchor="middle" filter="url(#gl)">'+scoreLabel+'</text>'
+      + '<text x="'+CX+'" y="'+(CY-2)+'"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.25)" text-anchor="middle" letter-spacing="2">EDGE SCORE</text>'
 
-      // Needle shadow
-      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(0,0,0,.4)" stroke-width="4" stroke-linecap="round"/>'
-      // Needle
-      +'<line x1="'+cx+'" y1="'+cy+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(255,255,255,.9)" stroke-width="2" stroke-linecap="round" filter="url(#glow)"/>'
-      // Needle tip dot
-      +'<circle cx="'+nx.toFixed(1)+'" cy="'+ny.toFixed(1)+'" r="3" fill="'+needleCol+'" opacity=".8"/>'
-      // Hub
-      +'<circle cx="'+cx+'" cy="'+cy+'" r="8" fill="url(#hubGrad)" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>'
-      +'<circle cx="'+cx+'" cy="'+cy+'" r="3" fill="rgba(255,255,255,.6)"/>'
-    +'</svg>';
+      // ── Needle ──
+      // Shadow
+      + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(0,0,0,.5)" stroke-width="4.5" stroke-linecap="round"/>'
+      // Shaft
+      + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(255,255,255,.92)" stroke-width="2.5" stroke-linecap="round" filter="url(#gl)"/>'
+      // Tip
+      + '<circle cx="'+nx.toFixed(1)+'" cy="'+ny.toFixed(1)+'" r="2.5" fill="'+nCol+'" opacity=".95" filter="url(#gl)"/>'
 
-    // Symbol label
+      // ── Hub ──
+      + '<circle cx="'+CX+'" cy="'+CY+'" r="9"   fill="url(#hubG)" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>'
+      + '<circle cx="'+CX+'" cy="'+CY+'" r="3.5" fill="rgba(255,255,255,.7)"/>'
+
+    + '</svg>';
+
+    
+        // Symbol label
     const symbolLabel = SC_LABELS[raw.id] || raw.name || raw.id;
 
     document.getElementById("page-scorecard").innerHTML = `
