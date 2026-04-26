@@ -1049,3 +1049,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .sc2-left-section .chart-wrap {
   height: 80px !important; max-height: 80px;
 }
+
+/* ── Scorecard: component weight bar animation ─────────────────────── */
+.sc2-wt-fill {
+  animation: sc-wt-grow .8s cubic-bezier(.4,0,.2,1) both;
+}
+@keyframes sc-wt-grow {
+  from { width: 0% !important; }
+  to   { /* width set inline */ }
+}
+
+/* Score over time: fade-slide in */
+.sc2-left-section canvas,
+.sc2-left-section .sc-hist-wrap {
+  animation: sc-hist-fadein .6s .3s ease both;
+}
+@keyframes sc-hist-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
