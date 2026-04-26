@@ -3379,16 +3379,14 @@ function renderScorecard() {
           ${delta>0?'↑':'↓'} ${delta>0?'+':''}${delta} vs yesterday · ${delta>0?'Strengthening':'Weakening'}
          </span>` : '';
 
-    // ── Premium Gauge SVG ──────────────────────────────────────────────────────
+    // ── Premium Gauge SVG — animated on load ──────────────────────────────────
     const clampedWs   = Math.max(-2, Math.min(2, ws));
-    // Needle: -2→-90°, 0→0°, +2→+90° from vertical top
-    const needleAngle = clampedWs * 45;
+    const needleAngle = clampedWs * 45; // -90°=bear, 0°=top, +90°=bull
     const toRad = d => (d - 90) * Math.PI / 180;
     const CX = 110, CY = 106, R = 80;
     const ptOnArc = (deg, r) => [CX + r * Math.cos(toRad(deg)), CY + r * Math.sin(toRad(deg))];
     const [nx, ny] = ptOnArc(needleAngle, R - 10);
 
-    // SVG arc path helper
     const arcD = (fromDeg, toDeg, r) => {
       const [sx, sy] = ptOnArc(fromDeg, r);
       const [ex, ey] = ptOnArc(toDeg, r);
@@ -3396,81 +3394,105 @@ function renderScorecard() {
       return 'M'+sx.toFixed(2)+','+sy.toFixed(2)+' A'+r+','+r+' 0 '+large+',1 '+ex.toFixed(2)+','+ey.toFixed(2);
     };
 
-    // Needle color
-    const nCol = clampedWs >= 0.5 ? '#4a90d9' : clampedWs <= -0.5 ? '#e05c6a' : 'rgba(255,255,255,.6)';
+    // Brand colors
+    const C_POS  = '#4ABC7B';
+    const C_NEG  = '#EC5C42';
+    const C_NEUT = '#9CA7B8';
+    const nCol   = clampedWs >= 0.5 ? C_POS : clampedWs <= -0.5 ? C_NEG : C_NEUT;
     const scoreLabel = (edgeScore > 0 ? '+' : '') + edgeScore;
 
-    // Tick positions (9 ticks over 180°)
+    // Full arc length calculation for stroke-dasharray animation
+    // Half-circle circumference = π × R = π × 82 ≈ 257.6
+    const trackR    = R + 2;
+    const fullArc   = Math.round(Math.PI * trackR);
+    // Active arc length: fraction of full 180°
+    const activeFrac = Math.abs(needleAngle) / 90;
+    const activeLen  = Math.round(activeFrac * (fullArc / 2));
+
+    // Ticks
     const tickAngles = [-90, -67.5, -45, -22.5, 0, 22.5, 45, 67.5, 90];
     const ticksSvg = tickAngles.map(deg => {
       const major = deg % 45 === 0;
       const [ox, oy] = ptOnArc(deg, R + 4);
       const [ix, iy] = ptOnArc(deg, R + (major ? 14 : 9));
       return '<line x1="'+ox.toFixed(1)+'" y1="'+oy.toFixed(1)+'" x2="'+ix.toFixed(1)+'" y2="'+iy.toFixed(1)+'"'
-           + ' stroke="rgba(255,255,255,'+(major?'.3':'.12')+')" stroke-width="'+(major?1.5:1)+'" stroke-linecap="round"/>';
+           + ' stroke="rgba(255,255,255,'+(major?'.28':'.1')+')" stroke-width="'+(major?1.5:1)+'" stroke-linecap="round"/>';
     }).join('');
 
-    const gaugeHtml = '<svg viewBox="0 0 220 140" style="width:100%;max-width:280px;margin:0 auto;display:block;overflow:visible">'
+    // Unique ID per render so animation replays on asset switch
+    const gid = 'g' + Date.now();
+
+    const gaugeHtml = '<svg id="sc-gauge-svg" viewBox="0 0 220 140" style="width:100%;max-width:280px;margin:0 auto;display:block;overflow:visible">'
       + '<defs>'
-        // Track gradient: red → grey → blue
-        + '<linearGradient id="trackGrad" x1="0%" y1="0%" x2="100%" y2="0%">'
-          + '<stop offset="0%"   stop-color="#b03040" stop-opacity=".9"/>'
-          + '<stop offset="35%"  stop-color="#8b4060" stop-opacity=".6"/>'
-          + '<stop offset="50%"  stop-color="#3a4558" stop-opacity=".5"/>'
-          + '<stop offset="65%"  stop-color="#2a6090" stop-opacity=".6"/>'
-          + '<stop offset="100%" stop-color="#1a7fd4" stop-opacity=".9"/>'
-        + '</linearGradient>'
-        // Active glow
-        + '<filter id="gl" x="-50%" y="-50%" width="200%" height="200%">'
-          + '<feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b"/>'
+        + '<filter id="'+gid+'gl" x="-60%" y="-60%" width="220%" height="220%">'
+          + '<feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="b"/>'
           + '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>'
         + '</filter>'
-        // Hub gradient
-        + '<radialGradient id="hubG" cx="40%" cy="35%" r="60%"><stop offset="0%" stop-color="#4a5f7a"/><stop offset="100%" stop-color="#111c2a"/></radialGradient>'
-        // Inner shadow for depth
-        + '<filter id="innerShadow"><feOffset dx="0" dy="1"/><feGaussianBlur stdDeviation="2"/><feComposite in2="SourceGraphic" operator="arithmetic" k2="-1" k3="1"/></filter>'
+        + '<radialGradient id="'+gid+'hub" cx="38%" cy="32%" r="65%"><stop offset="0%" stop-color="#3d5270"/><stop offset="100%" stop-color="#111c2a"/></radialGradient>'
+        // Gradient: bear→neut→bull for track background
+        + '<linearGradient id="'+gid+'trk" x1="0%" y1="0%" x2="100%" y2="0%">'
+          + '<stop offset="0%"   stop-color="'+C_NEG+'"  stop-opacity=".7"/>'
+          + '<stop offset="48%"  stop-color="'+C_NEUT+'" stop-opacity=".35"/>'
+          + '<stop offset="100%" stop-color="'+C_POS+'"  stop-opacity=".7"/>'
+        + '</linearGradient>'
+        // Needle spin-in keyframe — injected via style tag
+        + '<style>'
+          + '@keyframes sc-needle-spin{'
+            + 'from{transform-origin:'+CX+'px '+CY+'px;transform:rotate(-90deg)}'
+            + 'to{transform-origin:'+CX+'px '+CY+'px;transform:rotate('+needleAngle+'deg)}'
+          + '}'
+          + '@keyframes sc-arc-grow{'
+            + 'from{stroke-dashoffset:'+(fullArc*2)+'}'
+            + 'to{stroke-dashoffset:'+(fullArc*2 - activeLen)+'}'
+          + '}'
+          + '@keyframes sc-fade-in{from{opacity:0}to{opacity:1}}'
+        + '</style>'
       + '</defs>'
 
-      // ── Outer track ring (full 180°) ──
-      + '<path d="'+arcD(-90,90,R+2)+'" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="18" stroke-linecap="butt"/>'
-      // Gradient overlay (using a wider mask approach via multiple arcs)
-      + '<path d="'+arcD(-90,-18,R+2)+'" fill="none" stroke="url(#trackGrad)" stroke-width="16" stroke-linecap="butt" opacity=".75"/>'
-      + '<path d="'+arcD(-18,90,R+2)+'"  fill="none" stroke="url(#trackGrad)" stroke-width="16" stroke-linecap="butt" opacity=".75"/>'
-      // Inner edge line (subtle)
-      + '<path d="'+arcD(-90,90,R-6)+'" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1"/>'
+      // ── Background track ──
+      + '<path d="'+arcD(-90,90,trackR)+'" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="18" stroke-linecap="butt"/>'
+      + '<path d="'+arcD(-90,90,trackR)+'" fill="none" stroke="url(#'+gid+'trk)" stroke-width="16" stroke-linecap="butt" opacity=".6"/>'
+      // Inner edge
+      + '<path d="'+arcD(-90,90,R-6)+'" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1"/>'
 
-      // ── Active filled arc (needle side) ──
+      // ── Active arc — animated grow from 0 to target ──
       + (clampedWs !== 0
-          ? '<path d="'+arcD(0,needleAngle,R+2)+'" fill="none" stroke="'+nCol+'" stroke-width="16" stroke-linecap="butt" opacity=".9" filter="url(#gl)"/>'
+          ? '<path'
+            + ' d="'+arcD(0, clampedWs > 0 ? 90 : -90, trackR)+'"'
+            + ' fill="none" stroke="'+nCol+'" stroke-width="16" stroke-linecap="butt"'
+            + ' stroke-dasharray="'+fullArc+' '+fullArc*3+'"'
+            + ' stroke-dashoffset="'+(fullArc*2 - activeLen)+'"'
+            + ' opacity=".9" filter="url(#'+gid+'gl)"'
+            + ' style="animation:sc-arc-grow .9s cubic-bezier(.4,0,.2,1) forwards"/>'
           : '')
 
-      // ── Tick marks ──
+      // ── Ticks ──
       + ticksSvg
 
       // ── Labels ──
-      + '<text x="16"  y="122" font-family="monospace" font-size="10" fill="rgba(255,255,255,.4)" text-anchor="middle">Bear</text>'
-      + '<text x="110" y="24"  font-family="monospace" font-size="10" fill="rgba(255,255,255,.3)" text-anchor="middle">Neutral</text>'
-      + '<text x="204" y="122" font-family="monospace" font-size="10" fill="rgba(255,255,255,.4)" text-anchor="middle">Bull</text>'
+      + '<text x="16"  y="124" font-family="monospace" font-size="10" fill="'+C_NEG+'" fill-opacity=".6" text-anchor="middle">Bear</text>'
+      + '<text x="110" y="24"  font-family="monospace" font-size="10" fill="'+C_NEUT+'" fill-opacity=".7" text-anchor="middle">Neutral</text>'
+      + '<text x="204" y="124" font-family="monospace" font-size="10" fill="'+C_POS+'" fill-opacity=".6" text-anchor="middle">Bull</text>'
+      + '<text x="48"  y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.18)" text-anchor="middle">+Bear</text>'
+      + '<text x="172" y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.18)" text-anchor="middle">+Bull</text>'
 
-      // Zone sub-labels
-      + '<text x="48"  y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.2)" text-anchor="middle">+Bear</text>'
-      + '<text x="172" y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.2)" text-anchor="middle">+Bull</text>'
+      // ── Score (fades in) ──
+      + '<text x="'+CX+'" y="'+(CY-16)+'" font-family="monospace" font-size="28" font-weight="900" fill="'+nCol+'" text-anchor="middle" filter="url(#'+gid+'gl)" style="animation:sc-fade-in .6s .5s ease both">'+scoreLabel+'</text>'
+      + '<text x="'+CX+'" y="'+(CY-2)+'"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.22)" text-anchor="middle" letter-spacing="2">EDGE SCORE</text>'
 
-      // ── Score display inside arc ──
-      + '<text x="'+CX+'" y="'+(CY-16)+'" font-family="monospace" font-size="28" font-weight="900" fill="'+nCol+'" text-anchor="middle" filter="url(#gl)">'+scoreLabel+'</text>'
-      + '<text x="'+CX+'" y="'+(CY-2)+'"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.25)" text-anchor="middle" letter-spacing="2">EDGE SCORE</text>'
-
-      // ── Needle ──
-      // Shadow
-      + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(0,0,0,.5)" stroke-width="4.5" stroke-linecap="round"/>'
-      // Shaft
-      + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(255,255,255,.92)" stroke-width="2.5" stroke-linecap="round" filter="url(#gl)"/>'
-      // Tip
-      + '<circle cx="'+nx.toFixed(1)+'" cy="'+ny.toFixed(1)+'" r="2.5" fill="'+nCol+'" opacity=".95" filter="url(#gl)"/>'
+      // ── Needle group with rotate animation ──
+      + '<g style="transform-origin:'+CX+'px '+CY+'px;animation:sc-needle-spin .9s cubic-bezier(.34,1.56,.64,1) forwards">'
+        // Shadow
+        + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(0,0,0,.45)" stroke-width="5" stroke-linecap="round"/>'
+        // Shaft
+        + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(255,255,255,.92)" stroke-width="2.5" stroke-linecap="round" filter="url(#'+gid+'gl)"/>'
+        // Tip
+        + '<circle cx="'+nx.toFixed(1)+'" cy="'+ny.toFixed(1)+'" r="3" fill="'+nCol+'" filter="url(#'+gid+'gl)"/>'
+      + '</g>'
 
       // ── Hub ──
-      + '<circle cx="'+CX+'" cy="'+CY+'" r="9"   fill="url(#hubG)" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>'
-      + '<circle cx="'+CX+'" cy="'+CY+'" r="3.5" fill="rgba(255,255,255,.7)"/>'
+      + '<circle cx="'+CX+'" cy="'+CY+'" r="9"   fill="url(#'+gid+'hub)" stroke="rgba(255,255,255,.2)" stroke-width="1.5"/>'
+      + '<circle cx="'+CX+'" cy="'+CY+'" r="3.5" fill="rgba(255,255,255,.75)"/>'
 
     + '</svg>';
 
