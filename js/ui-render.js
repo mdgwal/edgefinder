@@ -2740,6 +2740,12 @@ function scNickGaugeSVG(score, maxRange) {
     `${labels}</svg>`;
 }
 
+// Reset gauge animation flag on asset switch
+function resetSCGaugeAnim() {
+  const key = 'sc_anim_' + (state.scAsset||'XAUUSD');
+  window[key] = false;
+}
+
 // ── renderScorecard ──────────────────────────────────────────────────────────
 // Fixes applied per audit:
 //  1. Strong visual hierarchy (Primary → Secondary → Tertiary)
@@ -3093,7 +3099,7 @@ function renderScorecard() {
       <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">Symbol:</span>
       <select style="flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);
         font-family:var(--mono);font-size:11px;padding:3px 5px;border-radius:4px;outline:none"
-        onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
+        onchange="resetSCGaugeAnim();state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
       <span style="font-family:var(--mono);font-size:10px;color:var(--muted)">(1) ▼</span>
     </div>
 
@@ -3419,8 +3425,12 @@ function renderScorecard() {
            + ' stroke="rgba(255,255,255,'+(major?'.28':'.1')+')" stroke-width="'+(major?1.5:1)+'" stroke-linecap="round"/>';
     }).join('');
 
-    // Unique ID per render so animation replays on asset switch
-    const gid = 'g' + Date.now();
+    // Animate only when asset changes (not on every re-render/data refresh)
+    const _scAnimKey = 'sc_anim_' + (state.scAsset||'XAUUSD');
+    const _shouldAnim = !window[_scAnimKey];
+    window[_scAnimKey] = true;
+    // Reset flag when asset dropdown changes (handled by onchange calling resetSCGaugeAnim)
+    const gid = 'scg';
 
     const gaugeHtml = '<svg id="sc-gauge-svg" viewBox="0 0 220 140" style="width:100%;max-width:280px;margin:0 auto;display:block;overflow:visible">'
       + '<defs>'
@@ -3436,7 +3446,7 @@ function renderScorecard() {
           + '<stop offset="100%" stop-color="'+C_POS+'"  stop-opacity=".7"/>'
         + '</linearGradient>'
         // Needle spin-in keyframe — injected via style tag
-        + '<style>'
+        + (_shouldAnim ? '<style>'
           + '@keyframes sc-needle-spin{'
             + 'from{transform-origin:'+CX+'px '+CY+'px;transform:rotate(-90deg)}'
             + 'to{transform-origin:'+CX+'px '+CY+'px;transform:rotate('+needleAngle+'deg)}'
@@ -3446,7 +3456,7 @@ function renderScorecard() {
             + 'to{stroke-dashoffset:'+(fullArc*2 - activeLen)+'}'
           + '}'
           + '@keyframes sc-fade-in{from{opacity:0}to{opacity:1}}'
-        + '</style>'
+        + '</style>' : '')
       + '</defs>'
 
       // ── Background track ──
@@ -3463,7 +3473,8 @@ function renderScorecard() {
             + ' stroke-dasharray="'+fullArc+' '+fullArc*3+'"'
             + ' stroke-dashoffset="'+(fullArc*2 - activeLen)+'"'
             + ' opacity=".9" filter="url(#'+gid+'gl)"'
-            + ' style="animation:sc-arc-grow .9s cubic-bezier(.4,0,.2,1) forwards"/>'
+            + (_shouldAnim ? ' style="animation:sc-arc-grow .9s cubic-bezier(.4,0,.2,1) forwards"' : '')
+            + '/>'
           : '')
 
       // ── Ticks ──
@@ -3481,12 +3492,9 @@ function renderScorecard() {
       + '<text x="'+CX+'" y="'+(CY-2)+'"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.22)" text-anchor="middle" letter-spacing="2">EDGE SCORE</text>'
 
       // ── Needle group with rotate animation ──
-      + '<g style="transform-origin:'+CX+'px '+CY+'px;animation:sc-needle-spin .9s cubic-bezier(.34,1.56,.64,1) forwards">'
-        // Shadow
+      + '<g style="transform-origin:'+CX+'px '+CY+'px;'+(_shouldAnim?'animation:sc-needle-spin .9s cubic-bezier(.34,1.56,.64,1) forwards':'')+'">'
         + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(0,0,0,.45)" stroke-width="5" stroke-linecap="round"/>'
-        // Shaft
         + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(255,255,255,.92)" stroke-width="2.5" stroke-linecap="round" filter="url(#'+gid+'gl)"/>'
-        // Tip
         + '<circle cx="'+nx.toFixed(1)+'" cy="'+ny.toFixed(1)+'" r="3" fill="'+nCol+'" filter="url(#'+gid+'gl)"/>'
       + '</g>'
 
@@ -3507,7 +3515,7 @@ function renderScorecard() {
     <div class="sc2-symbol-bar">
       <div class="sc2-symbol-label">
         <span class="sc2-symbol-tag">Symbol: ${symbolLabel}</span>
-        <select class="sc2-select" onchange="state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
+        <select class="sc2-select" onchange="resetSCGaugeAnim();state.scAsset=this.value;renderScorecard();runEngine()">${assetOpts}</select>
       </div>
       <div class="sc2-live-badge">${techFresh}</div>
     </div>
