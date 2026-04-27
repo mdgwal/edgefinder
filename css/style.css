@@ -3,7 +3,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   /* Backgrounds — navy gradient family */
-  --bg:#1D283A;--bg2:#1D283A;--bg3:rgba(255,255,255,.04);--bg4:rgba(255,255,255,.07);
+  --bg:#070b0f;--bg2:#0c1118;--bg3:#141c26;--bg4:#1a2233;
   --border:#1e2a38;
   /* Desaturated signal colors — less neon, more institutional */
   --bull:#00d97e;--bear:#e84050;
