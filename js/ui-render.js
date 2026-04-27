@@ -628,7 +628,7 @@ function renderSetupsHistoryView(){
     ${xLbls}
   </svg>`;
 
-  html+=`<div style="background:#0d1117;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
+  html+=`<div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
     ${svg}
   </div>`;
 
@@ -3231,7 +3231,7 @@ function renderScorecard() {
   // ── INJECT ────────────────────────────────────────────────────────────────────
   // ── SHARED CARD SHELL ────────────────────────────────────────────────────────
   const K = {
-    card: 'background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
+    card: 'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
     hd:   'padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;',
     body: 'padding:12px 14px;',
     row:  'display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);',
@@ -3367,7 +3367,7 @@ function renderScorecard() {
     </div>`;
 
   const detailsSection = `
-  <div style="border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;background:#0e1520">
+  <div style="border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;background:rgba(255,255,255,.03)">
     <style>.sc-accordion:last-child{border-bottom:none}</style>
     ${section('tech',  '📈','Technical bias',            comp.technical>=1?'Bullish':comp.technical<=-1?'Bearish':'Neutral',   '25%', techFresh,  techContent,   f_tech*0.25)}
     ${section('inst',  '🏦','Institutional activity bias',f_inst>=1?'Bullish':f_inst<=-1?'Bearish':'Neutral',                   '20%', cotFresh,   instContent,   f_inst*0.20)}
@@ -3447,15 +3447,12 @@ function renderScorecard() {
         + '</linearGradient>'
         // Needle spin-in keyframe — injected via style tag
         + (_shouldAnim ? '<style>'
-          + '@keyframes sc-needle-spin{'
-            + 'from{transform-origin:'+CX+'px '+CY+'px;transform:rotate(-90deg)}'
-            + 'to{transform-origin:'+CX+'px '+CY+'px;transform:rotate('+needleAngle+'deg)}'
-          + '}'
+
           + '@keyframes sc-arc-grow{'
             + 'from{stroke-dashoffset:'+(fullArc*2)+'}'
             + 'to{stroke-dashoffset:'+(fullArc*2 - activeLen)+'}'
           + '}'
-          + '@keyframes sc-fade-in{from{opacity:0}to{opacity:1}}'
+
         + '</style>' : '')
       + '</defs>'
 
@@ -3488,11 +3485,11 @@ function renderScorecard() {
       + '<text x="172" y="88"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.18)" text-anchor="middle">+Bull</text>'
 
       // ── Score (fades in) ──
-      + '<text x="'+CX+'" y="'+(CY-16)+'" font-family="monospace" font-size="28" font-weight="900" fill="'+nCol+'" text-anchor="middle" filter="url(#'+gid+'gl)" style="animation:sc-fade-in .6s .5s ease both">'+scoreLabel+'</text>'
+      + '<text x="'+CX+'" y="'+(CY-16)+'" font-family="monospace" font-size="28" font-weight="900" fill="'+nCol+'" text-anchor="middle" filter="url(#'+gid+'gl)" id="scg-score">'+scoreLabel+'</text>'
       + '<text x="'+CX+'" y="'+(CY-2)+'"  font-family="monospace" font-size="7.5" fill="rgba(255,255,255,.22)" text-anchor="middle" letter-spacing="2">EDGE SCORE</text>'
 
       // ── Needle group with rotate animation ──
-      + '<g style="transform-origin:'+CX+'px '+CY+'px;'+(_shouldAnim?'animation:sc-needle-spin .9s cubic-bezier(.34,1.56,.64,1) forwards':'')+'">'
+      + '<g id="scg-needle" style="transform-origin:'+CX+'px '+CY+'px;">'
         + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(0,0,0,.45)" stroke-width="5" stroke-linecap="round"/>'
         + '<line x1="'+CX+'" y1="'+CY+'" x2="'+nx.toFixed(1)+'" y2="'+ny.toFixed(1)+'" stroke="rgba(255,255,255,.92)" stroke-width="2.5" stroke-linecap="round" filter="url(#'+gid+'gl)"/>'
         + '<circle cx="'+nx.toFixed(1)+'" cy="'+ny.toFixed(1)+'" r="3" fill="'+nCol+'" filter="url(#'+gid+'gl)"/>'
@@ -3569,7 +3566,7 @@ function renderScorecard() {
             return `<div class="sc2-wt-row">
               <span class="sc2-wt-lbl">${c.lbl}</span>
               <div class="sc2-wt-track">
-                <div class="sc2-wt-fill" style="width:${pct}%;background:${col}"></div>
+                <div class="sc2-wt-fill" data-w="${pct}%" style="width:${pct}%;background:${col}"></div>
               </div>
               <span class="sc2-wt-val" style="color:${col}">${c.v > 0 ? '+' : ''}${c.v}</span>
               <span class="sc2-wt-pct">${c.wlbl}</span>
@@ -3598,6 +3595,51 @@ function renderScorecard() {
     </div>
 
   </div>`;
+
+    // ── JS RAF animations ────────────────────────────────────────────
+    if (_shouldAnim) {
+      requestAnimationFrame(function() {
+        var CX2=CX, CY2=CY, na=needleAngle, fa=fullArc, al=activeLen, cw=clampedWs;
+        var nEl=document.getElementById('scg-needle');
+        if(nEl){
+          var t0=performance.now();
+          var sp=function(t){return 1+2.7*Math.pow(t-1,3)+1.7*Math.pow(t-1,2);};
+          nEl.style.transformOrigin=CX2+'px '+CY2+'px';
+          nEl.style.transform='rotate(-90deg)';
+          var animN=function(ts){
+            var p=Math.min(1,(ts-t0)/900);
+            nEl.style.transform='rotate('+((-90)+(na+90)*sp(p))+'deg)';
+            if(p<1)requestAnimationFrame(animN);
+          }; requestAnimationFrame(animN);
+        }
+        var aEl=document.getElementById('scg-arc');
+        if(aEl&&cw!==0){
+          var t1=performance.now(), fO=fa*2, tO=fa*2-al;
+          var e2=function(t){return 1-Math.pow(1-t,3);};
+          aEl.style.strokeDasharray=fa+' '+(fa*3);
+          aEl.style.strokeDashoffset=fO;
+          var animA=function(ts){
+            var p=Math.min(1,(ts-t1)/900);
+            aEl.style.strokeDashoffset=fO+(tO-fO)*e2(p);
+            if(p<1)requestAnimationFrame(animA);
+          }; requestAnimationFrame(animA);
+        }
+        var sEl=document.getElementById('scg-score');
+        if(sEl){sEl.style.opacity='0';setTimeout(function(){sEl.style.transition='opacity .5s ease';sEl.style.opacity='1';},500);}
+        setTimeout(function(){
+          document.querySelectorAll('#page-scorecard .sc2-wt-fill').forEach(function(b){
+            var w=b.getAttribute('data-w')||b.style.width;
+            b.style.width='0%';
+            requestAnimationFrame(function(){b.style.transition='width .8s cubic-bezier(.4,0,.2,1)';b.style.width=w;});
+          });
+        },200);
+        setTimeout(function(){
+          var h=document.querySelector('#page-scorecard .sc-hist-wrap');
+          if(h){h.style.opacity='0';h.style.transition='opacity .6s ease';requestAnimationFrame(function(){h.style.opacity='1';});}
+        },400);
+      });
+    }
+
   } catch(e) {
     console.error("[SC] render error:", e);
     const _el=document.getElementById("page-scorecard"); if(_el) _el.innerHTML=`<div style="padding:24px;font-family:var(--mono);font-size:11px;color:var(--muted)">⚠ Render error — check console.<br><span style="color:#e05c6a;font-size:10px;">`+e.message+`</span></div>`;
@@ -4042,7 +4084,7 @@ function renderForexScorecard() {
 
   // Shared helpers (scoped to forex, same pattern as asset K/mkBadge/scoreChip)
   const fxK = {
-    card: 'background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
+    card: 'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;',
     hd:   'padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;',
     body: 'padding:12px 14px;',
   };
@@ -4307,7 +4349,7 @@ function renderForexScorecard() {
   <!-- Page header (same pattern as Asset) -->
   <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">
     <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35)">Forex Scorecard</div>
-    <select style="background:#0e1520;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);
+    <select style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.8);
       font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;outline:none;cursor:pointer"
       onchange="state.scForexPair=this.value;renderForexScorecard()">${fxDrop}</select>
   </div>
@@ -4333,7 +4375,7 @@ function renderFXExplanation(data) {
   const badge = b => `<span style="background:${bBg(b)};color:${bC(b)};border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:9px;font-weight:700;display:inline-block">${b}</span>`;
   const sC = v => v>0?'#4a90d9':v<0?'#e05c6a':'#6b7280';
   const sumCols = Object.entries(data.summary).map(([k,v]) =>
-    `<div style="background:#0e1520;padding:10px 12px;text-align:center">
+    `<div style="background:rgba(255,255,255,.03);padding:10px 12px;text-align:center">
       <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${k}</div>
       ${badge(v)}</div>`).join('');
   const LABELS = {technical:'📈 Technical',institutional:'🏦 Institutional',
@@ -4353,14 +4395,14 @@ function renderFXExplanation(data) {
   if (data.regime&&data.regime!=='Neutral Regime') flags+=`<div style="background:rgba(139,148,158,.06);border:1px solid rgba(139,148,158,.15);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:11px;color:${bC(data.regime==='Risk-On'?'Bullish':'Bearish')}">🌐 Regime: ${data.regime}</div>`;
   const baseStr=data.pair.slice(0,3), quoteStr=data.pair.slice(3);
   return flags+`
-  <div style="background:#0e1520;border:1px solid rgba(74,144,217,.2);border-radius:10px;overflow:hidden;margin-bottom:12px">
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(74,144,217,.2);border-radius:10px;overflow:hidden;margin-bottom:12px">
     <div style="padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
       <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:#4a90d9;text-transform:uppercase;letter-spacing:.8px">▶ Macro Differential — ${data.pair}</span>
       <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${bC(data.signal)}">${data.signal} · ${data.finalScore>=0?'+':''}${data.finalScore}</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:rgba(255,255,255,.04)">${sumCols}</div>
   </div>
-  <div style="background:#0e1520;border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-bottom:12px">
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;overflow:hidden;margin-bottom:12px">
     <div style="padding:10px 14px;background:rgba(255,255,255,.025);border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between">
       <span style="font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.8px">Component Breakdown</span>
       <span style="font-size:9px;color:rgba(255,255,255,.25)">${baseStr} vs ${quoteStr}</span>
