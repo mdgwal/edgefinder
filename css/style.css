@@ -3,7 +3,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   /* Backgrounds — navy gradient family */
-  --bg:#1D283A;--bg2:#1a2437;--bg3:#1f2d45;--bg4:#253554;
+  --bg:#1D283A;--bg2:#1D283A;--bg3:rgba(255,255,255,.04);--bg4:rgba(255,255,255,.07);
   --border:#1e2a38;
   /* Desaturated signal colors — less neon, more institutional */
   --bull:#00d97e;--bear:#e84050;
@@ -21,7 +21,7 @@
   --trans:.2s ease;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
-.header{background:rgba(10,16,26,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.055);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;}
+.header{background:#1D283A;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.055);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:100;}
 .hlogo{display:flex;align-items:center;gap:10px;}
 .logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--bull),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:bold;color:#000;}
 .logo-text{font-size:17px;font-weight:900;letter-spacing:-0.5px;}
@@ -34,7 +34,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 .rbtn:hover{background:var(--bg4);border-color:rgba(255,255,255,.12);color:var(--text);}
 .spinning{display:inline-block;animation:spin .7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.tabs{background:rgba(10,16,26,.92);border-bottom:1px solid rgba(255,255,255,.05);padding:0 16px;display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tabs{background:#1D283A;border-bottom:1px solid rgba(255,255,255,.05);padding:0 16px;display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{padding:11px 12px;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;font-family:var(--mono);background:none;border-top:none;border-left:none;border-right:none;transition:color var(--trans),border-color var(--trans);}
 .tab:hover{color:rgba(255,255,255,.65);}
