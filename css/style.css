@@ -3,7 +3,7 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   /* FundingPips exact color match */
-  --bg:#14151f;--bg2:#1c1e2c;--bg3:#22253a;--bg4:#292d46;
+  --bg:#000000;--bg2:#0f1017;--bg3:#161820;--bg4:#1c1e28;
   --border:rgba(255,255,255,.08);
   /* Signal colors — FundingPips green/red */
   --bull:#22c55e;--bear:#f05252;
