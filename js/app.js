@@ -1085,6 +1085,36 @@ if (_origFredFetch) {
 
 
 
+
+// ── Premium Glassmorphism Dropdown ────────────────────────────────────────────
+function pmToggle() {
+  const dd  = document.getElementById('pm-dropdown');
+  const ov  = document.getElementById('pm-overlay');
+  const isOpen = dd && dd.classList.contains('pm-open');
+  isOpen ? pmClose() : pmOpen();
+}
+function pmOpen() {
+  const dd = document.getElementById('pm-dropdown');
+  const ov = document.getElementById('pm-overlay');
+  if (dd) { dd.style.display = 'block'; requestAnimationFrame(() => dd.classList.add('pm-open')); }
+  if (ov) ov.classList.add('pm-open');
+}
+function pmClose() {
+  const dd = document.getElementById('pm-dropdown');
+  const ov = document.getElementById('pm-overlay');
+  if (dd) {
+    dd.classList.remove('pm-open');
+    setTimeout(() => { if (!dd.classList.contains('pm-open')) dd.style.display = 'none'; }, 220);
+  }
+  if (ov) ov.classList.remove('pm-open');
+}
+function pmGo(tab) {
+  pmClose();
+  setTimeout(() => { switchTab(tab); }, 100);
+}
+// Close on Escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') pmClose(); });
+
 // ── 8. BOOT EXECUTION ────────────────────────────────────────────────────
 // These lines were missing — this is the primary reason live data never ran.
 initTabs();
