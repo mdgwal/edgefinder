@@ -17,6 +17,60 @@
     <span><span class="live-dot"></span>LIVE</span>
     <span style="color:var(--muted)">Updated: <span class="lupdate" id="last-update">--:--</span></span>
     <button class="rbtn" onclick="refreshAll()"><span id="rbtn-icon">↻</span></button>
+    <!-- Profile avatar + glassmorphism dropdown -->
+    <div class="pm-wrap" id="pm-wrap">
+      <button class="pm-avatar" onclick="pmToggle()" aria-label="Menu">
+        <span class="pm-avatar-letters">EF</span>
+        <span class="pm-avatar-dot"></span>
+      </button>
+      <div class="pm-dropdown" id="pm-dropdown" role="menu">
+        <div class="pm-glass-edge"></div>
+        <div class="pm-header">
+          <div class="pm-avatar-lg"><span>EF</span></div>
+          <div>
+            <div class="pm-name">EdgeFinder Pro</div>
+            <div class="pm-email">finder-theta.vercel.app</div>
+          </div>
+        </div>
+        <div class="pm-divider"></div>
+        <div class="pm-section-label">Navigation</div>
+        <button class="pm-item" onclick="pmGo('scorecard')">
+          <span class="pm-icon">◈</span><span>Asset Scorecard</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('forex')">
+          <span class="pm-icon">⊞</span><span>Forex Scorecard</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('setups')">
+          <span class="pm-icon">⚡</span><span>Top Setups</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('cot')">
+          <span class="pm-icon">⊕</span><span>COT Data</span>
+        </button>
+        <div class="pm-divider"></div>
+        <div class="pm-section-label">Tools</div>
+        <button class="pm-item" onclick="pmGo('sentiment')">
+          <span class="pm-icon">◎</span><span>Sentiment</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('econ')">
+          <span class="pm-icon">◉</span><span>Economic Data</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('carry')">
+          <span class="pm-icon">◆</span><span>Yield Engine</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('feargreed')">
+          <span class="pm-icon">◇</span><span>Fear / Greed</span>
+        </button>
+        <div class="pm-divider"></div>
+        <button class="pm-item pm-item-refresh" onclick="refreshAll();pmClose()">
+          <span class="pm-icon">↻</span><span>Refresh Data</span>
+          <span class="pm-badge pm-badge-live">LIVE</span>
+        </button>
+        <button class="pm-item" onclick="pmGo('settings')">
+          <span class="pm-icon">⚙</span><span>Settings</span>
+        </button>
+        <div class="pm-footer">EdgeFinder Pro · Real-time analysis engine</div>
+      </div>
+    </div>
   </div>
 </header>
 <nav class="tabs" id="tabs"></nav>
@@ -45,5 +99,6 @@
 <!-- 6. Entry point: fetch helpers, data pipeline, boot -->
 <script src="js/app.js"></script>
 
+<div class="pm-overlay" id="pm-overlay" onclick="pmClose()"></div>
 </body>
 </html>
