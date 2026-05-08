@@ -1116,12 +1116,22 @@ function pmGo(tab) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') pmClose(); });
 
 // ── 8. BOOT EXECUTION ────────────────────────────────────────────────────
-// These lines were missing — this is the primary reason live data never ran.
-initTabs();
-renderActive();
-refreshAll();
-setInterval(refreshAll, 15 * 60 * 1000);   // full re-fetch every 15 min
-setTimeout(runEngine, 2000);                // scorecard engine after initial data
-setInterval(runEngine, 5 * 60 * 1000);     // scorecard engine every 5 min
-dpBootLoad();                               // priority data pipeline boot
-setInterval(dpScheduler, 60 * 1000);       // per-source TTL scheduler tick
+function _boot() {
+  try {
+    initTabs();
+    renderActive();
+    refreshAll();
+    setInterval(refreshAll, 15 * 60 * 1000);
+    setTimeout(runEngine, 2000);
+    setInterval(runEngine, 5 * 60 * 1000);
+    dpBootLoad();
+    setInterval(dpScheduler, 60 * 1000);
+  } catch(e) {
+    console.error('[boot] Fatal error:', e);
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _boot);
+} else {
+  _boot();
+}
